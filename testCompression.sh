@@ -107,7 +107,7 @@ function test_queries () {
 
   for compparam in ${COMPPARRAY[@]}; do
     echo "Testing compression ${compparam}..."  
-    numactl -N 0 -m 0 ${QEXEC} ./src/runqueries.q -db $DST/zd${compparam} \
+    numactl -N 0 -m 0 ${QEXEC} ./src/runQueries.q -db $DST/zd${compparam} \
       -result ${RESULTDIR}/tmp/query_${compparam}.psv \
       $ENCR -s ${COREPERSOCKET} -q
   done
