@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+#
+# Configure kdb+ environment variables based on OS and architecture
+#
+# Usage: source this script or run it before starting a q process
+# Exit codes:
+#   0 - Success
+#   10 - Unsupported OS
+#   20 - QHOME directory not found
+
+export QHOME="${QHOME:-$HOME/q}"
+
+if [[ ! -d "$QHOME" ]]; then
+  echo "Error: QHOME directory '$QHOME' not found" >&2
+  exit 20
+fi
+
+case "$(uname -s)-$(uname -m)" in
+  Darwin-*)    QSUBDIR="m64" ;;
+  Linux-x86_64) QSUBDIR="l64" ;;
+  Linux-aarch64|Linux-arm64) QSUBDIR="l64arm" ;;
+  *)
+    echo "Error: Unsupported OS/architecture combination" >&2
+    echo "Only Linux (x86_64/arm64) and macOS are supported" >&2
+    exit 10
+    ;;
+esac
+
+
+export QEXEC="$QHOME/$QSUBDIR/q"
+
+if [[ ! -x "$QEXEC" ]]; then
+  echo "Warning: q executable not found at '$QEXEC'" >&2
+fi
+
+echo "QEXEC is set to $QEXEC"

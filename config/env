@@ -1,0 +1,4 @@
+export SIZE=full   # options: full/large/medium/small
+
+export COMPPARAMS="17_0_0 17_2_5 17_3_0 17_4_5 17_5_1"
+
