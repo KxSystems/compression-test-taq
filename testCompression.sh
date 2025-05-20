@@ -121,7 +121,7 @@ get_column_stat
 test_write_times writetimes ""
 # test_write_times writetimes_parallel "-peach"
 compress_tables
-get_disk_usage2
+get_disk_usage
 test_queries
 
 readonly end=$(date +%s)
