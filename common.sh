@@ -20,5 +20,13 @@ readonly DATADIR="$1"
 readonly CSVDIR=$DATADIR/raw
 readonly DST=$DATADIR/tq
 
-readonly CORECOUNT=$(nproc)
-readonly CPUSOCKETNR=$(cat /proc/cpuinfo | grep "physical id" | sort -u | wc -l)
+if [[ $(uname) == "Linux" ]]; then
+    SOCKETNR=$(lscpu | grep "Socket(s)" | cut -d":" -f 2 |xargs)
+    COREPERSOCKET=$(lscpu | grep "Core(s) per socket" | cut -d":" -f 2 |xargs)
+    THREADPERCORE=$(lscpu | grep "Thread(s) per core" | cut -d":" -f 2 |xargs)
+else
+    SOCKETNR=1
+    COREPERSOCKET=$(sysctl -n hw.ncpu)
+    THREADPERCORE=1
+fi
+COMPUTECOUNT=$((COREPERSOCKET * SOCKETNR * THREADPERCORE))
