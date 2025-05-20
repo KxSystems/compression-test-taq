@@ -25,7 +25,7 @@ mkdir -p $RESULTDIR
 function get_column_stat () {
   echo "Generating column statistics..."
   $QEXEC ./src/columnStat.q -db "$DST/zd0_0_0" -tables trade,quote \
-    -result ./${RESULTDIR}/columnStatUncompressed.psv -s 8
+    -result ./${RESULTDIR}/columnStatUncompressed.psv -s ${COMPUTECOUNT} -q
 }
 
 readonly WRITETESTTABLE=trade   # Select a small and wide table
@@ -44,10 +44,10 @@ function test_write_times () {
     for compparam in ${COMPPARRAY[@]}; do
       echo "Testing compression $compparam"
       mkdir -p ${WRITETESTDIR}/${compparam}/${kdbdate}/${WRITETESTTABLE}
-      # compression is single threaded so we provide no -s parameter
+
       $QEXEC ./src/compress.q -date $kdbdate -table ${WRITETESTTABLE} -compparam "${compparam}" \
         -src "${DST}/zd0_0_0" -dst "${WRITETESTDIR}/" -times ./${RESULTDIR}/tmp/${outputname}_${compparam}.psv $scriptparam \
-        -syncdir $ENCR -s $(( CORECOUNT / CPUSOCKETNR )) -q
+        -syncdir $ENCR -s ${COMPUTECOUNT} -q
 
       rm -rf ${WRITETESTDIR}/${compparam}/${kdbdate}/${WRITETESTTABLE}
     done
@@ -77,7 +77,7 @@ function compress_tables () {
             echo "Compressing ${TABLE}..."
             mkdir -p $DST/zd${compparam}/$kdbdate/${TABLE}
             $QEXEC ./src/compress.q -date $(basename $kdbdate) -table $TABLE  -compparam ${compparam} \
-              -src "${DST}/zd0_0_0" -dst "$DST/zd" -peach $ENCR -s $CORECOUNT -q &
+              -src "${DST}/zd0_0_0" -dst "$DST/zd" -peach $ENCR -s $COMPUTECOUNT -q &
             cp "${TABLEDIR}"/.d $DST/zd${compparam}/$kdbdate/${TABLE}/
         done
         cp $DST/zd0_0_0/sym $DST/zd${compparam}
@@ -109,7 +109,7 @@ function test_queries () {
     echo "Testing compression ${compparam}..."  
     numactl -N 0 -m 0 ${QEXEC} ./src/runqueries.q -db $DST/zd${compparam} \
       -result ${RESULTDIR}/tmp/query_${compparam}.psv \
-      $ENCR -s $(( CORECOUNT / CPUSOCKETNR ))
+      $ENCR -s ${COREPERSOCKET} -q
   done
 
   sort -ur ./${RESULTDIR}/tmp/query_*.psv > ./${RESULTDIR}/query_summary.psv

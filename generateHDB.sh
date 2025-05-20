@@ -63,7 +63,7 @@ function get_CSVs () {
 
 function generate_HDB () {
   echo "Generating kdb+ data (aka. HDB)..."
-  $QEXEC ./src/tq.q -src $CSVDIR -dst $DST/zd0_0_0 -letter $LETTERS -s $CORECOUNT
+  $QEXEC ./src/tq.q -src $CSVDIR -dst $DST/zd0_0_0 -letter $LETTERS -s $COMPUTECOUNT -q
 }
 
 function cleanup_CSVs () {
