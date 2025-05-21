@@ -62,8 +62,7 @@ Device: getDevice[DB]
 runQuery: {[query:`C]
   ts: ();
   io: ();
-  .qlog.info "Clearing page cache";
-  system getenv[`FLUSH], " ", DB;
+  .qlog.info raze system getenv[`FLUSH], " ", DB;
   .qlog.info "Running query: ", query;
   io,: getKBRead[Device]`kB_read;
   ts,: enlist system "ts ", query;
