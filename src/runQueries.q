@@ -15,8 +15,18 @@ if[`encr in key o;
 
 getPartition: {[]first " " vs last system "df ", DB}
 
-getDevice:{[]
-  p: ssr[;"/dev/";""] getPartition[];
+getDeviceOSX:{[db:`C]
+  "disk0"  / TODO: Implement a proper solution
+  }
+
+getDevice:{[db:`C]
+  if[.z.o=`m64;:getDeviceOSX[db]];
+
+  fs: getFilesystem[db];
+  if["overlay" ~ fs; :fs];   / Inside Docker, NYI
+  if["disk" ~ last system "lsblk -o type ", fs; :fs];
+  p: ssr[;"/dev/";""] fs;
+  // disk is looked up from partition by e.g. /sys/class/block/nvme0n1p1
   if[not (`$p) in key `$":/sys/class/block";
     .qlog.warn "Unable to map partition ", p, " to a device";
     :""];
@@ -24,18 +34,27 @@ getDevice:{[]
   "/dev",deltas[-2#l ss "/"] sublist l
   }
 
-getKBReadMac: {[device:`C] iostatError}
+iostatError: `kB_read`kB_wrtn`kB_sum!3#0Nj
+
+getKBReadMac: {[device:`C] 
+  if[device ~ enlist ""; :iostatError];
+  iostatcmd: "iostat -d -I ", device, " 2>&1"; // -I returns the MB read as last column
+  r: @[system; iostatcmd; .qlog.error];
+  if[not 0h ~ type r; :iostatError];
+  @[iostatError;`kB_sum;:;1000*`long$"F"$l last where not "" ~/: l:" " vs last r]
+  }
+
 getKBReadLinux: {[device:`C]
   iostatcmd: "iostat -dk -o JSON ", device, " 2>&1";
   r: @[system; iostatcmd; .qlog.error];
   :$[0h ~ type r; [
   	iostats: @[; `disk] first @[; `statistics] first first first value flip value .j.k raze r;
-  	$[count iostats; exec `long$sum kB_read, `long$sum kB_wrtn from iostats; iostatError]];
+  	$[count iostats; [m:exec `long$sum kB_read, `long$sum kB_wrtn from iostats;m,([kB_sum: sum m])]; iostatError]];
 	iostatError]
   }
 
 getKBRead: $[.z.o ~ `m64; getKBReadMac; getKBReadLinux]
-Device: getDevice[]
+Device: getDevice[DB]
 .qlog.info "Monitoring device ", Device;
 
 
@@ -43,7 +62,7 @@ runQuery: {[query:`C]
   ts: ();
   io: ();
   .qlog.info "Clearing page cache";
-  system "echo 3 | sudo tee /proc/sys/vm/drop_caches";
+  system getenv `FLUSH;
   .qlog.info "Running query: ", query;
   io,: getKBRead[Device]`kB_read;
   ts,: enlist system "ts ", query;

@@ -103,16 +103,31 @@ function get_disk_usage () {
 
 function test_queries () {
   echo "Measuring query times..."
-  sudo tee /proc/sys/vm/max_map_count <<< 16777216 >/dev/null
 
+  # Overwriting max_map_count
+  if [[ $(uname) == "Linux" ]]; then
+    local MAX_MAP_COUNT=$(cat /proc/sys/vm/max_map_count)
+    sudo tee /proc/sys/vm/max_map_count <<< 16777216 >/dev/null
+  fi
+
+  if command -v numactl 2>&1 >/dev/null; then
+    local NUMACTL="numactl -N 0 -m 0"
+  else
+    local NUMACTL=""
+  fi
   for compparam in ${COMPPARRAY[@]}; do
     echo "Testing compression ${compparam}..."  
-    numactl -N 0 -m 0 ${QEXEC} ./src/runQueries.q -db $DST/zd${compparam} \
+    ${NUMACTL} ${QEXEC} ./src/runQueries.q -db $DST/zd${compparam} \
       -result ${RESULTDIR}/tmp/query_${compparam}.psv \
       $ENCR -s ${COREPERSOCKET} -q
   done
 
   sort -ur ./${RESULTDIR}/tmp/query_*.psv > ./${RESULTDIR}/query_summary.psv
+
+  # Restoring max_map_count
+  if [[ $(uname) == "Linux" ]]; then
+    sudo tee /proc/sys/vm/max_map_count <<< ${MAX_MAP_COUNT} >/dev/null
+  fi
 }
 
 readonly start=$(date +%s)
