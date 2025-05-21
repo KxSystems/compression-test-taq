@@ -19,6 +19,7 @@ getDeviceOSX:{[db:`C]
   "disk0"  / TODO: Implement a proper solution
   }
 
+getFilesystem: {[db:`C] first " " vs last system "df ", db}
 getDevice:{[db:`C]
   if[.z.o=`m64;:getDeviceOSX[db]];
 
