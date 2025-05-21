@@ -76,7 +76,7 @@ readonly start=$(date +%s)
 
 get_CSVs
 generate_HDB
-# cleanup_CSVs
+cleanup_CSVs
 readonly end=$(date +%s)
 
 readonly duration=$((end - start))
