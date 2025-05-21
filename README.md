@@ -14,7 +14,7 @@ It is recommended to read KX [FSI case study](https://code.kx.com/q/kb/compressi
 
 ## Prerequisite
 
-We assume that kdb+ is installed. If the kdb+ home is not `$HOME/q` then set environment variable `QHOME` properly in `config/kdbenv`.
+We assume that kdb+ is installed.
 
 The bash and q script use
    * `wget` to download zipped CSV files from the NYSE TAQ server
@@ -24,6 +24,18 @@ The bash and q script use
 ### Hardware Notes
 
 Compression benefits vary by disk speed and available CPU capacity. For meaningful results, test on storage matching your production environment.
+
+## Configuration
+If the kdb+ home is not `$HOME/q` then set environment variable `QHOME` properly in `config/kdbenv`.
+
+File `config/env` stores environment variables the scripts need. You can set these manually or load them
+
+```bash
+$ source ./config/kdbenv
+$ source ./config/env
+```
+
+Some other parameters (e.g. database location) are passed to the bash scripts as command-line parameters.
 
 ## Data Generation
 
@@ -37,8 +49,7 @@ The compression benefit depends on the disk speed. Build the HDB on a storage th
 
 ```bash
 $ export DATE=$(curl -s https://ftp.nyse.com/Historical%20Data%20Samples/DAILY%20TAQ/| grep -oE 'EQY_US_ALL_TRADE_2[0-9]{7}' | grep -oE '2[0-9]{7}'|head -1)
-$ source ./config/kdbenv
-$ SIZE=full ./generateHDB.sh /tmp/compressiontest $DATE
+$ ./generateHDB.sh /tmp/compressiontest $DATE
 ```
 
 ### Data size
@@ -59,11 +70,12 @@ Some statistics of various DB sizes with data from 2025.01.02 are below
 Execute compression tests after HDB generation:
 
 ```bash
-$ export COMPPARAMS="17_0_0 17_2_5 17_3_0 17_4_5 17_5_1"
 $ ./testCompression.sh /tmp/compressiontest
 ```
 
-`COMPPARAMS` is a list of [compression parameters](https://code.kx.com/q/kb/file-compression/#compression-parameters). A compression parameter is an underscore separated triple of logical block size, compression algorithm and level. For example `17_2_5` means 128KB blocks (17), gzip (2) compression with level 5.
+`COMPPARAMS` is a set in `config/env`. It is a list of [compression parameters](https://code.kx.com/q/kb/file-compression/#compression-parameters). A compression parameter is an underscore separated triple of logical block size, compression algorithm and level. For example `17_2_5` means 128KB blocks (17), gzip (2) compression with level 5.
+
+The script flushes page cache before executing the first query. The flush method is storage specific and you may need to implement it. The `flush` directory
 
 ## Results
 
@@ -82,16 +94,3 @@ Be careful with the cleanup. Generating HDB might take long. Run the cleanup scr
 ```bash
 $ ./cleanup.sh /tmp/compressiontest $DATE
 ```
-
-## Details
-
-Persistent settings is also supported by `config/env`:
-
-```bash
-$ export DATE=$(curl -s https://ftp.nyse.com/Historical%20Data%20Samples/DAILY%20TAQ/| grep -oE 'EQY_US_ALL_TRADE_2[0-9]{7}' | grep -oE '2[0-9]{7}'|head -1)
-$ source ./config/kdbenv
-$ source ./config/env
-$ ./generateHDB.sh /tmp/compressiontest $DATE
-$ ./testCompression.sh /tmp/compressiontest
-```
-
