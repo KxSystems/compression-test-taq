@@ -107,7 +107,7 @@ function test_queries () {
   # Overwriting max_map_count
   if [[ $(uname) == "Linux" ]]; then
     local MAX_MAP_COUNT=$(cat /proc/sys/vm/max_map_count)
-    sudo tee /proc/sys/vm/max_map_count <<< 16777216 >/dev/null
+    ${SUDO} tee /proc/sys/vm/max_map_count <<< 16777216 >/dev/null
   fi
 
   if command -v numactl 2>&1 >/dev/null; then
@@ -116,7 +116,7 @@ function test_queries () {
     local NUMACTL=""
   fi
   for compparam in ${COMPPARRAY[@]}; do
-    echo "Testing compression ${compparam}..."  
+    echo "Testing compression ${compparam}..."
     ${NUMACTL} ${QEXEC} ./src/runQueries.q -db $DST/zd${compparam} \
       -result ${RESULTDIR}/tmp/query_${compparam}.psv \
       $ENCR -s ${COREPERSOCKET} -q
