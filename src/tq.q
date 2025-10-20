@@ -11,7 +11,7 @@
 
 if[(4.1>.z.K); .qlog.error "kdb+ 4.1 is required";exit 1];
 ko:key o:first each .Q.opt .z.x
-if[not all `src`dst in ko; 
+if[not all `src`dst in ko;
   .qlog.error ">q ",(string .z.f)," -src SRC -dst DST [-letter START-END]";exit 2];
 letterConv: $[`letter in ko; [
   LETTER:o`letter;
@@ -50,7 +50,7 @@ process: {[tableName:`s;colNames:`S;colTypes;conv;op;fileName:`s]
 th:`Time`Exchange`Symbol`SaleCondition`TradeVolume`TradePrice`TradeStopStockIndicator,
   `TradeCorrectionIndicator`SequenceNumber`TradeId`SourceofTrade`TradeReportingFacility,
   `ParticipantTimestamp`TradeReportingFacilityTRFTimestamp`TradeThroughExemptIndicator;
-tf:("NC*SIEBHI*CBNNB";enlist"|")
+tf:("NC*SIESHI*CSNNB";enlist"|")
 
 qh:`Time`Exchange`Symbol`Bid_Price`Bid_Size`Offer_Price`Offer_Size`Quote_Condition,
   `Sequence_Number`National_BBO_Ind`FINRA_BBO_Indicator`FINRA_ADF_MPID_Indicator,
