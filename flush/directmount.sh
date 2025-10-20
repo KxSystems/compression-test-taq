@@ -1,20 +1,26 @@
 #!/usr/bin/env bash
 
-echo "Flushing caches"
+if [ $# -eq 0 ]; then
+    error_handler "No directory specified. Usage: $0 <directory>"
+fi
+
+DBDIR=$1
 
 declare -A zfs_pools
-while IFS= read -r partition; do
-	if [[ $(findmnt -n -o FSTYPE -T ${partition}) == "zfs" ]]; then
-		pool=$(findmnt -n -o SOURCE -T ${partition})
-		echo "${partition} is on zfs pool ${pool}"
-		zfs_pools[$pool]=1
-	else
-		echo "syncing ${partition}"
-		sync ${partition}
-	fi
-done < ./partitions
+
+if [[ $(findmnt -n -o FSTYPE -T ${DBDIR}) == "zfs" ]]; then
+	pool=$(findmnt -n -o SOURCE -T ${DBDIR})
+	echo "${partition} is on zfs pool ${pool}"
+	zfs_pools[$pool]=1
+else
+	echo "syncing ${DBDIR}"
+	sync ${DBDIR}
+fi
+
 
 unique_pools=("${!zfs_pools[@]}")
+
+echo "Flushing caches"
 
 if [ $(uname -s) = "Darwin" ]; then
 	${SUDO} purge
