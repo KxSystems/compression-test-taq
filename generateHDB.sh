@@ -36,29 +36,42 @@ readonly URLPREFIX="https://ftp.nyse.com/Historical%20Data%20Samples/DAILY%20TAQ
 
 function get_CSVs () {
   echo "Fetching gzipped CSV files..."
+  mkdir -p ${CSVDIR}
+  pushd ${CSVDIR}
 
   eval "LETTERARRAY=({$LETTERS})"
   for letter in ${LETTERARRAY[@]}; do
     qfname=$(getFilename "SPLITS" "BBO_${letter}")
-    if [[ -f "$CSVDIR/"${qfname%.*} ]]; then
+    if [[ -f ${qfname%.*} ]]; then
       echo "${qfname} was already downloaded and unzipped. Skipping download."
     else
-      wget -c -P "${CSVDIR}" "${URLPREFIX}${qfname}"
+      wget -c "${URLPREFIX}${qfname}"
       echo "Unzipping downloaded file in the background"
-      gunzip "${CSVDIR}/${qfname}" &
+      gunzip "${qfname}" &
     fi
   done
 
   local tfname=$(getFilename "EQY" "TRADE")
-  if [[ -f "$CSVDIR/"${tfname%.*} ]]; then
+  if [[ -f ${tfname%.*} ]]; then
     echo "${tfname} was already downloaded and unzipped. Skipping download."
   else
-    wget -c -P "${CSVDIR}" "${URLPREFIX}/$(getFilename "EQY" "TRADE")"
+    wget -c "${URLPREFIX}/$(getFilename "EQY" "TRADE")"
     echo "Unzipping downloaded file"
-    gunzip "${CSVDIR}/${tfname}"
+    gunzip "${tfname}"
   fi
 
   wait
+
+  echo "Removing last lines and adding proper extension"
+  head -n -1 ${tfname%.*} > ${tfname%.*}.psv
+  rm ${tfname%.*}
+  for letter in ${LETTERARRAY[@]}; do
+    qfname=$(getFilename "SPLITS" "BBO_${letter}")
+    head -n -1 ${qfname%.*} > ${qfname%.*}.psv
+    rm ${qfname%.*}
+  done
+
+  popd
 }
 
 function generate_HDB () {

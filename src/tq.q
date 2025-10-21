@@ -18,12 +18,12 @@ letterConv: $[`letter in ko; [
   if[not LETTER like "?..?";
     .qlog.error "letter must be in form START..END, for example A..K";
     exit 2];
-  {select from y where (first each Symbol) within x}[LETTER except "."]]; ::];
+  {select from y where Symbol[;0] within x}[LETTER except "."]]; ::];
 
 SRC:hsym `$o`src
 DST:hsym `$o`dst
 
-symbolConv: {update`$Symbol from update "."^Symbol from x where Symbol like"* *"}
+symbolConv: {update `$"."^Symbol from x}  / replace whitespace by dot
 
 psym: {[c:`s; x:`s]
   if[null @[@[;c;`p#];x;`];
@@ -61,7 +61,7 @@ qh:`Time`Exchange`Symbol`Bid_Price`Bid_Size`Offer_Price`Offer_Size`Quote_Conditi
 qf:("NC*FIFICICCCCCCCCCCNNCC";enlist"|")
 conv: symbolConv letterConv@
 
-Q: asc F where (lower F:key SRC) like "splits_us_all_bbo_*[0-9]"
+Q: asc F where (lower F:key SRC) like "splits_us_all_bbo_*[0-9].psv"
 if[0<count Q;
   .qlog.info "Processing quote tables...";
   process[`quote;qh;qf;conv;:] first Q;
@@ -69,7 +69,7 @@ if[0<count Q;
   .qlog.info "Adding parted attribute...";
   psym[`Symbol] each distinct getPart[DST;`quote] each Q]
 
-T: F where lower[F] like "eqy_us_all_trade_[0-9]*"
+T: F where lower[F] like "eqy_us_all_trade_[0-9]*.psv"
 .qlog.info "Processing trade tables..."
 process[`trade;th;tf;conv;:] each T
 .qlog.info "Adding parted attribute..."
