@@ -10,18 +10,22 @@
 \l src/log.q
 
 if[(4.1>.z.K); .qlog.error "kdb+ 4.1 is required";exit 1];
-ko:key o:first each .Q.opt .z.x
-if[not all `src`dst in ko;
-  .qlog.error ">q ",(string .z.f)," -src SRC -dst DST [-letter START-END]";exit 2];
+USAGE: "usage: q ", string[.z.f], " [-help] -src SRC [-dst DST] [-letters START..END]\n\n",
+  "Parses NYSE TAQ PSV files and persists the content into a partitioned kdb+ database."
+ko: key o: first each .Q.opt .z.x
+
+if[`help in ko; -1 USAGE; exit 0];
+if[not `src in ko; .qlog.error USAGE; exit 2];
+SRC: hsym `$o`src
+DST: hsym `kdbDB^`$o`dst
+
 letterConv: $[`letter in ko; [
-  LETTER:o`letter;
+  LETTER: o`letter;
   if[not LETTER like "?..?";
-    .qlog.error "letter must be in form START..END, for example A..K";
+    .qlog.error "Invalid letter parameter. Must be in form START..END, for example A..K, got ", LETTER;
     exit 2];
   {select from y where Symbol[;0] within x}[LETTER except "."]]; ::];
 
-SRC:hsym `$o`src
-DST:hsym `$o`dst
 
 symbolConv: {update `$"."^Symbol from x}  / replace whitespace by dot
 
@@ -52,12 +56,12 @@ th:`Time`Exchange`Symbol`SaleCondition`TradeVolume`TradePrice`TradeStopStockIndi
   `ParticipantTimestamp`TradeReportingFacilityTRFTimestamp`TradeThroughExemptIndicator;
 tf:("NC*SIESHI*CSNNB";enlist"|")
 
-qh:`Time`Exchange`Symbol`Bid_Price`Bid_Size`Offer_Price`Offer_Size`Quote_Condition,
-  `Sequence_Number`National_BBO_Ind`FINRA_BBO_Indicator`FINRA_ADF_MPID_Indicator,
-  `Quote_Cancel_Correction`Source_Of_Quote`Retail_Interest_Indicator,
-  `Short_Sale_Restriction_Indicator`LULD_BBO_Indicator`SIP_Generated_Message_Identifier,
-  `National_BBO_LULD_Indicator`Participant_Timestamp`FINRA_ADF_Timestamp,
-  `FINRA_ADF_Market_Participant_Quote_Indicator`Security_Status_Indicator
+qh:`Time`Exchange`Symbol`BidPrice`BidSize`OfferPrice`OfferSize`QuoteCondition,
+  `SequenceNumber`NationalBBOInd`FINRABBOIndicator`FINRAADFMPIDIndicator,
+  `QuoteCancelCorrection`SourceOfQuote`RetailInterestIndicator,
+  `ShortSaleRestrictionIndicator`LULDBBOIndicator`SIPGeneratedMessageIdentifier,
+  `NationalBBOLULDIndicator`ParticipantTimestamp`FINRAADFTimestamp,
+  `FINRAADFMarketParticipantQuoteIndicator`SecurityStatusIndicator
 qf:("NC*FIFICICCCCCCCCCCNNCC";enlist"|")
 conv: symbolConv letterConv@
 

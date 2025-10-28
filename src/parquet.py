@@ -212,39 +212,34 @@ def main(data_dir, output_dir, first_letter_interval):
     except ValueError:
         raise ValueError(f"Invalid letter parameter. Must be in form START..END, for example A..K, got '{first_letter_interval}'")
 
+    # Process quote files
+    quote_files = glob.glob(os.path.join(data_dir, f"SPLITS_US_ALL_BBO_[{start_char}-{end_char}]_*.psv"))
+    process_and_persist(quote_files, QUOTE_SCHEMA, output_dir, 'quote', start_char, end_char, ['FINRA_BBO_Indicator'], ['Time', 'Participant_Timestamp', 'FINRA_ADF_Timestamp'])
 
     # Process trade files
     trade_files = glob.glob(os.path.join(data_dir, 'EQY_US_ALL_TRADE_*.psv'))
     process_and_persist(trade_files, TRADE_SCHEMA, output_dir, 'trade', start_char, end_char, ['Sale Condition'], ['Time', 'Participant Timestamp', 'Trade Reporting Facility TRF Timestamp'])
 
-    # Process quote files
-    quote_files = glob.glob(os.path.join(data_dir, f"SPLITS_US_ALL_BBO_[{start_char}-{end_char}]_*.psv"))
-    process_and_persist(quote_files, QUOTE_SCHEMA, output_dir, 'quote', start_char, end_char, ['FINRA_BBO_Indicator'], ['Time', 'Participant_Timestamp', 'FINRA_ADF_Timestamp'])
-
     print("\nAll processing complete.")
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
-        description="Parse NYSE TAQ data from PSV and persist to partitioned Parquet files.",
+        description="Parses NYSE TAQ PSV files and persists to a partitioned Parquet dataset.",
         formatter_class=argparse.RawTextHelpFormatter
     )
     parser.add_argument(
-        '-src', type=str, default='.',
-        help="Directory containing the input PSV files. Defaults to '.'."
+        '-src', type=str, required=True,
+        help="Directory containing the input PSV files."
     )
     parser.add_argument(
-        '-dst', type=str, default='parquet_output',
-        help="Directory to save the output Parquet files. Defaults to 'parquet_output'."
+        '-dst', type=str, default='parquetDB',
+        help="Directory to save the output Parquet files. Defaults to 'parquetDB'."
     )
 
     parser.add_argument(
-        '-letter', type=str, default='A..Z',
-        help="Filter on the fist letter of the Symbol column. Defaults to 'A..Z', which is not filtering."
+        '-letters', type=str, default='A..Z',
+        help="Letters allowed as first letter of the Symbol column. Defaults to 'A..Z', which is allow all."
     )
     args = parser.parse_args()
 
-    main(args.src, args.dst, args.letter)
-
-
-
-
+    main(args.src, args.dst, args.letters)

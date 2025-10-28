@@ -58,7 +58,7 @@ A single day of NYSE TAQ files contain large amount of data. You can speed up th
 
 Some statistics of various DB sizes with data from 2025.01.02 are below
 
-| `SIZE` | Symbol first letters | HDB size (GB) | Nr of quote Symbols | Nr of quotes | 
+| `SIZE` | Symbol first letters | HDB size (GB) | Nr of quote Symbols | Nr of quotes |
 | --- | --- | ---: | ---: | ---: |
 | `small` | Z | 1 | 94 | 4 607 158 |
 | `medium` | I | 13 | 555 | 180 827 332 |

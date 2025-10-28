@@ -62,6 +62,7 @@ function get_CSVs () {
 
   wait
 
+  # TODO: add check if last line starts with 'END'
   echo "Removing last lines and adding proper extension"
   head -n -1 ${tfname%.*} > ${tfname%.*}.psv
   rm ${tfname%.*}
@@ -76,7 +77,7 @@ function get_CSVs () {
 
 function generate_HDB () {
   echo "Generating kdb+ data (aka. HDB)..."
-  $QEXEC ./src/tq.q -src $CSVDIR -dst $DST/zd0_0_0 -letter $LETTERS -s $COMPUTECOUNT -q
+  $QEXEC ./src/tq.q -src $CSVDIR -dst $DST/zd0_0_0 -letters $LETTERS -s $COMPUTECOUNT -q
 }
 
 function cleanup_CSVs () {
