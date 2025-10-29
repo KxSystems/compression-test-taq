@@ -15,7 +15,10 @@ USAGE: "usage: q ", string[.z.f], " [-help] -src SRC [-dst DST] [-letters START-
 ko: key o: first each .Q.opt .z.x
 
 if[`help in ko; -1 USAGE; exit 0];
-if[not `src in ko; .qlog.error USAGE; exit 2];
+if[not `src in ko;
+  -1 USAGE;
+  .qlog.error "'src' parameter was not provided";
+  exit 2];
 SRC: hsym `$o`src
 DST: hsym `kdbDB^`$o`dst
 
@@ -69,7 +72,7 @@ QUOTESCHEMA: ([
   SecurityStatusIndicator:"C"
   ])
 
-letterConv: $[`letter in ko; {select from y where Symbol[;0] within x}[LETTERS except "."]; ::]
+letterConv: $[`letters in ko; {select from y where Symbol[;0] within x}[LETTERS except "-"]; ::]
 symbolConv: {update `$"."^Symbol from x}  / replace whitespace by dot
 
 psym: {[c:`s; x:`s]
@@ -82,14 +85,14 @@ getPart: {[dir:`s;tableName:`s;fileName:`s]
   .Q.par[dir;"D"$-8#string fileName;tableName]
   }
 
-process: {[tableName:`s;colNames:`S;colTypes;conv;op;fileName:`s]
+process: {[tableName:`s;schema;conv;op;fileName:`s]
   p: .Q.dd[getPart[DST;tableName;fileName];`];
   fullFileName: .Q.dd[SRC;fileName];
   .qlog.info "Processing file ", 1_string fullFileName;
   / load and drop last line
-  raw: -1 _ colTypes 0:fullFileName;
+  raw: -1 _ (value schema; enlist"|") 0:fullFileName;
   / rename, convert and enumerate
-  t: .Q.en[DST] conv flip colNames!value flip raw;
+  t: .Q.en[DST] conv flip key[schema]!value flip raw;
   / save
   .[p;();op;t];
   }
@@ -101,14 +104,15 @@ quotePattern: "splits_us_all_bbo_[", $[`letters in ko;lower LETTERS;"a-z"], "]_*
 Q: asc F where (lower F:key SRC) like quotePattern
 if[0<count Q;
   .qlog.info "Processing quote tables...";
-  process[`quote;key QUOTESCHEMA;(value QUOTESCHEMA; enlist"|");conv;:] first Q;
-  process[`quote;key QUOTESCHEMA;(value QUOTESCHEMA; enlist"|");conv;,] each 1_Q;
+  processFn: process[`quote;QUOTESCHEMA;conv];
+  processFn[:; first Q];
+  processFn[,] each 1_Q;
   .qlog.info "Adding parted attribute...";
   psym[`Symbol] each distinct getPart[DST;`quote] each Q]
 
 T: F where lower[F] like "eqy_us_all_trade_[0-9]*.psv"
 .qlog.info "Processing trade tables..."
-process[`trade;key TRADESCHEMA;(value TRADESCHEMA;enlist"|");conv;:] each T
+process[`trade;TRADESCHEMA;conv;:] each T
 .qlog.info "Adding parted attribute..."
 psym[`Symbol] each distinct getPart[DST;`trade] each T
 
