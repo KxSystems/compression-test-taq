@@ -168,7 +168,7 @@ def process_and_persist(file_paths: List[Path],schema: pa.Schema,
         trim_cols: List of string columns to trim and cast to dictionary.
         time_cols: List of string columns to convert to time64[ns].
     """
-    logging.info("--- Starting processing for table: %s ---", table_name)
+    logging.info("Processing table %s", table_name)
     if not file_paths:
         logging.info("No input files found for %s. Skipping.", table_name)
         return
@@ -186,7 +186,7 @@ def process_and_persist(file_paths: List[Path],schema: pa.Schema,
     table_output_path = output_path / table_name
 
     for file_path in file_paths:
-        logging.info("  Reading file: %s", file_path.name)
+        logging.info("  Parsing file %s", file_path.name)
 
         try:
             # Read the PSV directly into a PyArrow Table
@@ -195,7 +195,7 @@ def process_and_persist(file_paths: List[Path],schema: pa.Schema,
                 parse_options=parse_options,
                 convert_options=convert_options
             )
-
+            logging.info("  Renaming and converting")
             table = letter_conv(table, start_char, end_char)
 
             if len(table) == 0:
@@ -236,7 +236,7 @@ def process_and_persist(file_paths: List[Path],schema: pa.Schema,
             new_names = [name.replace(" ", "").replace("_", "") for name in table.column_names]
             table = table.rename_columns(new_names)
 
-            logging.info("  Writing %d rows to: %s", len(table), table_output_path)
+            logging.info("  Writing %d rows", len(table))
             ds.write_dataset(
                 table,
                 base_dir=table_output_path,
@@ -247,7 +247,7 @@ def process_and_persist(file_paths: List[Path],schema: pa.Schema,
                 file_options=parquet_options,
                 preserve_order=True # Assumes original data is sorted by Time
             )
-            logging.info("  Successfully wrote data for %s.", file_path.name)
+            logging.info("  Successfully wrote data to %s", table_output_path)
 
         except Exception as e:
             logging.error(

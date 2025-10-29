@@ -88,12 +88,13 @@ getPart: {[dir:`s;tableName:`s;fileName:`s]
 process: {[tableName:`s;schema;conv;op;fileName:`s]
   p: .Q.dd[getPart[DST;tableName;fileName];`];
   fullFileName: .Q.dd[SRC;fileName];
-  .qlog.info "Processing file ", 1_string fullFileName;
+  .qlog.info "  Parsing file ", 1_string fullFileName;
   raw: (value schema; enlist"|") 0:fullFileName;
-  / rename, convert and enumerate
-  t: .Q.en[DST] conv flip key[schema]!value flip raw;
-  / save
-  .[p;();op;t];
+  .qlog.info "  Renaming and converting";
+  t: conv flip key[schema]!value flip raw;
+  .qlog.info "  Enumerating and saving ", string[count t], " rows";
+  .[p;();op;.Q.en[DST] t];
+  .qlog.info "  Successfully wrote data to ", 1_string p;
   }
 
 
@@ -106,13 +107,14 @@ if[0<count Q;
   processFn: process[`quote;QUOTESCHEMA;conv];
   processFn[:; first Q];
   processFn[,] each 1_Q;
-  .qlog.info "Adding parted attribute...";
+  .qlog.info "  Adding parted attribute...";
   psym[`Symbol] each distinct getPart[DST;`quote] each Q]
 
 T: F where lower[F] like "eqy_us_all_trade_[0-9]*.psv"
 .qlog.info "Processing trade tables..."
 process[`trade;TRADESCHEMA;conv;:] each T
-.qlog.info "Adding parted attribute..."
+.qlog.info "  Adding parted attribute..."
 psym[`Symbol] each distinct getPart[DST;`trade] each T
 
+.qlog.info "\nAll processing complete."
 if[not `debug in ko; exit 0]
