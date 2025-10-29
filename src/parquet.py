@@ -200,25 +200,25 @@ def process_and_persist(file_paths, schema, output_path, table_name, start_char,
             print(f"    Error processing file {file_path}: {e}")
             continue
 
-def main(data_dir, output_dir, first_letter_interval):
+def main(src, dst, letters):
     """Main function to find and process data files."""
-    if not os.path.exists(data_dir):
-        print(f"Error: Data directory '{data_dir}' not found.")
+    if not os.path.exists(src):
+        print(f"Error: Data directory '{src}' not found.")
         return
 
-    os.makedirs(output_dir, exist_ok=True)
+    os.makedirs(dst, exist_ok=True)
     try:
-        start_char, end_char = first_letter_interval.split('-')
+        start_char, end_char = letters.split('-')
     except ValueError:
-        raise ValueError(f"Invalid letter parameter. Must be in form START-END, for example A-K, got '{first_letter_interval}'")
+        raise ValueError(f"Invalid letter parameter. Must be in form START-END, for example A-K, got '{letters}'")
 
     # Process quote files
-    quote_files = glob.glob(os.path.join(data_dir, f"SPLITS_US_ALL_BBO_[{first_letter_interval}]_*.psv"))
-    process_and_persist(quote_files, QUOTE_SCHEMA, output_dir, 'quote', start_char, end_char, ['FINRA_BBO_Indicator'], ['Time', 'Participant_Timestamp', 'FINRA_ADF_Timestamp'])
+    quote_files = glob.glob(os.path.join(src, f"SPLITS_US_ALL_BBO_[{letters}]_*.psv"))
+    process_and_persist(quote_files, QUOTE_SCHEMA, dst, 'quote', start_char, end_char, ['FINRA_BBO_Indicator'], ['Time', 'Participant_Timestamp', 'FINRA_ADF_Timestamp'])
 
     # Process trade files
-    trade_files = glob.glob(os.path.join(data_dir, 'EQY_US_ALL_TRADE_*.psv'))
-    process_and_persist(trade_files, TRADE_SCHEMA, output_dir, 'trade', start_char, end_char, ['Sale Condition'], ['Time', 'Participant Timestamp', 'Trade Reporting Facility TRF Timestamp'])
+    trade_files = glob.glob(os.path.join(src, 'EQY_US_ALL_TRADE_*.psv'))
+    process_and_persist(trade_files, TRADE_SCHEMA, dst, 'trade', start_char, end_char, ['Sale Condition'], ['Time', 'Participant Timestamp', 'Trade Reporting Facility TRF Timestamp'])
 
     print("\nAll processing complete.")
 
