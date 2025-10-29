@@ -82,7 +82,7 @@ psym: {[c:`s; x:`s]
   }
 
 getPart: {[dir:`s;tableName:`s;fileName:`s]
-  .Q.par[dir;"D"$-8#string fileName;tableName]
+  .Q.par[dir;"D"$-8#first "." vs string fileName;tableName] / get rid of extension then get last 8 characters
   }
 
 process: {[tableName:`s;schema;conv;op;fileName:`s]
