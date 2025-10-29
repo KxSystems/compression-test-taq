@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 set -euo pipefail
-shopt -s nullglob 
+shopt -s nullglob
 
 : "${QEXEC:?Error: QEXEC not set. Probably skipped sourcing config/kdbenv}"
 
@@ -18,7 +18,8 @@ fi
 
 readonly DATADIR="$1"
 readonly CSVDIR=$DATADIR/raw
-readonly DST=$DATADIR/tq
+readonly DSTKDB=$DATADIR/tq
+readonly DSTPARQUET=$DATADIR/parquet
 
 if [[ $(uname) == "Linux" ]]; then
     SOCKETNR=$(lscpu | grep "Socket(s)" | cut -d":" -f 2 |xargs)

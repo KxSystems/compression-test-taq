@@ -24,7 +24,7 @@ mkdir -p $RESULTDIR
 
 function get_column_stat () {
   echo "Generating column statistics..."
-  $QEXEC ./src/columnStat.q -db "$DST/zd0_0_0" -tables trade,quote \
+  $QEXEC ./src/columnStat.q -db "$DSTKDB/zd0_0_0" -tables trade,quote \
     -result ./${RESULTDIR}/columnStatUncompressed.psv -s ${COMPUTECOUNT} -q
 }
 
@@ -72,31 +72,31 @@ function compress_tables () {
       echo "Testing compression ${compparam}..."
 
       if [ ${compparam} != "0_0_0" ]; then
-        for TABLEDIR in $DST/zd0_0_0/$kdbdate/*; do
+        for TABLEDIR in $DSTKDB/zd0_0_0/$kdbdate/*; do
             TABLE="$(basename "$TABLEDIR")"
             echo "Compressing ${TABLE}..."
-            mkdir -p $DST/zd${compparam}/$kdbdate/${TABLE}
+            mkdir -p $DSTKDB/zd${compparam}/$kdbdate/${TABLE}
             $QEXEC ./src/compress.q -date $(basename $kdbdate) -table $TABLE  -compparam ${compparam} \
-              -src "${DST}/zd0_0_0" -dst "$DST/zd" -peach $ENCR -s $COMPUTECOUNT -q &
-            cp "${TABLEDIR}"/.d $DST/zd${compparam}/$kdbdate/${TABLE}/
+              -src "${DST}/zd0_0_0" -dst "$DSTKDB/zd" -peach $ENCR -s $COMPUTECOUNT -q &
+            cp "${TABLEDIR}"/.d $DSTKDB/zd${compparam}/$kdbdate/${TABLE}/
         done
-        cp $DST/zd0_0_0/sym $DST/zd${compparam}
+        cp $DSTKDB/zd0_0_0/sym $DSTKDB/zd${compparam}
       fi
       wait
     done
   done
 
-  sync $DST
+  sync $DSTKDB
 }
 
 function get_disk_usage () {
   echo "Calcuating disk usage..."
   local DISKRESUTLFILE=${RESULTDIR}/diskusage.psv
   echo "usage|compparam|date|table|column" > ${DISKRESUTLFILE}
-  find $DST -type f -exec du -k {} + \
+  find $DSTKDB -type f -exec du -k {} + \
   | grep -e "/trade/" -e "/quote/" \
   | grep -v '\.d' \
-  | sed -e "s|$DST\/zd||g" \
+  | sed -e "s|$DSTKDB\/zd||g" \
   | tr "\t/" "|" \
   >> ${DISKRESUTLFILE}
 }
@@ -117,7 +117,7 @@ function test_queries () {
   fi
   for compparam in ${COMPPARRAY[@]}; do
     echo "Testing compression ${compparam}..."
-    ${NUMACTL} ${QEXEC} ./src/runQueries.q -db $DST/zd${compparam} \
+    ${NUMACTL} ${QEXEC} ./src/runQueries.q -db $DSTKDB/zd${compparam} \
       -result ${RESULTDIR}/tmp/query_${compparam}.psv \
       $ENCR -s ${COREPERSOCKET} -q
   done
