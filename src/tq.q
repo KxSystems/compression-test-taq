@@ -89,8 +89,7 @@ process: {[tableName:`s;schema;conv;op;fileName:`s]
   p: .Q.dd[getPart[DST;tableName;fileName];`];
   fullFileName: .Q.dd[SRC;fileName];
   .qlog.info "Processing file ", 1_string fullFileName;
-  / load and drop last line
-  raw: -1 _ (value schema; enlist"|") 0:fullFileName;
+  raw: (value schema; enlist"|") 0:fullFileName;
   / rename, convert and enumerate
   t: .Q.en[DST] conv flip key[schema]!value flip raw;
   / save
