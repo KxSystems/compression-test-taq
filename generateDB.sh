@@ -21,10 +21,10 @@ if [[ ! " ${valid_sizes[*]} " =~ " ${SIZE} " ]]; then
 fi
 
 case "$SIZE" in
-  "full")   LETTERS='A..Z' ;;
-  "large")  LETTERS='A..H' ;;
-  "medium") LETTERS='I..I' ;;
-  "small")  LETTERS='Z..Z' ;;
+  "full")   LETTERS='A-Z' ;;
+  "large")  LETTERS='A-H' ;;
+  "medium") LETTERS='I-I' ;;
+  "small")  LETTERS='Z-Z' ;;
 esac
 
 function getFilename() {
@@ -39,7 +39,7 @@ function get_CSVs () {
   mkdir -p ${CSVDIR}
   pushd ${CSVDIR}
 
-  eval "LETTERARRAY=({$LETTERS})"
+  LETTERARRAY=($(eval echo {${LETTERS:0:1}..${LETTERS:2:1}}))
   for letter in ${LETTERARRAY[@]}; do
     qfname=$(getFilename "SPLITS" "BBO_${letter}")
     if [[ -f ${qfname%.*} ]]; then

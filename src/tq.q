@@ -10,7 +10,7 @@
 \l src/log.q
 
 if[(4.1>.z.K); .qlog.error "kdb+ 4.1 is required";exit 1];
-USAGE: "usage: q ", string[.z.f], " [-help] -src SRC [-dst DST] [-letters START..END]\n\n",
+USAGE: "usage: q ", string[.z.f], " [-help] -src SRC [-dst DST] [-letters START-END]\n\n",
   "Parses NYSE TAQ PSV files and persists the content into a partitioned kdb+ database."
 ko: key o: first each .Q.opt .z.x
 
@@ -19,14 +19,57 @@ if[not `src in ko; .qlog.error USAGE; exit 2];
 SRC: hsym `$o`src
 DST: hsym `kdbDB^`$o`dst
 
-letterConv: $[`letter in ko; [
-  LETTER: o`letter;
-  if[not LETTER like "?..?";
-    .qlog.error "Invalid letter parameter. Must be in form START..END, for example A..K, got ", LETTER;
-    exit 2];
-  {select from y where Symbol[;0] within x}[LETTER except "."]]; ::];
+if[(`letters in ko) and not o[`letters] like "?-?";
+  .qlog.error "Invalid letter parameter. Must be in form START-END, for example A-K, got ", o[`letters];
+  exit 2]
 
+LETTERS: o[`letters]
 
+TRADESCHEMA: ([
+  Time:"N";
+  Exchange:"C";
+  Symbol:"*";
+  SaleCondition:"S";
+  TradeVolume:"I";
+  TradePrice:"E";
+  TradeStopStockIndicator:"S";
+  TradeCorrectionIndicator:"H";
+  SequenceNumber:"I";
+  TradeId:"*";
+  SourceofTrade:"C";
+  TradeReportingFacility:"S";
+  ParticipantTimestamp:"N";
+  TradeReportingFacilityTRFTimestamp:"N";
+  TradeThroughExemptIndicator:"B"
+  ])
+
+QUOTESCHEMA: ([
+  Time:"N";
+  Exchange:"C";
+  Symbol:"*";
+  BidPrice:"F";
+  BidSize:"I";
+  OfferPrice:"F";
+  OfferSize:"I";
+  QuoteCondition:"C";
+  SequenceNumber:"I";
+  NationalBBOInd:"C";
+  FINRABBOIndicator:"C";
+  FINRAADFMPIDIndicator:"C";
+  QuoteCancelCorrection:"C";
+  SourceOfQuote:"C";
+  RetailInterestIndicator:"C";
+  ShortSaleRestrictionIndicator:"C";
+  LULDBBOIndicator:"C";
+  SIPGeneratedMessageIdentifier:"N";
+  NationalBBOLULDIndicator:"N";
+  ParticipantTimestamp:"C";
+  FINRAADFTimestamp:"C";
+  FINRAADFMarketParticipantQuoteIndicator:"C";
+  SecurityStatusIndicator:"C"
+  ])
+
+letterConv: $[`letter in ko; {select from y where Symbol[;0] within x}[LETTERS except "."]; ::]
 symbolConv: {update `$"."^Symbol from x}  / replace whitespace by dot
 
 psym: {[c:`s; x:`s]
@@ -51,31 +94,21 @@ process: {[tableName:`s;colNames:`S;colTypes;conv;op;fileName:`s]
   .[p;();op;t];
   }
 
-th:`Time`Exchange`Symbol`SaleCondition`TradeVolume`TradePrice`TradeStopStockIndicator,
-  `TradeCorrectionIndicator`SequenceNumber`TradeId`SourceofTrade`TradeReportingFacility,
-  `ParticipantTimestamp`TradeReportingFacilityTRFTimestamp`TradeThroughExemptIndicator;
-tf:("NC*SIESHI*CSNNB";enlist"|")
 
-qh:`Time`Exchange`Symbol`BidPrice`BidSize`OfferPrice`OfferSize`QuoteCondition,
-  `SequenceNumber`NationalBBOInd`FINRABBOIndicator`FINRAADFMPIDIndicator,
-  `QuoteCancelCorrection`SourceOfQuote`RetailInterestIndicator,
-  `ShortSaleRestrictionIndicator`LULDBBOIndicator`SIPGeneratedMessageIdentifier,
-  `NationalBBOLULDIndicator`ParticipantTimestamp`FINRAADFTimestamp,
-  `FINRAADFMarketParticipantQuoteIndicator`SecurityStatusIndicator
-qf:("NC*FIFICICCCCCCCCCCNNCC";enlist"|")
 conv: symbolConv letterConv@
 
-Q: asc F where (lower F:key SRC) like "splits_us_all_bbo_*[0-9].psv"
+quotePattern: "splits_us_all_bbo_[", $[`letters in ko;lower LETTERS;"a-z"], "]_*[0-9].psv"
+Q: asc F where (lower F:key SRC) like quotePattern
 if[0<count Q;
   .qlog.info "Processing quote tables...";
-  process[`quote;qh;qf;conv;:] first Q;
-  process[`quote;qh;qf;conv;,] each 1_Q;
+  process[`quote;key QUOTESCHEMA;(value QUOTESCHEMA; enlist"|");conv;:] first Q;
+  process[`quote;key QUOTESCHEMA;(value QUOTESCHEMA; enlist"|");conv;,] each 1_Q;
   .qlog.info "Adding parted attribute...";
   psym[`Symbol] each distinct getPart[DST;`quote] each Q]
 
 T: F where lower[F] like "eqy_us_all_trade_[0-9]*.psv"
 .qlog.info "Processing trade tables..."
-process[`trade;th;tf;conv;:] each T
+process[`trade;key TRADESCHEMA;(value TRADESCHEMA;enlist"|");conv;:] each T
 .qlog.info "Adding parted attribute..."
 psym[`Symbol] each distinct getPart[DST;`trade] each T
 

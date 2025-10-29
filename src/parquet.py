@@ -208,12 +208,12 @@ def main(data_dir, output_dir, first_letter_interval):
 
     os.makedirs(output_dir, exist_ok=True)
     try:
-        start_char, end_char = first_letter_interval.split('..')
+        start_char, end_char = first_letter_interval.split('-')
     except ValueError:
-        raise ValueError(f"Invalid letter parameter. Must be in form START..END, for example A..K, got '{first_letter_interval}'")
+        raise ValueError(f"Invalid letter parameter. Must be in form START-END, for example A-K, got '{first_letter_interval}'")
 
     # Process quote files
-    quote_files = glob.glob(os.path.join(data_dir, f"SPLITS_US_ALL_BBO_[{start_char}-{end_char}]_*.psv"))
+    quote_files = glob.glob(os.path.join(data_dir, f"SPLITS_US_ALL_BBO_[{first_letter_interval}]_*.psv"))
     process_and_persist(quote_files, QUOTE_SCHEMA, output_dir, 'quote', start_char, end_char, ['FINRA_BBO_Indicator'], ['Time', 'Participant_Timestamp', 'FINRA_ADF_Timestamp'])
 
     # Process trade files
@@ -237,8 +237,8 @@ if __name__ == '__main__':
     )
 
     parser.add_argument(
-        '-letters', type=str, default='A..Z',
-        help="Letters allowed as first letter of the Symbol column. Defaults to 'A..Z', which is allow all."
+        '-letters', type=str, default='A-Z',
+        help="Letters allowed as first letter of the Symbol column. Defaults to 'A-Z', which is allow all."
     )
     args = parser.parse_args()
 
