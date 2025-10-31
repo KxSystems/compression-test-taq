@@ -37,7 +37,7 @@ getDevice:{[db:`C]
 
 iostatError: `kB_read`kB_wrtn`kB_sum!3#0Nj
 
-getKBReadMac: {[device:`C] 
+getKBReadMac: {[device:`C]
   if[device ~ enlist ""; :iostatError];
   iostatcmd: "iostat -d -I ", device, " 2>&1"; // -I returns the MB read as last column
   r: @[system; iostatcmd; .qlog.error];
@@ -84,24 +84,24 @@ runQuery: {[query:`C]
   };
 
 runQuery "select from quote where i<500000000";
-runQuery "select date, Symbol, Time, TradePrice, TradeVolume, TradeStopStockIndicator, SaleCondition, Exchange from trade where i<>0";
-symFreq: first flip key asc runQuery "select nr: count i, avgMid: avg (Bid_Price + Offer_Price) % 2 by Symbol from quote where date=min date";
+runQuery "select date, Symbol, Time, TradePrice, TradeVolume, TradeStopStockIndicator, SaleCondition, Exchange from trade where not null Time";
+symFreq: first flip key asc runQuery "select nr: count i, avgMid: avg (BidPrice + OfferPrice) % 2 by Symbol from quote where date=min date";
 aFreqSym: @[; floor 0.75 * count symFreq] symFreq;
-runQuery "select date, Symbol, Time, Bid_Price, Offer_Price, Bid_Size, Offer_Size, Quote_Condition, Exchange from quote where Symbol=`", string aFreqSym;
+runQuery "select date, Symbol, Time, BidPrice, OfferPrice, BidSize, OfferSize, QuoteCondition, Exchange from quote where Symbol=`", string aFreqSym;
 anInfreqSym: @[; floor 0.2 * count symFreq] symFreq;
-runQuery "select medMidSize: med (Bid_Size + Offer_Size) % 2 from quote where Symbol=`", string anInfreqSym;
+runQuery "select medMidSize: med (BidSize + OfferSize) % 2 from quote where Symbol=`", string anInfreqSym;
 runQuery "distinct select Symbol, Exchange from trade where TradeVolume > 700000";
 someSyms: @[; til[10] + count[symFreq] div 2] symFreq;
 
-runQuery "select Bid_Size wavg Bid_Price, Offer_Price wavg Offer_Size from quote where Symbol in someSyms";
+runQuery "select BidSize wavg BidPrice, OfferPrice wavg OfferSize from quote where Symbol in someSyms";
 infreqIdList: @[; til[50] + count[symFreq] div 10] symFreq;
-runQuery "raze {select date, Symbol, Time, Bid_Price, Offer_Price, Bid_Size, Offer_Size, Quote_Condition, Exchange from quote where Symbol=x} each infreqIdList";
-runQuery "raze {select date, Symbol, Time, Bid_Price, Offer_Price, Bid_Size, Offer_Size, Quote_Condition, Exchange from quote where Symbol=x} peach infreqIdList";
-runQuery "raze {select date, Symbol, Time, Bid_Price, Offer_Price, Bid_Size, Offer_Size, Quote_Condition, Exchange from quote where Symbol=x, 4000<Bid_Size+Offer_Price} peach infreqIdList";
-runQuery "raze {select first Symbol, wsumAsk:Offer_Price wsum Offer_Size, wsumBid: Bid_Size wsum Bid_Price, sdevask:sdev Offer_Size, sdevbid:sdev Bid_Price, corPrice:Offer_Price cor Bid_Price, corSize: Offer_Size cor Bid_Size from quote where Symbol=x} each infreqIdList";
-runQuery "raze {select first Symbol, wsumAsk:Offer_Price wsum Offer_Size, wsumBid: Bid_Size wsum Bid_Price, sdevask:sdev Offer_Size, sdevbid:sdev Bid_Price, corPrice:Offer_Price cor Bid_Price, corSize: Offer_Size cor Bid_Size from quote where Symbol=x} peach infreqIdList";
-runQuery "aj[`Symbol`Time; select Symbol, Time, TradePrice, TradeVolume, TradeStopStockIndicator, SaleCondition, Exchange from trade where date=min date, Symbol in someSyms; select Symbol, Time, Bid_Price, Offer_Price, Bid_Size, Offer_Size, Quote_Condition, Exchange from quote where date=min date]";
-runQuery "aj[`Symbol`Time`Exchange; select Symbol, Time, TradePrice, TradeVolume, TradeStopStockIndicator, SaleCondition, Exchange from trade where date=min date, TradeVolume>500000; select Symbol, Time, Bid_Price, Offer_Price, Bid_Size, Offer_Size, Quote_Condition, Exchange from quote where date=min date]";
+runQuery "raze {select date, Symbol, Time, BidPrice, OfferPrice, BidSize, OfferSize, QuoteCondition, Exchange from quote where Symbol=x} each infreqIdList";
+runQuery "raze {select date, Symbol, Time, BidPrice, OfferPrice, BidSize, OfferSize, QuoteCondition, Exchange from quote where Symbol=x} peach infreqIdList";
+runQuery "raze {select date, Symbol, Time, BidPrice, OfferPrice, BidSize, OfferSize, QuoteCondition, Exchange from quote where Symbol=x, 4000<BidSize+OfferPrice} peach infreqIdList";
+runQuery "raze {select first Symbol, wsumAsk:OfferPrice wsum OfferSize, wsumBid: BidSize wsum BidPrice, sdevask:sdev OfferSize, sdevbid:sdev BidPrice, corPrice:OfferPrice cor BidPrice, corSize: OfferSize cor BidSize from quote where Symbol=x} each infreqIdList";
+runQuery "raze {select first Symbol, wsumAsk:OfferPrice wsum OfferSize, wsumBid: BidSize wsum BidPrice, sdevask:sdev OfferSize, sdevbid:sdev BidPrice, corPrice:OfferPrice cor BidPrice, corSize: OfferSize cor BidSize from quote where Symbol=x} peach infreqIdList";
+runQuery "aj[`Symbol`Time; select Symbol, Time, TradePrice, TradeVolume, TradeStopStockIndicator, SaleCondition, Exchange from trade where date=min date, Symbol in someSyms; select Symbol, Time, BidPrice, OfferPrice, BidSize, OfferSize, QuoteCondition, Exchange from quote where date=min date]";
+runQuery "aj[`Symbol`Time`Exchange; select Symbol, Time, TradePrice, TradeVolume, TradeStopStockIndicator, SaleCondition, Exchange from trade where date=min date, TradeVolume>500000; select Symbol, Time, BidPrice, OfferPrice, BidSize, OfferSize, QuoteCondition, Exchange from quote where date=min date]";
 
 resFile: $[`result in key o; o `result; "result.psv"];
 .qlog.info "saving results to ", resFile;
