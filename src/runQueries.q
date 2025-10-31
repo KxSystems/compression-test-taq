@@ -101,7 +101,7 @@ runQuery "raze {select date, Symbol, Time, BidPrice, OfferPrice, BidSize, OfferS
 runQuery "raze {select first Symbol, wsumAsk:OfferPrice wsum OfferSize, wsumBid: BidSize wsum BidPrice, sdevask:sdev OfferSize, sdevbid:sdev BidPrice, corPrice:OfferPrice cor BidPrice, corSize: OfferSize cor BidSize from quote where Symbol=x} each infreqIdList";
 runQuery "raze {select first Symbol, wsumAsk:OfferPrice wsum OfferSize, wsumBid: BidSize wsum BidPrice, sdevask:sdev OfferSize, sdevbid:sdev BidPrice, corPrice:OfferPrice cor BidPrice, corSize: OfferSize cor BidSize from quote where Symbol=x} peach infreqIdList";
 runQuery "aj[`Symbol`Time; select Symbol, Time, TradePrice, TradeVolume, TradeStopStockIndicator, SaleCondition, Exchange from trade where date=min date, Symbol in someSyms; select Symbol, Time, BidPrice, OfferPrice, BidSize, OfferSize, QuoteCondition, Exchange from quote where date=min date]";
-runQuery "aj[`Symbol`Time`Exchange; select Symbol, Time, TradePrice, TradeVolume, TradeStopStockIndicator, SaleCondition, Exchange from trade where date=min date, TradeVolume>500000; select Symbol, Time, BidPrice, OfferPrice, BidSize, OfferSize, QuoteCondition, Exchange from quote where date=min date]";
+runQuery "aj[`Symbol`Exchange`Time; select Symbol, Time, TradePrice, TradeVolume, TradeStopStockIndicator, SaleCondition, Exchange from trade where date=min date, TradeVolume>500000; select Symbol, Time, BidPrice, OfferPrice, BidSize, OfferSize, QuoteCondition, Exchange from quote where date=min date]";
 
 resFile: $[`result in key o; o `result; "result.psv"];
 .qlog.info "saving results to ", resFile;
