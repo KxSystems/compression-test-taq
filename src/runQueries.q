@@ -1,17 +1,52 @@
 \l src/log.q
 
-o: first each .Q.opt .z.x;
+if["" ~ getenv `FLUSH;
+  .qlog.info "Environment variable FLUSH is not set. Maybe config/env was not loaded.";
+  exit 2]
 
-result: ([] query: (); run1: `long$(); run2:`long$(); run3: `long$(); 
+ko: key o: first each .Q.opt .z.x;
+
+result: ([] query: (); run1: `long$(); run2:`long$(); run3: `long$();
   mem1kb: `long$(); mem2kb:`long$(); mem3kb:`long$(); io1kb: `long$(); io2kb:`long$(); io3kb:`long$());
 
 DB: o `db
-.qlog.info "loading db ", DB
-.Q.lo[`$DB;0;0]
+PARQUET: "parquet" ~ o `format
+$[PARQUET; [
+  .qlog.info "loading parquet dataset at ", DB;
+  tb:use`pq.t;
+  ([pq]):use`pq;
 
-if[`encr in key o; 
-  .qlog.info "Loading encryption file ", o`encr;
-  -36!@[; 0; hsym `$] ":" vs o`encr]
+  pfind:{$[{x~key x}y;(();y)y like x;raze .z.s[x]each` sv'y,'key y]};
+
+  quotefiles:pfind["*.parquet";hsym `$DB,"/quote"];
+  tradefiles:pfind["*.parquet";hsym `$DB,"/trade"];
+
+  quotepaths: split where any flip(split:flip "/"vs'string quotefiles) like\: "*=*";
+  tradepaths: split where any flip(split:flip "/"vs'string tradefiles) like\: "*=*";
+
+  quotehive: ({("SD";"=")0: x}; {("SS";"=")0: x})@' quotepaths;
+  tradehive: ({("SD";"=")0: x}; {("SS";"=")0: x})@' tradepaths;
+
+  quoteparts: flip (quotehive[;0;0], `file)!quotehive[;1;], enlist quotefiles;
+  tradeparts: flip (tradehive[;0;0], `file)!tradehive[;1;], enlist tradefiles;
+
+  quotevirts:quoteparts!pq each quotefiles;
+  tradevirts:tradeparts!pq each tradefiles;
+
+  quote:tb.mkP quotevirts;
+  trade:tb.mkP tradevirts;
+
+  compparm: "nyi_nyi_nyi";
+  ];[
+  .qlog.info "loading kdb DB ", DB;
+  .Q.lo[`$DB;0;0];
+
+  compparmall: -21!hsym `$DB,"/",string[first key hsym `$DB],"/quote/Symbol";   // or assume that db dir name reflects compression
+  compparm: $[count compparmall; "_" sv string @[;`logicalBlockSize`algorithm`zipLevel] compparmall; "0_0_0"];
+
+  if[`encr in ko;
+    .qlog.info "Loading encryption file ", o`encr;
+    -36!@[; 0; hsym `$] ":" vs o`encr]]]
 
 getPartition: {[]first " " vs last system "df ", DB}
 
@@ -83,13 +118,14 @@ runQuery: {[query:`C]
   res
   };
 
-runQuery "select from quote where i<500000000";
+if[not PARQUET; runQuery "select from quote where i<500000000"];  / virtual column `i` is not supported
 runQuery "select date, Symbol, Time, TradePrice, TradeVolume, TradeStopStockIndicator, SaleCondition, Exchange from trade where not null Time";
 symFreq: first flip key asc runQuery "select nr: count i, avgMid: avg (BidPrice + OfferPrice) % 2 by Symbol from quote where date=min date";
 aFreqSym: @[; floor 0.75 * count symFreq] symFreq;
 runQuery "select date, Symbol, Time, BidPrice, OfferPrice, BidSize, OfferSize, QuoteCondition, Exchange from quote where Symbol=`", string aFreqSym;
 anInfreqSym: @[; floor 0.2 * count symFreq] symFreq;
-runQuery "select medMidSize: med (BidSize + OfferSize) % 2 from quote where Symbol=`", string anInfreqSym;
+if[not PARQUET; runQuery "select medMidSize: med (BidSize + OfferSize) % 2 from quote where Symbol=`", string anInfreqSym]; / function med is not supported
+runQuery "select avgMidSize: avg (BidSize + OfferSize) % 2 from quote where Symbol=`", string anInfreqSym;
 runQuery "distinct select Symbol, Exchange from trade where TradeVolume > 700000";
 someSyms: @[; til[10] + count[symFreq] div 2] symFreq;
 
@@ -101,13 +137,10 @@ runQuery "raze {select date, Symbol, Time, BidPrice, OfferPrice, BidSize, OfferS
 runQuery "raze {select first Symbol, wsumAsk:OfferPrice wsum OfferSize, wsumBid: BidSize wsum BidPrice, sdevask:sdev OfferSize, sdevbid:sdev BidPrice, corPrice:OfferPrice cor BidPrice, corSize: OfferSize cor BidSize from quote where Symbol=x} each infreqIdList";
 runQuery "raze {select first Symbol, wsumAsk:OfferPrice wsum OfferSize, wsumBid: BidSize wsum BidPrice, sdevask:sdev OfferSize, sdevbid:sdev BidPrice, corPrice:OfferPrice cor BidPrice, corSize: OfferSize cor BidSize from quote where Symbol=x} peach infreqIdList";
 runQuery "aj[`Symbol`Time; select Symbol, Time, TradePrice, TradeVolume, TradeStopStockIndicator, SaleCondition, Exchange from trade where date=min date, Symbol in someSyms; select Symbol, Time, BidPrice, OfferPrice, BidSize, OfferSize, QuoteCondition, Exchange from quote where date=min date]";
-runQuery "aj[`Symbol`Exchange`Time; select Symbol, Time, TradePrice, TradeVolume, TradeStopStockIndicator, SaleCondition, Exchange from trade where date=min date, TradeVolume>500000; select Symbol, Time, BidPrice, OfferPrice, BidSize, OfferSize, QuoteCondition, Exchange from quote where date=min date]";
+if[not PARQUET; runQuery "aj[`Symbol`Exchange`Time; select Symbol, Time, TradePrice, TradeVolume, TradeStopStockIndicator, SaleCondition, Exchange from trade where date=min date, TradeVolume>500000; select Symbol, Time, BidPrice, OfferPrice, BidSize, OfferSize, QuoteCondition, Exchange from quote where date=min date]"]; / aj by a string key (Exchange) is not supported
 
 resFile: $[`result in key o; o `result; "result.psv"];
 .qlog.info "saving results to ", resFile;
-
-compparmall: -21!hsym `$o[`db],"/",string[first date],"/quote/Symbol";   // or assume that db dir name reflects compression
-compparm: $[count compparmall; "_" sv string @[;`logicalBlockSize`algorithm`zipLevel] compparmall; "0_0_0"];
 
 (`$resFile) 0: "|" 0: ([] compparam: enlist compparm; threadcount: system "s") cross update idx: i from result;
 
