@@ -128,7 +128,7 @@ $[PARQUET; [
 
 `result insert enlist[enlist "load/mmap DB"], ts[0], 0Nj, 0Nj, (ts[1] div 1000), 0Nj, 0Nj, ioe - ios, 0Nj, 0Nj;
 
-if[not PARQUET; runQuery "select from quote where i<500000000"];  / virtual column `i` is not supported
+runQuery "select from quote where Time<0D10";
 runQuery "select date, Symbol, Time, TradePrice, TradeVolume, TradeStopStockIndicator, SaleCondition, Exchange from trade where not null Time";
 symFreq: first flip key asc runQuery "select nr: count i, avgMid: avg (BidPrice + OfferPrice) % 2 by Symbol from quote where date=min date";
 aFreqSym: @[; floor 0.75 * count symFreq] symFreq;
@@ -143,6 +143,8 @@ someSyms2: @[; (count[symFreq] div 2) - til 100] symFreq;
 runQuery "select BidSize wavg BidPrice, OfferPrice wavg OfferSize from quote where Symbol in someSyms1";
 runQuery "select 5 mavg BidPrice, 20 mdev BidPrice, 5 mavg OfferPrice, 20 mdev OfferPrice by Symbol from quote where Symbol in someSyms1";
 runQuery "raze {select 5 mavg BidPrice, 20 mdev BidPrice, 5 mavg OfferPrice, 20 mdev OfferPrice by Symbol from quote where Symbol=x} peach someSyms1";
+
+runQuery "ungroup select from (select SequenceNumberDecr: SequenceNumber where (<) prior SequenceNumber by Symbol from trade) where 0< count each SequenceNumberDecr"
 
 $[PARQUET; / TradeStopStockIndicator is a string in parquet and a symbol in kdb+
   runQuery "select o: first TradePrice, h: max TradePrice, l: min TradePrice, c: last TradePrice, s: sum TradeVolume by Symbol, 0D00:05 xbar Time from trade where Symbol in someSyms2, 0 < count each TradeStopStockIndicator";
