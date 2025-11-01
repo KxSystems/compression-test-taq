@@ -137,16 +137,22 @@ anInfreqSym: @[; floor 0.2 * count symFreq] symFreq;
 if[not PARQUET; runQuery "select medMidSize: med (BidSize + OfferSize) % 2 from quote where Symbol=`", string anInfreqSym]; / function med is not supported
 runQuery "select avgMidSize: avg (BidSize + OfferSize) % 2 from quote where Symbol=`", string anInfreqSym;
 runQuery "distinct select Symbol, Exchange from trade where TradeVolume > 700000";
-someSyms: @[; til[10] + count[symFreq] div 2] symFreq;
+someSyms1: @[; (count[symFreq] div 2) + til 25] symFreq;
+someSyms2: @[; (count[symFreq] div 2) - til 100] symFreq;
 
-runQuery "select BidSize wavg BidPrice, OfferPrice wavg OfferSize from quote where Symbol in someSyms";
+runQuery "select BidSize wavg BidPrice, OfferPrice wavg OfferSize from quote where Symbol in someSyms1";
+runQuery "select 5 mavg BidPrice, 20 mdev BidPrice, 5 mavg OfferPrice, 20 mdev OfferPrice by Symbol from quote where Symbol in someSyms1";
+runQuery "raze {select 5 mavg BidPrice, 20 mdev BidPrice, 5 mavg OfferPrice, 20 mdev OfferPrice by Symbol from quote where Symbol=x} peach someSyms1";
+
+runQuery "select o: first TradePrice, h: max TradePrice, l: min TradePrice, c: last TradePrice, s: sum TradeVolume by Symbol, 0D00:05 xbar Time from trade where Symbol in someSyms2, not null TradeStopStockIndicator"
+
 infreqIdList: @[; til[50] + count[symFreq] div 10] symFreq;
 runQuery "raze {select date, Symbol, Time, BidPrice, OfferPrice, BidSize, OfferSize, QuoteCondition, Exchange from quote where Symbol=x} each infreqIdList";
 runQuery "raze {select date, Symbol, Time, BidPrice, OfferPrice, BidSize, OfferSize, QuoteCondition, Exchange from quote where Symbol=x} peach infreqIdList";
 runQuery "raze {select date, Symbol, Time, BidPrice, OfferPrice, BidSize, OfferSize, QuoteCondition, Exchange from quote where Symbol=x, 4000<BidSize+OfferPrice} peach infreqIdList";
 runQuery "raze {select first Symbol, wsumAsk:OfferPrice wsum OfferSize, wsumBid: BidSize wsum BidPrice, sdevask:sdev OfferSize, sdevbid:sdev BidPrice, corPrice:OfferPrice cor BidPrice, corSize: OfferSize cor BidSize from quote where Symbol=x} each infreqIdList";
 runQuery "raze {select first Symbol, wsumAsk:OfferPrice wsum OfferSize, wsumBid: BidSize wsum BidPrice, sdevask:sdev OfferSize, sdevbid:sdev BidPrice, corPrice:OfferPrice cor BidPrice, corSize: OfferSize cor BidSize from quote where Symbol=x} peach infreqIdList";
-runQuery "aj[`Symbol`Time; select Symbol, Time, TradePrice, TradeVolume, TradeStopStockIndicator, SaleCondition, Exchange from trade where date=min date, Symbol in someSyms; select Symbol, Time, BidPrice, OfferPrice, BidSize, OfferSize, QuoteCondition, Exchange from quote where date=min date]";
+runQuery "aj[`Symbol`Time; select Symbol, Time, TradePrice, TradeVolume, TradeStopStockIndicator, SaleCondition, Exchange from trade where date=min date, Symbol in someSyms1; select Symbol, Time, BidPrice, OfferPrice, BidSize, OfferSize, QuoteCondition, Exchange from quote where date=min date]";
 if[not PARQUET; runQuery "aj[`Symbol`Exchange`Time; select Symbol, Time, TradePrice, TradeVolume, TradeStopStockIndicator, SaleCondition, Exchange from trade where date=min date, TradeVolume>500000; select Symbol, Time, BidPrice, OfferPrice, BidSize, OfferSize, QuoteCondition, Exchange from quote where date=min date]"]; / aj by a string key (Exchange) is not supported
 
 resFile: $[`result in key o; o `result; "result.psv"];
