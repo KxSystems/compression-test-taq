@@ -144,7 +144,9 @@ runQuery "select BidSize wavg BidPrice, OfferPrice wavg OfferSize from quote whe
 runQuery "select 5 mavg BidPrice, 20 mdev BidPrice, 5 mavg OfferPrice, 20 mdev OfferPrice by Symbol from quote where Symbol in someSyms1";
 runQuery "raze {select 5 mavg BidPrice, 20 mdev BidPrice, 5 mavg OfferPrice, 20 mdev OfferPrice by Symbol from quote where Symbol=x} peach someSyms1";
 
-runQuery "select o: first TradePrice, h: max TradePrice, l: min TradePrice, c: last TradePrice, s: sum TradeVolume by Symbol, 0D00:05 xbar Time from trade where Symbol in someSyms2, not null TradeStopStockIndicator"
+$[PARQUET; / TradeStopStockIndicator is a string in parquet and a symbol in kdb+
+  runQuery "select o: first TradePrice, h: max TradePrice, l: min TradePrice, c: last TradePrice, s: sum TradeVolume by Symbol, 0D00:05 xbar Time from trade where Symbol in someSyms2, 0 < count each TradeStopStockIndicator";
+  runQuery "select o: first TradePrice, h: max TradePrice, l: min TradePrice, c: last TradePrice, s: sum TradeVolume by Symbol, 0D00:05 xbar Time from trade where Symbol in someSyms2, not null TradeStopStockIndicator"];
 
 infreqIdList: @[; til[50] + count[symFreq] div 10] symFreq;
 runQuery "raze {select date, Symbol, Time, BidPrice, OfferPrice, BidSize, OfferSize, QuoteCondition, Exchange from quote where Symbol=x} each infreqIdList";
