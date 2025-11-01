@@ -11,15 +11,12 @@ result: ([] query: (); run1: `long$(); run2:`long$(); run3: `long$();
 
 DB: o `db
 PARQUET: "parquet" ~ o `format
-$[PARQUET; [
-  .qlog.info "loading parquet dataset at ", DB;
-  tb:use`pq.t;
-  ([pq]):use`pq;
 
-  pfind:{$[{x~key x}y;(();y)y like x;raze .z.s[x]each` sv'y,'key y]};
-
-  quotefiles:pfind["*.parquet";hsym `$DB,"/quote"];
-  tradefiles:pfind["*.parquet";hsym `$DB,"/trade"];
+/ Temporal solution!
+pfind:{$[{x~key x}y;(();y)y like x;raze .z.s[x]each` sv'y,'key y]}
+loadParquet: {[db]
+  quotefiles:pfind["*.parquet";hsym `$db,"/quote"];
+  tradefiles:pfind["*.parquet";hsym `$db,"/trade"];
 
   quotepaths: split where any flip(split:flip "/"vs'string quotefiles) like\: "*=*";
   tradepaths: split where any flip(split:flip "/"vs'string tradefiles) like\: "*=*";
@@ -33,20 +30,9 @@ $[PARQUET; [
   quotevirts:quoteparts!pq each quotefiles;
   tradevirts:tradeparts!pq each tradefiles;
 
-  quote:tb.mkP quotevirts;
-  trade:tb.mkP tradevirts;
-
-  compparm: "nyi_nyi_nyi";
-  ];[
-  .qlog.info "loading kdb DB ", DB;
-  .Q.lo[`$DB;0;0];
-
-  compparmall: -21!hsym `$DB,"/",string[first key hsym `$DB],"/quote/Symbol";   // or assume that db dir name reflects compression
-  compparm: $[count compparmall; "_" sv string @[;`logicalBlockSize`algorithm`zipLevel] compparmall; "0_0_0"];
-
-  if[`encr in ko;
-    .qlog.info "Loading encryption file ", o`encr;
-    -36!@[; 0; hsym `$] ":" vs o`encr]]]
+  `quote set tb.mkP quotevirts;
+  `trade set tb.mkP tradevirts;
+  }
 
 getPartition: {[]first " " vs last system "df ", DB}
 
@@ -90,9 +76,6 @@ getKBReadLinux: {[device:`C]
   }
 
 getKBRead: $[.z.o ~ `m64; getKBReadMac; getKBReadLinux]
-Device: getDevice[DB]
-.qlog.info "Monitoring device ", Device;
-
 
 runQuery: {[query:`C]
   ts: ();
@@ -117,6 +100,33 @@ runQuery: {[query:`C]
   `result insert enlist[enlist query], ts[;0], (ts[;1] div 1000), 1 _ deltas io;
   res
   };
+
+Device: getDevice[DB]
+.qlog.info "Monitoring device ", Device
+
+
+$[PARQUET; [
+  tb:use`pq.t;
+  ([pq]):use`pq;
+  .qlog.info "loading parquet dataset at ", DB;
+  ios: getKBRead[Device]`kB_read;
+  ts: system "ts loadParquet DB";
+  ioe: getKBRead[Device]`kB_read;
+  compparm: "nyi_nyi_nyi";
+  ];[
+  .qlog.info "loading kdb DB ", DB;
+  ios: getKBRead[Device]`kB_read;
+  ts: system "ts .Q.lo[`$DB;0;0]";
+  ioe: getKBRead[Device]`kB_read;
+
+  compparmall: -21!hsym `$DB,"/",string[first key hsym `$DB],"/quote/Symbol";   // or assume that db dir name reflects compression
+  compparm: $[count compparmall; "_" sv string @[;`logicalBlockSize`algorithm`zipLevel] compparmall; "0_0_0"];
+
+  if[`encr in ko;
+    .qlog.info "Loading encryption file ", o`encr;
+    -36!@[; 0; hsym `$] ":" vs o`encr]]]
+
+`result insert enlist[enlist "load/mmap DB"], ts[0], 0Nj, 0Nj, (ts[1] div 1000), 0Nj, 0Nj, ioe - ios, 0Nj, 0Nj;
 
 if[not PARQUET; runQuery "select from quote where i<500000000"];  / virtual column `i` is not supported
 runQuery "select date, Symbol, Time, TradePrice, TradeVolume, TradeStopStockIndicator, SaleCondition, Exchange from trade where not null Time";
