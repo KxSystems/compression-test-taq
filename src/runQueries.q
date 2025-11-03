@@ -34,8 +34,6 @@ loadParquet: {[db]
   `trade set tb.mkP tradevirts;
   }
 
-getPartition: {[]first " " vs last system "df ", DB}
-
 getDeviceOSX:{[db:`C]
   "disk0"  / TODO: Implement a proper solution
   }
@@ -137,12 +135,12 @@ someSyms2: -100?symFreq;
 infreqIdList: @[; til[500] + count[symFreq] div 10] symFreq; / many, but small quote count symbols
 
 runQuery "select from quote where date=min date, Time<0D10"; / Huge amount of data
-runQuery "select from quote where Symbol=anInfreqSym";       / All data from one symbol
+runQuery "select from quote where Symbol=anInfreqSym, not null Time";       / All data from one symbol
 
 / SourceofTrade is a string in parquet and a character in kdb+
 runQuery "select date, Symbol, Time, TradePrice, TradeVolume, TradeStopStockIndicator, SaleCondition, Exchange from trade where date=min date, SourceofTrade ",  / selected fields only
   $[PARQUET; "~\\: enlist \"N\""; "=\"N\""];
-runQuery "select date, Symbol, Time, BidPrice, OfferPrice, BidSize, OfferSize, QuoteCondition, Exchange from quote where Symbol=aFreqSym";
+runQuery "select date, Symbol, Time, BidPrice, OfferPrice, BidSize, OfferSize, QuoteCondition, Exchange from quote where Symbol=aFreqSym, not null Time";
 
 runQuery "select avgMidSize: avg (BidPrice + OfferPrice) % 2 from quote where Symbol=anInfreqSym";
 runQuery "select avgSpread: avg OfferPrice - BidPrice by 0D00:10 xbar Time from quote where Symbol=aFreqSym";
