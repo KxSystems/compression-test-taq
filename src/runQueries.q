@@ -79,6 +79,8 @@ runQuery: {[query:`C]
   ts: ();
   io: ();
   .qlog.info raze system getenv[`FLUSH], " ", DB;
+  .qlog.info "Collecting garbage";
+  .Q.gc[];
   .qlog.info "Running query: ", query;
   io,: getKBRead[Device]`kB_read;
   ts,: enlist system "ts ", query;
@@ -92,11 +94,10 @@ runQuery: {[query:`C]
 
   .Q.gc[];
   .qlog.info "Running query third time";
-  ts,: enlist system "ts res:", query;
+  ts,: enlist system "ts ", query;
   io,: getKBRead[Device]`kB_read;
 
-  `result insert enlist[enlist query], ts[;0], (ts[;1] div 1000), 1 _ deltas io;
-  res
+  `result insert enlist[enlist query], ts[;0], (ts[;1] div 1000), 1 _ deltas io
   };
 
 Device: getDevice[DB]
@@ -126,7 +127,7 @@ $[PARQUET; [
 
 `result insert enlist[enlist "load/mmap DB"], ts[0], 0Nj, 0Nj, (ts[1] div 1000), 0Nj, 0Nj, ioe - ios, 0Nj, 0Nj;
 
-symFreq: first flip key asc runQuery "select nr: count i, avgMid: avg (BidPrice + OfferPrice) % 2 by Symbol from quote where date=min date";
+symFreq: first flip key asc select count i by Symbol from quote where date=min date;
 
 aFreqSym: @[; floor 0.80 * count symFreq] symFreq;
 anInfreqSym: @[; floor 0.2 * count symFreq] symFreq;
@@ -135,12 +136,13 @@ someSyms2: -100?symFreq;
 infreqIdList: @[; til[500] + count[symFreq] div 10] symFreq; / many, but small quote count symbols
 
 runQuery "select from quote where date=min date, Time<0D10"; / Huge amount of data
-runQuery "select from quote where Symbol=anInfreqSym, not null Time";       / All data from one symbol
+runQuery "select from quote where Symbol=anInfreqSym, Time within 0D16:30 0D08:30";       / All data from one symbol
 
 / SourceofTrade is a string in parquet and a character in kdb+
 runQuery "select date, Symbol, Time, TradePrice, TradeVolume, TradeStopStockIndicator, SaleCondition, Exchange from trade where date=min date, SourceofTrade ",  / selected fields only
   $[PARQUET; "~\\: enlist \"N\""; "=\"N\""];
-runQuery "select date, Symbol, Time, BidPrice, OfferPrice, BidSize, OfferSize, QuoteCondition, Exchange from quote where Symbol=aFreqSym, not null Time";
+runQuery "select Symbol, Time, MidPrice: (BidPrice + OfferSize) %2 from select from quote where Symbol=aFreqSym";
+runQuery "select date, Symbol, Time, BidPrice, OfferPrice, BidSize, OfferSize, QuoteCondition, Exchange from quote where Symbol=aFreqSym";
 
 runQuery "select avgMidSize: avg (BidPrice + OfferPrice) % 2 from quote where Symbol=anInfreqSym";
 runQuery "select avgSpread: avg OfferPrice - BidPrice by 0D00:10 xbar Time from quote where Symbol=aFreqSym";
