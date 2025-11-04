@@ -27,8 +27,8 @@ loadParquet: {[db]
   quoteparts: flip (quotehive[;0;0], `file)!quotehive[;1;], enlist quotefiles;
   tradeparts: flip (tradehive[;0;0], `file)!tradehive[;1;], enlist tradefiles;
 
-  quotevirts:quoteparts!pq each quotefiles;
-  tradevirts:tradeparts!pq each tradefiles;
+  quotevirts:quoteparts!pq peach quotefiles;
+  tradevirts:tradeparts!pq peach tradefiles;
 
   `quote set tb.mkP quotevirts;
   `trade set tb.mkP tradevirts;
@@ -107,6 +107,11 @@ Device: getDevice[DB]
 $[PARQUET; [
   tb:use`pq.t;
   ([pq]):use`pq;
+
+  .qlog.info raze system getenv[`FLUSH], " ", DB;
+  .qlog.info "Collecting garbage";
+  .Q.gc[];
+
   .qlog.info "loading parquet dataset at ", DB;
   ios: getKBRead[Device]`kB_read;
   ts: system "ts loadParquet DB";
