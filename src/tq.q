@@ -72,6 +72,48 @@ QUOTESCHEMA: ([
   SecurityStatusIndicator:"C"
   ])
 
+MASTERSCHEMA: ([
+  Symbol:"*";
+  Security_Description:"*";
+  CUSIP:"S";
+  SecurityType:"S";
+  SIPSymbol:"S";
+  OldSymbol:"S";
+  TestSymbolFlag:"B";
+  ListedExchange:"C";
+  Tape:"C";
+  UnitOfTrade:"H";
+  RoundLot:"H";
+  NYSEIndustryCode:"S";
+  SharesOutstanding:"F";
+  HaltDelayReason:"C";
+  SpecialistClearingAgent:"S";
+  SpecialistClearingNumber:"S";
+  SpecialistPost_Number:"H";
+  SpecialistPanel:"C";
+  TradedOnNYSEMKT:"B";
+  TradedOnNASDAQBX:"B";
+  TradedOnNSX:"B";
+  TradedOnFINRA:"B";
+  TradedOnISE:"B";
+  TradedOnEdgeA:"B";
+  TradedOnEdgeX:"B";
+  TradedOnNYSETexas:"B";
+  TradedOnNYSE:"B";
+  TradedOnArca:"B";
+  TradedOnNasdaq:"B";
+  TradedOnCBOE:"B";
+  TradedOnPSX:"B";
+  TradedOnBATSY:"B";
+  TradedOnBATS:"B";
+  TradedOnIEX:"B";
+  TickPilotIndicator:"C";
+  Effective_Date:"D";
+  TradedOnLTSE:"B";
+  TradedOnMEMX:"B";
+  TradedOnMIAX:"B"
+  ])
+
 letterConv: $[`letters in ko; {select from y where Symbol[;0] within x}[LETTERS except "-"]; ::]
 symbolConv: {update `$"."^Symbol from x}  / replace whitespace by dot
 
@@ -101,7 +143,8 @@ process: {[tableName:`s;schema;conv;op;fileName:`s]
 conv: symbolConv letterConv@
 
 quotePattern: "splits_us_all_bbo_[", $[`letters in ko;lower LETTERS;"a-z"], "]_*[0-9].psv"
-Q: asc F where (lower F:key SRC) like quotePattern
+F: key SRC
+Q: asc F where (lower F) like quotePattern
 if[0<count Q;
   .qlog.info "Processing quote tables...";
   processFn: process[`quote;QUOTESCHEMA;conv];
@@ -115,6 +158,11 @@ T: F where lower[F] like "eqy_us_all_trade_[0-9]*.psv"
 process[`trade;TRADESCHEMA;conv;:] each T
 .qlog.info "  Adding parted attribute..."
 psym[`Symbol] each distinct getPart[DST;`trade] each T
+
+M: F where lower[F] like "eqy_us_all_ref_master_[0-9]*.psv"
+.qlog.info "Processing master tables..."
+process[`master;MASTERSCHEMA;conv;:] each M
+
 
 .qlog.info "\nAll processing complete."
 if[not `debug in ko; exit 0]

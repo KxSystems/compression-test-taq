@@ -55,9 +55,18 @@ function get_CSVs () {
   if [[ -f ${tfname%.*} ]]; then
     echo "${tfname} was already downloaded and unzipped. Skipping download."
   else
-    wget -c "${URLPREFIX}/$(getFilename "EQY" "TRADE")"
+    wget -c "${URLPREFIX}${tfname}"
     echo "Unzipping downloaded file"
     gunzip "${tfname}"
+  fi
+
+  local mfname=$(getFilename "EQY" "REF_MASTER")
+  if [[ -f ${mfname%.*} ]]; then
+    echo "${mfname} was already downloaded and unzipped. Skipping download."
+  else
+    wget -c "${URLPREFIX}${mfname}"
+    echo "Unzipping downloaded file"
+    gunzip "${mfname}"
   fi
 
   wait
@@ -66,6 +75,8 @@ function get_CSVs () {
   echo "Removing last lines and adding proper extension"
   head -n -1 ${tfname%.*} > ${tfname%.*}.psv
   rm ${tfname%.*}
+  head -n -1 ${mfname%.*} > ${mfname%.*}.psv
+  rm ${mfname%.*}
   for letter in ${LETTERARRAY[@]}; do
     qfname=$(getFilename "SPLITS" "BBO_${letter}")
     head -n -1 ${qfname%.*} > ${qfname%.*}.psv
