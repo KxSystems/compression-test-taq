@@ -10,7 +10,7 @@
 \l src/log.q
 
 if[(4.1>.z.K); .qlog.error "kdb+ 4.1 is required";exit 1];
-USAGE: "usage: q ", string[.z.f], " [-help] -src SRC [-dst DST] [-letters START-END]\n\n",
+USAGE: "usage: q ", string[.z.f], " [-help] -src SRC [-dst DST] [-letters START-END] -skiptestsymbols\n\n",
   "Parses NYSE TAQ PSV files and persists the content into a partitioned kdb+ database."
 ko: key o: first each .Q.opt .z.x
 
@@ -22,11 +22,13 @@ if[not `src in ko;
 SRC: hsym `$o`src
 DST: hsym `kdbDB^`$o`dst
 
+SKIPTESTSYMBOLS: `skiptestsymbols in ko
+
 if[(`letters in ko) and not o[`letters] like "?-?";
   .qlog.error "Invalid letter parameter. Must be in form START-END, for example A-K, got ", o[`letters];
   exit 2]
 
-LETTERS: o[`letters]
+LETTERS: o `letters
 
 TRADESCHEMA: ([
   Time:"N";
@@ -114,7 +116,7 @@ MASTERSCHEMA: ([
   TradedOnMIAX:"B"
   ])
 
-letterConv: $[`letters in ko; {select from y where Symbol[;0] within x}[LETTERS except "-"]; ::]
+letterFilter: $[`letters in ko; {select from y where Symbol[;0] within x}[LETTERS except "-"]; ::]
 symbolConv: {update `$"."^Symbol from x}  / replace whitespace by dot
 
 psym: {[c:`s; x:`s]
@@ -127,23 +129,41 @@ getPart: {[dir:`s;tableName:`s;fileName:`s]
   .Q.par[dir;"D"$-8#first "." vs string fileName;tableName] / get rid of extension then get last 8 characters
   }
 
-process: {[tableName:`s;schema;conv;op;fileName:`s]
-  p: .Q.dd[getPart[DST;tableName;fileName];`];
+parseAndConvert: {[schema;conv;fileName:`s]
   fullFileName: .Q.dd[SRC;fileName];
   .qlog.info "  Parsing file ", 1_string fullFileName;
-  raw: (value schema; enlist"|") 0:fullFileName;
-  .qlog.info "  Renaming and converting";
-  t: conv flip key[schema]!value flip raw;
+  raw: flip key[schema]!value flip(value schema; enlist"|") 0:fullFileName;
+  .qlog.info "  Converting";
+  conv raw
+ }
+
+enumAndSave: {[t; tableName:`s;op;fileName:`s]
   .qlog.info "  Enumerating and saving ", string[count t], " rows";
+  p: .Q.dd[getPart[DST;tableName;fileName];`];
   .[p;();op;.Q.en[DST] t];
-  .qlog.info "  Successfully wrote data to ", 1_string p;
+  .qlog.info "  Successfully wrote data to ", 1_string p
+ }
+
+process: {[tableName:`s; schema; conv; op; fileName:`s]
+  t: parseAndConvert[schema; conv; fileName];
+  enumAndSave[t; tableName; op; fileName]
   }
 
+F: key SRC
 
-conv: symbolConv letterConv@
+M: F where lower[F] like "eqy_us_all_ref_master_[0-9]*.psv"
+.qlog.info "Processing master tables..."
+masters: parseAndConvert[MASTERSCHEMA;letterFilter] each M
+(masterExtraConv; extraConv): $[SKIPTESTSYMBOLS; [
+  testSymbols: asc first flip symbolConv select Symbol from first[masters] where TestSymbolFlag; / TODO: avoid first
+  (?[;enlist (not;`TestSymbolFlag);0b;()]; ?[;enlist (not; (in; `Symbol; enlist testSymbols));0b;()])];(::; ::)]
+
+convMaster: symbolConv masterExtraConv letterFilter@
+conv: extraConv symbolConv letterFilter@
+
+masters enumAndSave[; `master; :; ]' M
 
 quotePattern: "splits_us_all_bbo_[", $[`letters in ko;lower LETTERS;"a-z"], "]_*[0-9].psv"
-F: key SRC
 Q: asc F where (lower F) like quotePattern
 if[0<count Q;
   .qlog.info "Processing quote tables...";
@@ -159,9 +179,6 @@ process[`trade;TRADESCHEMA;conv;:] each T
 .qlog.info "  Adding parted attribute..."
 psym[`Symbol] each distinct getPart[DST;`trade] each T
 
-M: F where lower[F] like "eqy_us_all_ref_master_[0-9]*.psv"
-.qlog.info "Processing master tables..."
-process[`master;MASTERSCHEMA;conv;:] each M
 
 
 .qlog.info "\nAll processing complete."
