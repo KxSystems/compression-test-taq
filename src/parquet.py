@@ -12,6 +12,9 @@ import sys
 from datetime import datetime
 from pathlib import Path
 from typing import Final, List, Optional
+from functools import partial
+
+from toolz import pipe
 
 import pyarrow as pa
 import pyarrow.compute as pc
@@ -133,7 +136,7 @@ def get_date_from_filename(filepath: Path) -> Optional[str]:
         return match.group(1)
     return None
 
-def letter_conv(table: pa.Table, start_char: str, end_char: str) -> pa.Table:
+def letter_filter(start_char: str, end_char: str, table: pa.Table) -> pa.Table:
     """
     Filters a PyArrow Table to include only rows where the 'Symbol'
     starts with a character within the specified range.
@@ -159,7 +162,7 @@ def symbol_conv(table: pa.Table) -> pa.Table:
         table.schema.get_field_index('Symbol'), 'Symbol', symbol_col)
 
 # Trim and dictionary-encode specified columns
-def trim_dict_encode(table: pa.Table, trim_cols: List[str]) -> pa.Table:
+def trim_dict_encode(trim_cols: List[str], table: pa.Table) -> pa.Table:
     for col_name in trim_cols:
         trimmed_col = pc.utf8_trim_whitespace(table[col_name])
         casted_column = trimmed_col.cast(pa.dictionary(pa.int32(), pa.string()))
@@ -211,13 +214,13 @@ def convert_time_string_array_to_time64(time_strings: pa.Array) -> pa.Array:
     return pc.if_else(null_idx, None, pc.cast(total_ns, pa.time64('ns')))
 
 # Convert time string columns
-def convert_time_strings_to_time64(table: pa.Table, time_cols: List[str]) -> pa.Table:
+def convert_time_strings_to_time64(time_cols: List[str], table: pa.Table) -> pa.Table:
     for col_name in time_cols:
         time_col = convert_time_string_array_to_time64(table[col_name])
         table = table.set_column(table.schema.get_field_index(col_name), col_name, time_col)
     return table
 
-def convert_date_strings_to_date32(table: pa.Table, date_cols: List[str]) -> pa.Table:
+def convert_date_strings_to_date32(date_cols: List[str], table: pa.Table) -> pa.Table:
     for col_name in date_cols:
         date_col = pc.strptime(pc.if_else(
                 pc.equal(pc.utf8_length(table[col_name]), 0), None, table[col_name]
@@ -229,7 +232,7 @@ def convert_date_strings_to_date32(table: pa.Table, date_cols: List[str]) -> pa.
     return table
 
 # Add 'date' column for partitioning
-def add_date_column(table: pa.Table, file_path: Path) -> pa.Table:
+def add_date_column(file_path: Path, table: pa.Table) -> pa.Table:
     date_str = get_date_from_filename(file_path)
     if not date_str:
         logging.warning("    Could not extract date from %s. Skipping file.", file_path.name)
@@ -291,12 +294,11 @@ def process_and_persist(file_paths: List[Path],schema: pa.Schema,
             )
 
             logging.info("  Renaming and converting")
-            table = standardize_column_names(add_date_column(
-                convert_date_strings_to_date32(
-                    convert_time_strings_to_time64(
-                        trim_dict_encode(symbol_conv(letter_conv(
-                            table, start_char, end_char)), trim_cols),
-                        time_cols), date_cols), file_path))
+            conv = [partial(letter_filter, start_char, end_char), symbol_conv,
+                partial(trim_dict_encode, trim_cols), partial(convert_time_strings_to_time64, time_cols),
+                partial(convert_date_strings_to_date32, date_cols),
+                partial(add_date_column, file_path), standardize_column_names]
+            table = pipe(table, *conv)
 
             if len(table) == 0:
                 logging.info("  No rows after filtering for file: %s", file_path.name)
