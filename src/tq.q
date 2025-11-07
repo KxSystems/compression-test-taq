@@ -30,50 +30,7 @@ if[(`letters in ko) and not o[`letters] like "?-?";
 
 LETTERS: o `letters
 
-TRADESCHEMA: ([
-  Time:"N";
-  Exchange:"C";
-  Symbol:"*";
-  SaleCondition:"S";
-  TradeVolume:"I";
-  TradePrice:"E";
-  TradeStopStockIndicator:"S";
-  TradeCorrectionIndicator:"H";
-  SequenceNumber:"I";
-  TradeId:"*";
-  SourceofTrade:"C";
-  TradeReportingFacility:"S";
-  ParticipantTimestamp:"N";
-  TradeReportingFacilityTRFTimestamp:"N";
-  TradeThroughExemptIndicator:"B"
-  ])
-
-QUOTESCHEMA: ([
-  Time:"N";
-  Exchange:"C";
-  Symbol:"*";
-  BidPrice:"F";
-  BidSize:"I";
-  OfferPrice:"F";
-  OfferSize:"I";
-  QuoteCondition:"C";
-  SequenceNumber:"I";
-  NationalBBOInd:"C";
-  FINRABBOIndicator:"C";
-  FINRAADFMPIDIndicator:"C";
-  QuoteCancelCorrection:"C";
-  SourceOfQuote:"C";
-  RetailInterestIndicator:"C";
-  ShortSaleRestrictionIndicator:"C";
-  LULDBBOIndicator:"C";
-  SIPGeneratedMessageIdentifier:"N";
-  NationalBBOLULDIndicator:"N";
-  ParticipantTimestamp:"C";
-  FINRAADFTimestamp:"C";
-  FINRAADFMarketParticipantQuoteIndicator:"C";
-  SecurityStatusIndicator:"C"
-  ])
-
+/ Table master: EQY_US_ALL_REF_MASTER_*.csv
 MASTERSCHEMA: ([
   Symbol:"*";
   Security_Description:"*";
@@ -114,6 +71,52 @@ MASTERSCHEMA: ([
   TradedOnLTSE:"B";
   TradedOnMEMX:"B";
   TradedOnMIAX:"B"
+  ])
+
+/ Table trade: EQY_US_ALL_TRADE_*.csv
+TRADESCHEMA: ([
+  Time:"N";
+  Exchange:"C";
+  Symbol:"*";
+  SaleCondition:"S";
+  TradeVolume:"I";
+  TradePrice:"E";
+  TradeStopStockIndicator:"S";
+  TradeCorrectionIndicator:"H";
+  SequenceNumber:"I";
+  TradeId:"*";
+  SourceofTrade:"C";
+  TradeReportingFacility:"S";
+  ParticipantTimestamp:"N";
+  TradeReportingFacilityTRFTimestamp:"N";
+  TradeThroughExemptIndicator:"B"
+  ])
+
+/ Table quote: splits_us_all_bbo_*[0-9]_*.csv
+QUOTESCHEMA: ([
+  Time:"N";
+  Exchange:"C";
+  Symbol:"*";
+  BidPrice:"F";
+  BidSize:"I";
+  OfferPrice:"F";
+  OfferSize:"I";
+  QuoteCondition:"C";
+  SequenceNumber:"I";
+  NationalBBOInd:"C";
+  FINRABBOIndicator:"C";
+  FINRAADFMPIDIndicator:"C";
+  QuoteCancelCorrection:"C";
+  SourceOfQuote:"C";
+  RetailInterestIndicator:"C";
+  ShortSaleRestrictionIndicator:"C";
+  LULDBBOIndicator:"C";
+  SIPGeneratedMessageIdentifier:"N";
+  NationalBBOLULDIndicator:"N";
+  ParticipantTimestamp:"C";
+  FINRAADFTimestamp:"C";
+  FINRAADFMarketParticipantQuoteIndicator:"C";
+  SecurityStatusIndicator:"C"
   ])
 
 letterFilter: $[`letters in ko; {select from y where Symbol[;0] within x}[LETTERS except "-"]; ::]
@@ -158,10 +161,10 @@ masters: parseAndConvert[MASTERSCHEMA;letterFilter] each M
   testSymbols: asc first flip symbolConv select Symbol from first[masters] where TestSymbolFlag; / TODO: avoid first
   (?[;enlist (not;`TestSymbolFlag);0b;()]; ?[;enlist (not; (in; `Symbol; enlist testSymbols));0b;()])];(::; ::)]
 
-convMaster: symbolConv masterExtraConv letterFilter@
+convMaster: symbolConv masterExtraConv@
 conv: extraConv symbolConv letterFilter@
 
-masters enumAndSave[; `master; :; ]' M
+(convMaster each masters) enumAndSave[; `master; :; ]' M
 
 quotePattern: "splits_us_all_bbo_[", $[`letters in ko;lower LETTERS;"a-z"], "]_*[0-9].psv"
 Q: asc F where (lower F) like quotePattern
