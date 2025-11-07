@@ -107,11 +107,22 @@ QUOTE_SCHEMA: Final[pa.Schema] = pa.schema([
     pa.field('Security_Status_Indicator', pa.dictionary(pa.int32(), pa.string()))
 ])
 
-# Schema for Hive-style partitioning
-PARTITION_SCHEMA: Final[pa.Schema] = pa.schema([
-        ('date', pa.date32()),
-        ('Symbol', pa.string())
-        ])
+PARSE_OPTIONS = csv.ParseOptions(delimiter='|')
+
+PARQUET_OPTIONS = ds.ParquetFileFormat().make_write_options(
+    compression='none'
+)
+
+def get_convert_options(schema: pa.Schema) -> pa.csv.ConvertOptions:
+    return csv.ConvertOptions(
+        column_types=schema,
+        include_columns=schema.names,
+
+        true_values=['Y', '1'],
+        false_values=['N', '0'],
+
+        timestamp_parsers=["%Y%m%d"]
+    )
 
 # --- Helper Functions ---
 
@@ -147,7 +158,15 @@ def symbol_conv(table: pa.Table) -> pa.Table:
     return table.set_column(
         table.schema.get_field_index('Symbol'), 'Symbol', symbol_col)
 
-def convert_time_strings_to_time64(time_strings: pa.Array) -> pa.Array:
+# Trim and dictionary-encode specified columns
+def trim_dict_encode(table: pa.Table, trim_cols: List[str]) -> pa.Table:
+    for col_name in trim_cols:
+        trimmed_col = pc.utf8_trim_whitespace(table[col_name])
+        casted_column = trimmed_col.cast(pa.dictionary(pa.int32(), pa.string()))
+        table = table.set_column(table.schema.get_field_index(col_name), col_name, casted_column)
+    return table
+
+def convert_time_string_array_to_time64(time_strings: pa.Array) -> pa.Array:
     """
     Converts a PyArrow Array of time strings (format HHMMSSNNNNNNNNN)
     to a pa.time64('ns') array.
@@ -191,6 +210,41 @@ def convert_time_strings_to_time64(time_strings: pa.Array) -> pa.Array:
     # Re-apply nulls and cast to the final time64[ns] type
     return pc.if_else(null_idx, None, pc.cast(total_ns, pa.time64('ns')))
 
+# Convert time string columns
+def convert_time_strings_to_time64(table: pa.Table, time_cols: List[str]) -> pa.Table:
+    for col_name in time_cols:
+        time_col = convert_time_string_array_to_time64(table[col_name])
+        table = table.set_column(table.schema.get_field_index(col_name), col_name, time_col)
+    return table
+
+def convert_date_strings_to_date32(table: pa.Table, date_cols: List[str]) -> pa.Table:
+    for col_name in date_cols:
+        date_col = pc.strptime(pc.if_else(
+                pc.equal(pc.utf8_length(table[col_name]), 0), None, table[col_name]
+                ),
+                format="%Y%m%d",
+                unit="s"
+                )
+        table = table.set_column(table.schema.get_field_index(col_name), col_name, date_col)
+    return table
+
+# Add 'date' column for partitioning
+def add_date_column(table: pa.Table, file_path: Path) -> pa.Table:
+    date_str = get_date_from_filename(file_path)
+    if not date_str:
+        logging.warning("    Could not extract date from %s. Skipping file.", file_path.name)
+        null_dates = pa.nulls(table.num_rows, type=pa.date32())
+        return table.append_column('date', null_dates)
+
+    date_obj = datetime.strptime(date_str, '%Y%m%d').date()
+    date_array = pa.array([date_obj] * len(table), type=pa.date32())
+    return table.append_column('date', date_array)
+
+# Standardize column names (remove spaces and underscores)
+def standardize_column_names(table: pa.Table) -> pa.Table:
+    new_names = [name.replace(" ", "").replace("_", "") for name in table.column_names]
+    return table.rename_columns(new_names)
+
 # --- Main Processing ---
 
 def process_and_persist(file_paths: List[Path],schema: pa.Schema,
@@ -219,87 +273,34 @@ def process_and_persist(file_paths: List[Path],schema: pa.Schema,
         logging.info("No input files found for %s. Skipping.", table_name)
         return
 
-    parse_options = csv.ParseOptions(delimiter='|')
-    convert_options = csv.ConvertOptions(
-        column_types=schema,
-        include_columns=schema.names,
-
-        true_values=['Y', '1'],
-        false_values=['N', '0'],
-
-        timestamp_parsers=["%Y%m%d"]
-    )
-
-    parquet_options = ds.ParquetFileFormat().make_write_options(
-        compression='none'
-    )
+    convert_options = get_convert_options(schema)
 
     table_output_path = output_path / table_name
 
     for file_path in file_paths:
         logging.info("  Parsing file %s", file_path.name)
-
         try:
             # Read the PSV directly into a PyArrow Table
             table = csv.read_csv(
                 file_path,
-                parse_options=parse_options,
+                parse_options=PARSE_OPTIONS,
                 convert_options=convert_options,
                 # encoding should be ascii or utf-8 but Security_Description
                 # may contain invalid characters
                 read_options=csv.ReadOptions(encoding='latin1')
             )
+
             logging.info("  Renaming and converting")
-            table = letter_conv(table, start_char, end_char)
+            table = standardize_column_names(add_date_column(
+                convert_date_strings_to_date32(
+                    convert_time_strings_to_time64(
+                        trim_dict_encode(symbol_conv(letter_conv(
+                            table, start_char, end_char)), trim_cols),
+                        time_cols), date_cols), file_path))
 
             if len(table) == 0:
                 logging.info("  No rows after filtering for file: %s", file_path.name)
                 continue
-
-            table = symbol_conv(table)
-
-            # Trim and dictionary-encode specified columns
-            for col_name in trim_cols:
-                trimmed_col = pc.utf8_trim_whitespace(table[col_name])
-                casted_column = trimmed_col.cast(pa.dictionary(pa.int32(), pa.string()))
-                table = table.set_column(
-                    table.schema.get_field_index(col_name), col_name, casted_column
-                    )
-
-            # Convert time string columns
-            for col_name in time_cols:
-                time_col = convert_time_strings_to_time64(table[col_name])
-                table = table.set_column(
-                    table.schema.get_field_index(col_name), col_name, time_col
-                    )
-
-            for col_name in date_cols:
-                date_col = pc.strptime(pc.if_else(
-                    pc.equal(pc.utf8_length(table[col_name]), 0), None,table[col_name]
-                    ),
-                    format="%Y%m%d",
-                    unit="s"
-                    )
-                table = table.set_column(
-                    table.schema.get_field_index(col_name), col_name, date_col
-                    )
-
-            # Add 'date' column for partitioning
-            date_str = get_date_from_filename(file_path)
-            if not date_str:
-                logging.warning(
-                    "    Could not extract date from %s. Skipping file.",
-                    file_path.name
-                )
-                continue
-
-            date_obj = datetime.strptime(date_str, '%Y%m%d').date()
-            date_array = pa.array([date_obj] * len(table), type=pa.date32())
-            table = table.append_column('date', date_array)
-
-            # Standardize column names (remove spaces and underscores)
-            new_names = [name.replace(" ", "").replace("_", "") for name in table.column_names]
-            table = table.rename_columns(new_names)
 
             logging.info("  Writing %d rows", len(table))
             ds.write_dataset(
@@ -309,7 +310,7 @@ def process_and_persist(file_paths: List[Path],schema: pa.Schema,
                 partitioning=ds.partitioning(partition_schema, flavor='hive'),
                 max_partitions=15000,
                 existing_data_behavior='overwrite_or_ignore',
-                file_options=parquet_options,
+                file_options=PARQUET_OPTIONS,
                 preserve_order=True # Assumes original data is sorted by Time
             )
             logging.info("  Successfully wrote data to %s", table_output_path)
