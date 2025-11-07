@@ -18,6 +18,49 @@ import pyarrow.compute as pc
 import pyarrow.csv as csv
 import pyarrow.dataset as ds
 
+# Table master: EQY_US_ALL_REF_MASTER_*.csv
+MASTER_SCHEMA: Final[pa.Schema] = pa.schema([
+    pa.field('Symbol', pa.string()),
+    pa.field('Security_Description', pa.string()),
+    pa.field('CUSIP', pa.dictionary(pa.int32(), pa.string())),
+    pa.field('Security_Type', pa.dictionary(pa.int32(), pa.string())),
+    pa.field('SIP_Symbol', pa.dictionary(pa.int32(), pa.string())),
+    pa.field('Old_Symbol', pa.dictionary(pa.int32(), pa.string())),
+    pa.field('Test_Symbol_Flag', pa.bool_()),
+    pa.field('Listed_Exchange', pa.dictionary(pa.int32(), pa.string())),
+    pa.field('Tape', pa.dictionary(pa.int32(), pa.string())),
+    pa.field('Unit_Of_Trade', pa.int16()),
+    pa.field('Round_Lot', pa.int16()),
+    pa.field('NYSE_Industry_Code', pa.dictionary(pa.int32(), pa.string())),
+    pa.field('Shares_Outstanding', pa.float64()),
+    pa.field('Halt_Delay_Reason', pa.dictionary(pa.int32(), pa.string())),
+    pa.field('Specialist_Clearing_Agent', pa.dictionary(pa.int32(), pa.string())),
+    pa.field('Specialist_Clearing_Number', pa.dictionary(pa.int32(), pa.string())),
+    pa.field('Specialist_Post_Number', pa.int16()),
+    pa.field('Specialist_Panel', pa.dictionary(pa.int32(), pa.string())),
+    pa.field('TradedOnNYSEMKT', pa.bool_()),
+    pa.field('TradedOnNASDAQBX', pa.bool_()),
+    pa.field('TradedOnNSX', pa.bool_()),
+    pa.field('TradedOnFINRA', pa.bool_()),
+    pa.field('TradedOnISE', pa.bool_()),
+    pa.field('TradedOnEdgeA', pa.bool_()),
+    pa.field('TradedOnEdgeX', pa.bool_()),
+    pa.field('TradedOnNYSETexas', pa.bool_()),
+    pa.field('TradedOnNYSE', pa.bool_()),
+    pa.field('TradedOnArca', pa.bool_()),
+    pa.field('TradedOnNasdaq', pa.bool_()),
+    pa.field('TradedOnCBOE', pa.bool_()),
+    pa.field('TradedOnPSX', pa.bool_()),
+    pa.field('TradedOnBATSY', pa.bool_()),
+    pa.field('TradedOnBATS', pa.bool_()),
+    pa.field('TradedOnIEX', pa.bool_()),
+    pa.field('Tick_Pilot_Indicator', pa.dictionary(pa.int32(), pa.string())),
+    pa.field('Effective_Date', pa.string()),  # transformed to: pa.date32()
+    pa.field('TradedOnLTSE', pa.bool_()),
+    pa.field('TradedOnMEMX', pa.bool_()),
+    pa.field('TradedOnMIAX', pa.bool_())
+])
+
 # Table trade: EQY_US_ALL_TRADE_*.csv
 TRADE_SCHEMA: Final[pa.Schema] = pa.schema([
     pa.field('Time', pa.string()), # transformed to: pa.time64('ns')
@@ -152,7 +195,8 @@ def convert_time_strings_to_time64(time_strings: pa.Array) -> pa.Array:
 
 def process_and_persist(file_paths: List[Path],schema: pa.Schema,
     output_path: Path, table_name: str, start_char: str, end_char: str,
-    trim_cols: List[str], time_cols: List[str]
+    trim_cols: List[str], time_cols: List[str], date_cols: List[str],
+    partition_schema: Final[pa.Schema]
 ) -> None:
     """
     Reads, processes, and persists a list of PSV files to a
@@ -167,6 +211,8 @@ def process_and_persist(file_paths: List[Path],schema: pa.Schema,
         end_char: End character for symbol filtering.
         trim_cols: List of string columns to trim and cast to dictionary.
         time_cols: List of string columns to convert to time64[ns].
+        date_cols: List of string columns to convert to date32.
+        partition_schema: partition schema
     """
     logging.info("Processing table %s", table_name)
     if not file_paths:
@@ -176,7 +222,12 @@ def process_and_persist(file_paths: List[Path],schema: pa.Schema,
     parse_options = csv.ParseOptions(delimiter='|')
     convert_options = csv.ConvertOptions(
         column_types=schema,
-        include_columns=schema.names
+        include_columns=schema.names,
+
+        true_values=['Y', '1'],
+        false_values=['N', '0'],
+
+        timestamp_parsers=["%Y%m%d"]
     )
 
     parquet_options = ds.ParquetFileFormat().make_write_options(
@@ -193,7 +244,10 @@ def process_and_persist(file_paths: List[Path],schema: pa.Schema,
             table = csv.read_csv(
                 file_path,
                 parse_options=parse_options,
-                convert_options=convert_options
+                convert_options=convert_options,
+                # encoding should be ascii or utf-8 but Security_Description
+                # may contain invalid characters
+                read_options=csv.ReadOptions(encoding='latin1')
             )
             logging.info("  Renaming and converting")
             table = letter_conv(table, start_char, end_char)
@@ -219,6 +273,17 @@ def process_and_persist(file_paths: List[Path],schema: pa.Schema,
                     table.schema.get_field_index(col_name), col_name, time_col
                     )
 
+            for col_name in date_cols:
+                date_col = pc.strptime(pc.if_else(
+                    pc.equal(pc.utf8_length(table[col_name]), 0), None,table[col_name]
+                    ),
+                    format="%Y%m%d",
+                    unit="s"
+                    )
+                table = table.set_column(
+                    table.schema.get_field_index(col_name), col_name, date_col
+                    )
+
             # Add 'date' column for partitioning
             date_str = get_date_from_filename(file_path)
             if not date_str:
@@ -241,7 +306,7 @@ def process_and_persist(file_paths: List[Path],schema: pa.Schema,
                 table,
                 base_dir=table_output_path,
                 format='parquet',
-                partitioning=ds.partitioning(PARTITION_SCHEMA, flavor='hive'),
+                partitioning=ds.partitioning(partition_schema, flavor='hive'),
                 max_partitions=15000,
                 existing_data_behavior='overwrite_or_ignore',
                 file_options=parquet_options,
@@ -282,15 +347,22 @@ def main(src: Path, dst: Path, letters: str) -> None:
         )
         sys.exit(1)
 
+    # Process master files
+    master_files = list(src.glob('EQY_US_ALL_REF_MASTER_*.psv'))
+    process_and_persist(master_files, MASTER_SCHEMA, dst, 'master', start_char, end_char,
+                        [], [], ['Effective_Date'], pa.schema([('date', pa.date32())]))
+
     # Process quote files
     quote_files = list(src.glob(f"SPLITS_US_ALL_BBO_[{letters}]_*.psv"))
     process_and_persist(quote_files, QUOTE_SCHEMA, dst, 'quote', start_char, end_char,
-                        ['FINRA_BBO_Indicator'], ['Time', 'Participant_Timestamp', 'FINRA_ADF_Timestamp'])
+                        ['FINRA_BBO_Indicator'], ['Time', 'Participant_Timestamp', 'FINRA_ADF_Timestamp'], [],
+                        pa.schema([('date', pa.date32()), ('Symbol', pa.string())]))
 
     # Process trade files
     trade_files = list(src.glob('EQY_US_ALL_TRADE_*.psv'))
     process_and_persist(trade_files, TRADE_SCHEMA, dst, 'trade', start_char, end_char,
-                        ['Sale Condition'], ['Time', 'Participant Timestamp', 'Trade Reporting Facility TRF Timestamp'])
+                        ['Sale Condition'], ['Time', 'Participant Timestamp', 'Trade Reporting Facility TRF Timestamp'], [],
+                        pa.schema([('date', pa.date32()), ('Symbol', pa.string())]))
 
     logging.info("\nAll processing complete.")
 
