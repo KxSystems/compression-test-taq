@@ -2,7 +2,7 @@
 
 """
 Script to parse NYSE TAQ PSV files, transform data using PyArrow,
-and persist to a partitioned Parquet dataset.
+and persist to a hive-partitioned Parquet dataset.
 """
 
 import argparse
@@ -116,7 +116,20 @@ PARQUET_OPTIONS = ds.ParquetFileFormat().make_write_options(
     compression='none'
 )
 
+# --- Helper Functions ---
+
 def get_convert_options(schema: pa.Schema) -> pa.csv.ConvertOptions:
+    """Creates CSV convert options for a given schema.
+
+    Sets up column types, boolean true/false values, and date parsers
+    based on the input schema.
+
+    Args:
+        schema: The PyArrow schema to use for column type conversion.
+
+    Returns:
+        A PyArrow `csv.ConvertOptions` object.
+    """
     return csv.ConvertOptions(
         column_types=schema,
         include_columns=schema.names,
@@ -127,19 +140,21 @@ def get_convert_options(schema: pa.Schema) -> pa.csv.ConvertOptions:
         timestamp_parsers=["%Y%m%d"]
     )
 
-# --- Helper Functions ---
-
-def get_date_from_filename(filepath: Path) -> Optional[str]:
-    """Extracts an 8-digit date from a filename."""
-    match = re.search(r'(\d{8})', filepath.name)
-    if match:
-        return match.group(1)
-    return None
+# --- Table convert Functions ---
 
 def letter_filter(start_char: str, end_char: str, table: pa.Table) -> pa.Table:
-    """
-    Filters a PyArrow Table to include only rows where the 'Symbol'
-    starts with a character within the specified range.
+    """Filters a table based on the first letter of the 'Symbol' column.
+
+    Includes rows where the first character of the trimmed 'Symbol'
+    is within the specified inclusive range.
+
+    Args:
+        start_char: The starting character of the range (e.g., 'A').
+        end_char: The ending character of the range (e.g., 'K').
+        table: The input PyArrow table to filter.
+
+    Returns:
+        The filtered PyArrow table.
     """
     symbol_col = pc.utf8_trim_whitespace(table['Symbol'])
     first_chars = pc.utf8_slice_codeunits(symbol_col, 0, 1)
@@ -150,9 +165,13 @@ def letter_filter(start_char: str, end_char: str, table: pa.Table) -> pa.Table:
     return table.filter(filter_expression)
 
 def symbol_conv(table: pa.Table) -> pa.Table:
-    """
-    Cleans the 'Symbol' column by replacing one or more
-    whitespace characters with a single dot.
+    """Cleans the 'Symbol' column by replacing whitespace with dots.
+
+    Args:
+        table: The input PyArrow table.
+
+    Returns:
+        The table with the modified 'Symbol' column.
     """
     symbol_col = pc.replace_substring_regex(
         table['Symbol'],
@@ -161,8 +180,16 @@ def symbol_conv(table: pa.Table) -> pa.Table:
     return table.set_column(
         table.schema.get_field_index('Symbol'), 'Symbol', symbol_col)
 
-# Trim and dictionary-encode specified columns
 def trim_dict_encode(trim_cols: List[str], table: pa.Table) -> pa.Table:
+    """Trims whitespace and dictionary-encodes specified string columns.
+
+    Args:
+        trim_cols: A list of column names to process.
+        table: The input PyArrow table.
+
+    Returns:
+        The table with the modified columns.
+    """
     for col_name in trim_cols:
         trimmed_col = pc.utf8_trim_whitespace(table[col_name])
         casted_column = trimmed_col.cast(pa.dictionary(pa.int32(), pa.string()))
@@ -170,9 +197,20 @@ def trim_dict_encode(trim_cols: List[str], table: pa.Table) -> pa.Table:
     return table
 
 def convert_time_string_array_to_time64(time_strings: pa.Array) -> pa.Array:
-    """
-    Converts a PyArrow Array of time strings (format HHMMSSNNNNNNNNN)
-    to a pa.time64('ns') array.
+    """Converts a string array of 'HHMMSSNNNNNNNNN' to pa.time64('ns').
+
+    This function is designed for high performance using PyArrow compute
+    functions. It handles empty strings ('') as null values.
+
+    Note:
+        Assumes a strict 15-character format (or empty string).
+        Malformed, non-empty strings may cause errors.
+
+    Args:
+        time_strings: A PyArrow string array with time values.
+
+    Returns:
+        A PyArrow array of type `pa.time64('ns')`.
     """
 
     null_idx = pc.equal(time_strings, '')
@@ -213,14 +251,33 @@ def convert_time_string_array_to_time64(time_strings: pa.Array) -> pa.Array:
     # Re-apply nulls and cast to the final time64[ns] type
     return pc.if_else(null_idx, None, pc.cast(total_ns, pa.time64('ns')))
 
-# Convert time string columns
 def convert_time_strings_to_time64(time_cols: List[str], table: pa.Table) -> pa.Table:
+    """Applies `time64[ns]` conversion to multiple time columns in a table.
+
+    Args:
+        time_cols: List of column names to convert.
+        table: The input PyArrow table.
+
+    Returns:
+        The table with converted time columns.
+    """
     for col_name in time_cols:
         time_col = convert_time_string_array_to_time64(table[col_name])
         table = table.set_column(table.schema.get_field_index(col_name), col_name, time_col)
     return table
 
 def convert_date_strings_to_date32(date_cols: List[str], table: pa.Table) -> pa.Table:
+    """Converts 'YYYYMMDD' string columns to `pa.date32`.
+
+    Handles empty strings as nulls.
+
+    Args:
+        date_cols: List of column names to convert.
+        table: The input PyArrow table.
+
+    Returns:
+        The table with converted date columns.
+    """
     for col_name in date_cols:
         date_col = pc.strptime(pc.if_else(
                 pc.equal(pc.utf8_length(table[col_name]), 0), None, table[col_name]
@@ -231,9 +288,21 @@ def convert_date_strings_to_date32(date_cols: List[str], table: pa.Table) -> pa.
         table = table.set_column(table.schema.get_field_index(col_name), col_name, date_col)
     return table
 
-# Add 'date' column for partitioning
 def add_date_column(file_path: Path, table: pa.Table) -> pa.Table:
-    date_str = get_date_from_filename(file_path)
+    """Adds a 'date' column to the table based on the filename.
+
+    This 'date' column is intended for Hive partitioning.
+
+    Args:
+        file_path: The file path to extract the date from.
+        table: The input PyArrow table.
+
+    Returns:
+        The table with the new 'date' column. If no date is found
+        in the filename, the column will be all nulls.
+    """
+    match = re.search(r'(\d{8})', file_path.name)
+    date_str = match.group(1)
     if not date_str:
         logging.warning("    Could not extract date from %s. Skipping file.", file_path.name)
         null_dates = pa.nulls(table.num_rows, type=pa.date32())
@@ -243,8 +312,17 @@ def add_date_column(file_path: Path, table: pa.Table) -> pa.Table:
     date_array = pa.array([date_obj] * len(table), type=pa.date32())
     return table.append_column('date', date_array)
 
-# Standardize column names (remove spaces and underscores)
 def standardize_column_names(table: pa.Table) -> pa.Table:
+    """Standardizes column names by removing spaces and underscores.
+
+    Example: 'Sale Condition' becomes 'SaleCondition'.
+
+    Args:
+        table: The input PyArrow table.
+
+    Returns:
+        The table with renamed columns.
+    """
     new_names = [name.replace(" ", "").replace("_", "") for name in table.column_names]
     return table.rename_columns(new_names)
 
@@ -252,16 +330,14 @@ def standardize_column_names(table: pa.Table) -> pa.Table:
 
 def process_and_persist(file_path: Path, schema: pa.Schema, table_output_path: Path,
     conv: List, partition_schema: Final[pa.Schema]) -> None:
-    """
-    Reads, processes, and persists a list of PSV files to a
-    partitioned Parquet dataset.
+    """Reads, processes, and persists a single PSV file to a Parquet dataset.
 
     Args:
-        file_path: CSV file path.
-        schema: The PyArrow schema to use for reading.
-        table_output_path: The root directory for the Parquet dataset.
-        conv: List of converson functions
-        partition_schema: partition schema
+        file_path: Path to the input PSV file.
+        schema: The PyArrow schema for reading the file.
+        table_output_path: The root directory for the output Parquet dataset.
+        conv: A list of transformation functions to pipe the table through.
+        partition_schema: The schema to use for Hive partitioning.
     """
     convert_options = get_convert_options(schema)
 
@@ -298,13 +374,16 @@ def process_and_persist(file_path: Path, schema: pa.Schema, table_output_path: P
         )
 
 def main(src: Path, dst: Path, letters: str) -> None:
-    """
-    Main function to find, process, and persist data files.
+    """Main entry point to find, process, and persist all data files.
 
     Args:
         src: Directory containing the input PSV files.
         dst: Directory to save the output Parquet files.
         letters: Letter range (e.g., "A-K") to filter symbols.
+
+    Raises:
+        SystemExit: If the source directory is invalid or the 'letters'
+                    argument is malformed.
     """
     if not src.is_dir():
         logging.error("Error: Data directory '%s' not found or is not a directory.", src)
