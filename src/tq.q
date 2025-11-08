@@ -13,22 +13,8 @@ if[(4.1>.z.K); .qlog.error "kdb+ 4.1 is required";exit 1];
 USAGE: "usage: q ", string[.z.f], " [-help] -src SRC [-dst DST] [-letters START-END] -skiptestsymbols\n\n",
   "Parses NYSE TAQ PSV files and persists the content into a partitioned kdb+ database."
 ko: key o: first each .Q.opt .z.x
+if[`help in ko; -1 USAGE; exit 0]
 
-if[`help in ko; -1 USAGE; exit 0];
-if[not `src in ko;
-  -1 USAGE;
-  .qlog.error "'src' parameter was not provided";
-  exit 2];
-SRC: hsym `$o`src
-DST: hsym `kdbDB^`$o`dst
-
-SKIPTESTSYMBOLS: `skiptestsymbols in ko
-
-if[(`letters in ko) and not o[`letters] like "?-?";
-  .qlog.error "Invalid letter parameter. Must be in form START-END, for example A-K, got ", o[`letters];
-  exit 2]
-
-LETTERS: o `letters
 
 / Table master: EQY_US_ALL_REF_MASTER_*.csv
 MASTERSCHEMA: ([
@@ -119,7 +105,6 @@ QUOTESCHEMA: ([
   SecurityStatusIndicator:"C"
   ])
 
-letterFilter: $[`letters in ko; {select from y where Symbol[;0] within x}[LETTERS except "-"]; ::]
 symbolConv: {update `$"."^Symbol from x}  / replace whitespace by dot
 
 psym: {[c:`s; x:`s]
@@ -152,37 +137,53 @@ process: {[tableName:`s; schema; conv; op; fileName:`s]
   enumAndSave[t; tableName; op; fileName]
   }
 
-F: key SRC
+main: {[src; dst; letters; skiptestsymbols]
+  F: key src;
 
-M: F where lower[F] like "eqy_us_all_ref_master_[0-9]*.psv"
-.qlog.info "Processing master tables..."
-masters: parseAndConvert[MASTERSCHEMA;letterFilter] each M
-(masterExtraConv; extraConv): $[SKIPTESTSYMBOLS; [
-  testSymbols: asc first flip symbolConv select Symbol from first[masters] where TestSymbolFlag; / TODO: avoid first
-  (?[;enlist (not;`TestSymbolFlag);0b;()]; ?[;enlist (not; (in; `Symbol; enlist testSymbols));0b;()])];(::; ::)]
+  letterFilter: $[count letters; {select from y where Symbol[;0] within x}[letters except "-"]; ::];
 
-convMaster: symbolConv masterExtraConv@
-conv: extraConv symbolConv letterFilter@
+  M: F where lower[F] like "eqy_us_all_ref_master_[0-9]*.psv";
+  .qlog.info "Processing master tables...";
+  masters: parseAndConvert[MASTERSCHEMA;letterFilter] each M;
+  (masterExtraConv; extraConv): $[skiptestsymbols; [
+    testSymbols: asc first flip symbolConv select Symbol from first[masters] where TestSymbolFlag; / TODO: avoid first
+    (?[;enlist (not;`TestSymbolFlag);0b;()]; ?[;enlist (not; (in; `Symbol; enlist testSymbols));0b;()])];(::; ::)];
 
-(convMaster each masters) enumAndSave[; `master; :; ]' M
+  convMaster: symbolConv masterExtraConv@;
+  conv: extraConv symbolConv letterFilter@;
 
-quotePattern: "splits_us_all_bbo_[", $[`letters in ko;lower LETTERS;"a-z"], "]_*[0-9].psv"
-Q: asc F where (lower F) like quotePattern
-if[0<count Q;
-  .qlog.info "Processing quote tables...";
-  processFn: process[`quote;QUOTESCHEMA;conv];
-  processFn[:; first Q];
-  processFn[,] each 1_Q;
+  (convMaster each masters) enumAndSave[; `master; :; ]' M;
+
+  quotePattern: "splits_us_all_bbo_[", $[count letters;lower letters;"a-z"], "]_*[0-9].psv";
+  Q: asc F where (lower F) like quotePattern;
+  if[0<count Q;
+    .qlog.info "Processing quote tables...";
+    processFn: process[`quote;QUOTESCHEMA;conv];
+    processFn[:; first Q];
+    processFn[,] each 1_Q;
+    .qlog.info "  Adding parted attribute...";
+    psym[`Symbol] each distinct getPart[dst;`quote] each Q]
+
+  T: F where lower[F] like "eqy_us_all_trade_[0-9]*.psv";
+  .qlog.info "Processing trade tables...";
+  process[`trade;TRADESCHEMA;conv;:] each T;
   .qlog.info "  Adding parted attribute...";
-  psym[`Symbol] each distinct getPart[DST;`quote] each Q]
-
-T: F where lower[F] like "eqy_us_all_trade_[0-9]*.psv"
-.qlog.info "Processing trade tables..."
-process[`trade;TRADESCHEMA;conv;:] each T
-.qlog.info "  Adding parted attribute..."
-psym[`Symbol] each distinct getPart[DST;`trade] each T
+  psym[`Symbol] each distinct getPart[dst;`trade] each T;
+  }
 
 
+if[not `src in ko;
+  -1 USAGE;
+  .qlog.error "'src' parameter was not provided";
+  exit 2];
+SRC: hsym `$o`src
+DST: hsym `kdbDB^`$o`dst
+
+if[(`letters in ko) and not o[`letters] like "?-?";
+  .qlog.error "Invalid letter parameter. Must be in form START-END, for example A-K, got ", o[`letters];
+  exit 2]
+
+main[SRC; DST; o `letters; `skiptestsymbols in ko]
 
 .qlog.info "\nAll processing complete."
 if[not `debug in ko; exit 0]
