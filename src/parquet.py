@@ -250,78 +250,52 @@ def standardize_column_names(table: pa.Table) -> pa.Table:
 
 # --- Main Processing ---
 
-def process_and_persist(file_paths: List[Path],schema: pa.Schema,
-    output_path: Path, table_name: str, start_char: str, end_char: str,
-    trim_cols: List[str], time_cols: List[str], date_cols: List[str],
-    partition_schema: Final[pa.Schema]
-) -> None:
+def process_and_persist(file_path: Path, schema: pa.Schema, table_output_path: Path,
+    conv: List, partition_schema: Final[pa.Schema]) -> None:
     """
     Reads, processes, and persists a list of PSV files to a
     partitioned Parquet dataset.
 
     Args:
-        file_paths: List of file paths to process.
+        file_path: CSV file path.
         schema: The PyArrow schema to use for reading.
-        output_path: The root directory for the Parquet dataset.
-        table_name: The name of the table (e.g., 'quote', 'trade').
-        start_char: Start character for symbol filtering.
-        end_char: End character for symbol filtering.
-        trim_cols: List of string columns to trim and cast to dictionary.
-        time_cols: List of string columns to convert to time64[ns].
-        date_cols: List of string columns to convert to date32.
+        table_output_path: The root directory for the Parquet dataset.
+        conv: List of converson functions
         partition_schema: partition schema
     """
-    logging.info("Processing table %s", table_name)
-    if not file_paths:
-        logging.info("No input files found for %s. Skipping.", table_name)
-        return
-
     convert_options = get_convert_options(schema)
 
-    table_output_path = output_path / table_name
+    try:
+        table = csv.read_csv(
+            file_path,
+            parse_options=PARSE_OPTIONS,
+            convert_options=convert_options,
+            # encoding should be ascii or utf-8 but Security_Description
+            # may contain invalid characters
+            read_options=csv.ReadOptions(encoding='latin1')
+        )
+        logging.info("  Renaming and converting")
+        table = pipe(table, *conv)
+        if len(table) == 0:
+            logging.info("  No rows after filtering for file: %s", file_path.name)
+            return
+        logging.info("  Writing %d rows", len(table))
+        ds.write_dataset(
+            table,
+            base_dir=table_output_path,
+            format='parquet',
+            partitioning=ds.partitioning(partition_schema, flavor='hive'),
+            max_partitions=15000,
+            existing_data_behavior='overwrite_or_ignore',
+            file_options=PARQUET_OPTIONS,
+            preserve_order=True # Assumes original data is sorted by Time
+        )
+        logging.info("  Successfully wrote data to %s", table_output_path)
 
-    for file_path in file_paths:
-        logging.info("  Parsing file %s", file_path.name)
-        try:
-            # Read the PSV directly into a PyArrow Table
-            table = csv.read_csv(
-                file_path,
-                parse_options=PARSE_OPTIONS,
-                convert_options=convert_options,
-                # encoding should be ascii or utf-8 but Security_Description
-                # may contain invalid characters
-                read_options=csv.ReadOptions(encoding='latin1')
-            )
-
-            logging.info("  Renaming and converting")
-            conv = [partial(letter_filter, start_char, end_char), symbol_conv,
-                partial(trim_dict_encode, trim_cols), partial(convert_time_strings_to_time64, time_cols),
-                partial(convert_date_strings_to_date32, date_cols),
-                partial(add_date_column, file_path), standardize_column_names]
-            table = pipe(table, *conv)
-
-            if len(table) == 0:
-                logging.info("  No rows after filtering for file: %s", file_path.name)
-                continue
-
-            logging.info("  Writing %d rows", len(table))
-            ds.write_dataset(
-                table,
-                base_dir=table_output_path,
-                format='parquet',
-                partitioning=ds.partitioning(partition_schema, flavor='hive'),
-                max_partitions=15000,
-                existing_data_behavior='overwrite_or_ignore',
-                file_options=PARQUET_OPTIONS,
-                preserve_order=True # Assumes original data is sorted by Time
-            )
-            logging.info("  Successfully wrote data to %s", table_output_path)
-
-        except Exception as e:
-            logging.error(
-                "Error processing file %s: %s", file_path, e, exc_info=True
-            )
-            continue
+    except Exception as e:
+        logging.error(
+            "Error processing file %s: %s", file_path, e, exc_info=True
+        )
 
 def main(src: Path, dst: Path, letters: str) -> None:
     """
@@ -351,21 +325,39 @@ def main(src: Path, dst: Path, letters: str) -> None:
         sys.exit(1)
 
     # Process master files
+    logging.info("Processing master table")
     master_files = list(src.glob('EQY_US_ALL_REF_MASTER_*.psv'))
-    process_and_persist(master_files, MASTER_SCHEMA, dst, 'master', start_char, end_char,
-                        [], [], ['Effective_Date'], pa.schema([('date', pa.date32())]))
+    for file_path in master_files:
+        logging.info("  Parsing file %s", file_path.name)
+        process_and_persist(file_path, MASTER_SCHEMA, dst / 'master',
+            [partial(letter_filter, start_char, end_char), symbol_conv,
+            partial(convert_date_strings_to_date32, ['Effective_Date']),
+            partial(add_date_column, file_path), standardize_column_names],
+            pa.schema([('date', pa.date32())]))
 
     # Process quote files
+    logging.info("Processing quote tables")
     quote_files = list(src.glob(f"SPLITS_US_ALL_BBO_[{letters}]_*.psv"))
-    process_and_persist(quote_files, QUOTE_SCHEMA, dst, 'quote', start_char, end_char,
-                        ['FINRA_BBO_Indicator'], ['Time', 'Participant_Timestamp', 'FINRA_ADF_Timestamp'], [],
-                        pa.schema([('date', pa.date32()), ('Symbol', pa.string())]))
+    for file_path in quote_files:
+        logging.info("  Parsing file %s", file_path.name)
+        process_and_persist(file_path, QUOTE_SCHEMA, dst / 'quote',
+            [partial(letter_filter, start_char, end_char), symbol_conv,
+            partial(trim_dict_encode, ['FINRA_BBO_Indicator']),
+            partial(convert_time_strings_to_time64, ['Time', 'Participant_Timestamp', 'FINRA_ADF_Timestamp']),
+            partial(add_date_column, file_path), standardize_column_names],
+            pa.schema([('date', pa.date32()), ('Symbol', pa.string())]))
 
     # Process trade files
+    logging.info("Processing trade tables")
     trade_files = list(src.glob('EQY_US_ALL_TRADE_*.psv'))
-    process_and_persist(trade_files, TRADE_SCHEMA, dst, 'trade', start_char, end_char,
-                        ['Sale Condition'], ['Time', 'Participant Timestamp', 'Trade Reporting Facility TRF Timestamp'], [],
-                        pa.schema([('date', pa.date32()), ('Symbol', pa.string())]))
+    for file_path in trade_files:
+        logging.info("  Parsing file %s", file_path.name)
+        process_and_persist(file_path, TRADE_SCHEMA, dst / 'trade',
+            [partial(letter_filter, start_char, end_char), symbol_conv,
+            partial(trim_dict_encode, ['Sale Condition']),
+            partial(convert_time_strings_to_time64, ['Time', 'Participant Timestamp', 'Trade Reporting Facility TRF Timestamp']),
+            partial(add_date_column, file_path), standardize_column_names],
+            pa.schema([('date', pa.date32()), ('Symbol', pa.string())]))
 
     logging.info("\nAll processing complete.")
 
