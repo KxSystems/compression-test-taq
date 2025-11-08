@@ -10,7 +10,7 @@
 \l src/log.q
 
 if[(4.1>.z.K); .qlog.error "kdb+ 4.1 is required";exit 1];
-USAGE: "usage: q ", string[.z.f], " [-help] -src SRC [-dst DST] [-letters START-END] -skiptestsymbols\n\n",
+USAGE: "usage: q ", string[.z.f], " [-help] -src SRC [-dst DST] [-letters START-END] [-includetestsymbols]\n\n",
   "Parses NYSE TAQ PSV files and persists the content into a partitioned kdb+ database."
 ko: key o: first each .Q.opt .z.x
 if[`help in ko; -1 USAGE; exit 0]
@@ -137,7 +137,7 @@ process: {[tableName:`s; schema; conv; op; fileName:`s]
   enumAndSave[t; tableName; op; fileName]
   }
 
-main: {[src; dst; letters; skiptestsymbols]
+main: {[src; dst; letters; includetestsymbols]
   F: key src;
 
   letterFilter: $[count letters; {select from y where Symbol[;0] within x}[letters except "-"]; ::];
@@ -145,9 +145,9 @@ main: {[src; dst; letters; skiptestsymbols]
   M: F where lower[F] like "eqy_us_all_ref_master_[0-9]*.psv";
   .qlog.info "Processing master tables...";
   masters: parseAndConvert[MASTERSCHEMA;letterFilter] each M;
-  (masterExtraConv; extraConv): $[skiptestsymbols; [
+  (masterExtraConv; extraConv): $[includetestsymbols; (::; ::); [
     testSymbols: asc first flip symbolConv select Symbol from first[masters] where TestSymbolFlag; / TODO: avoid first
-    (?[;enlist (not;`TestSymbolFlag);0b;()]; ?[;enlist (not; (in; `Symbol; enlist testSymbols));0b;()])];(::; ::)];
+    (?[;enlist (not;`TestSymbolFlag);0b;()]; ?[;enlist (not; (in; `Symbol; enlist testSymbols));0b;()])]];
 
   convMaster: symbolConv masterExtraConv@;
   conv: extraConv symbolConv letterFilter@;
@@ -183,7 +183,7 @@ if[(`letters in ko) and not o[`letters] like "?-?";
   .qlog.error "Invalid letter parameter. Must be in form START-END, for example A-K, got ", o[`letters];
   exit 2]
 
-main[SRC; DST; o `letters; `skiptestsymbols in ko]
+main[SRC; DST; o `letters; `includetestsymbols in ko]
 
 .qlog.info "\nAll processing complete."
 if[not `debug in ko; exit 0]
