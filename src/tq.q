@@ -70,7 +70,7 @@ TRADESCHEMA: ([
   TradeStopStockIndicator:"S";
   TradeCorrectionIndicator:"H";
   SequenceNumber:"I";
-  TradeId:"*";
+  TradeId:"J";
   SourceofTrade:"C";
   TradeReportingFacility:"S";
   ParticipantTimestamp:"N";
@@ -83,9 +83,9 @@ QUOTESCHEMA: ([
   Time:"N";
   Exchange:"C";
   Symbol:"*";
-  BidPrice:"F";
+  BidPrice:"E";
   BidSize:"I";
-  OfferPrice:"F";
+  OfferPrice:"E";
   OfferSize:"I";
   QuoteCondition:"C";
   SequenceNumber:"I";
