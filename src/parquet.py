@@ -7,11 +7,10 @@ and persist to a hive-partitioned Parquet dataset.
 
 import argparse
 import logging
-import re
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Final, List, Optional
+from typing import Final, List
 from functools import partial
 
 from toolz import pipe
@@ -288,28 +287,20 @@ def convert_date_strings_to_date32(date_cols: List[str], table: pa.Table) -> pa.
         table = table.set_column(table.schema.get_field_index(col_name), col_name, date_col)
     return table
 
-def add_date_column(file_path: Path, table: pa.Table) -> pa.Table:
+def add_date_column(date: datetime, table: pa.Table) -> pa.Table:
     """Adds a 'date' column to the table based on the filename.
 
     This 'date' column is intended for Hive partitioning.
 
     Args:
-        file_path: The file path to extract the date from.
+        date: The date values of the column to add.
         table: The input PyArrow table.
 
     Returns:
         The table with the new 'date' column. If no date is found
         in the filename, the column will be all nulls.
     """
-    match = re.search(r'(\d{8})', file_path.name)
-    date_str = match.group(1)
-    if not date_str:
-        logging.warning("    Could not extract date from %s. Skipping file.", file_path.name)
-        null_dates = pa.nulls(table.num_rows, type=pa.date32())
-        return table.append_column('date', null_dates)
-
-    date_obj = datetime.strptime(date_str, '%Y%m%d').date()
-    date_array = pa.array([date_obj] * len(table), type=pa.date32())
+    date_array = pa.array([date.date()] * len(table), type=pa.date32())
     return table.append_column('date', date_array)
 
 def standardize_column_names(table: pa.Table) -> pa.Table:
@@ -393,7 +384,7 @@ def process(file_path: Path, schema: pa.Schema, table_output_path: Path,
             "Error processing file %s: %s", file_path, e, exc_info=True
         )
 
-def main(src: Path, dst: Path, letters: str, includetestsymbols: bool) -> None:
+def main(date: datetime, src: Path, dst: Path, letters: str, includetestsymbols: bool) -> None:
     """Main entry point to find, process, and persist all data files.
 
     Args:
@@ -423,55 +414,81 @@ def main(src: Path, dst: Path, letters: str, includetestsymbols: bool) -> None:
         )
         sys.exit(1)
 
+    datestr = date.strftime('%Y%m%d')
+
     # Process master files
     logging.info("Processing master table")
-    master_files = list(src.glob('EQY_US_ALL_REF_MASTER_*.psv'))
-    for file_path in master_files:
-        logging.info("  Parsing file %s", file_path.name)
-        master = parse_and_convert(file_path, MASTER_SCHEMA, [partial(letter_filter, start_char, end_char)])
-        if includetestsymbols:
-            master_extra_conv = extra_conv = lambda x: x
-        else:
-            test_symbols = master['Symbol'].filter(master['Test_Symbol_Flag'])
-            master_extra_conv = lambda t: t.filter(pc.invert(t['Test_Symbol_Flag']))
-            extra_conv = lambda t: t.filter(pc.invert(pc.is_in(t['Symbol'], test_symbols)))
+    master_file = f"{src}/EQY_US_ALL_REF_MASTER_{datestr}.psv"
 
-        master_conv= [master_extra_conv, symbol_conv,
-                      partial(convert_date_strings_to_date32, ['Effective_Date']),
-                      partial(add_date_column, file_path), standardize_column_names]
-        master= pipe(master, *master_conv)
-        persist(master, dst / 'master', pa.schema([('date', pa.date32())]))
+    logging.info(f"  Parsing file {master_file}")
+    master = parse_and_convert(master_file, MASTER_SCHEMA, [partial(letter_filter, start_char, end_char)])
+    if includetestsymbols:
+        master_extra_conv = extra_conv = lambda x: x
+    else:
+        test_symbols = master['Symbol'].filter(master['Test_Symbol_Flag'])
+        master_extra_conv = lambda t: t.filter(pc.invert(t['Test_Symbol_Flag']))
+        extra_conv = lambda t: t.filter(pc.invert(pc.is_in(t['Symbol'], test_symbols)))
+
+    master_conv= [master_extra_conv, symbol_conv,
+                  partial(convert_date_strings_to_date32, ['Effective_Date']),
+                  partial(add_date_column, date), standardize_column_names]
+    master= pipe(master, *master_conv)
+    persist(master, dst / 'master', pa.schema([('date', pa.date32())]))
 
     # Process quote files
     logging.info("Processing quote tables")
-    quote_files = list(src.glob(f"SPLITS_US_ALL_BBO_[{letters}]_*.psv"))
+    quote_files = list(src.glob(f"SPLITS_US_ALL_BBO_[{letters}]_{datestr}.psv"))
     for file_path in quote_files:
-        logging.info("  Parsing file %s", file_path.name)
+        logging.info(f"  Parsing file {file_path}", )
         process(file_path, QUOTE_SCHEMA, dst / 'quote',
             [partial(letter_filter, start_char, end_char), extra_conv, symbol_conv,
             partial(trim_dict_encode, ['FINRA_BBO_Indicator']),
             partial(convert_time_strings_to_time64, ['Time', 'Participant_Timestamp', 'FINRA_ADF_Timestamp']),
-            partial(add_date_column, file_path), standardize_column_names],
+            partial(add_date_column, date), standardize_column_names],
             pa.schema([('date', pa.date32()), ('Symbol', pa.string())]))
 
     # Process trade files
     logging.info("Processing trade tables")
-    trade_files = list(src.glob('EQY_US_ALL_TRADE_*.psv'))
-    for file_path in trade_files:
-        logging.info("  Parsing file %s", file_path.name)
-        process(file_path, TRADE_SCHEMA, dst / 'trade',
-            [partial(letter_filter, start_char, end_char), extra_conv, symbol_conv,
-            partial(trim_dict_encode, ['Sale Condition']),
-            partial(convert_time_strings_to_time64, ['Time', 'Participant Timestamp', 'Trade Reporting Facility TRF Timestamp']),
-            partial(add_date_column, file_path), standardize_column_names],
-            pa.schema([('date', pa.date32()), ('Symbol', pa.string())]))
+    trade_file = f"{src}/EQY_US_ALL_TRADE_{datestr}.psv"
+    logging.info(f"  Parsing file {trade_file}")
+    process(trade_file, TRADE_SCHEMA, dst / 'trade',
+        [partial(letter_filter, start_char, end_char), extra_conv, symbol_conv,
+        partial(trim_dict_encode, ['Sale Condition']),
+        partial(convert_time_strings_to_time64, ['Time', 'Participant Timestamp', 'Trade Reporting Facility TRF Timestamp']),
+        partial(add_date_column, date), standardize_column_names],
+        pa.schema([('date', pa.date32()), ('Symbol', pa.string())]))
 
     logging.info("\nAll processing complete.")
+
+def parse_yyyymmdd(date_str: str):
+    """
+    Converts a YYYYMMDD string to a datetime.datetime object.
+
+    Args:
+        date_str: The date string in 'YYYYMMDD' format (e.g., '20250701').
+
+    Returns:
+        A datetime.datetime object.
+    """
+    try:
+        # '%Y' for four-digit year, '%m' for month, '%d' for day
+        date_object = datetime.strptime(date_str, '%Y%m%d')
+        return date_object
+    except ValueError:
+        # If the string doesn't match the format, raise a ValueError
+        # to let argparse handle the error gracefully.
+        raise argparse.ArgumentTypeError(
+            f"Invalid date format: '{date_str}'. Expected YYYYMMDD (e.g., 20250701)."
+        )
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
         description="Parses NYSE TAQ PSV files and persists to a partitioned Parquet dataset.",
         formatter_class=argparse.RawTextHelpFormatter
+    )
+    parser.add_argument(
+        '-date', type=parse_yyyymmdd, required=True,
+         help="Date to process in YYYYMMDD format, e.g. 20250701."
     )
     parser.add_argument(
         '-src', type=Path, required=True,
@@ -502,4 +519,4 @@ if __name__ == '__main__':
         ]
     )
 
-    main(args.src, args.dst, args.letters, args.includetestsymbols)
+    main(args.date, args.src, args.dst, args.letters, args.includetestsymbols)
