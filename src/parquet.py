@@ -393,7 +393,7 @@ def process(file_path: Path, schema: pa.Schema, table_output_path: Path,
             "Error processing file %s: %s", file_path, e, exc_info=True
         )
 
-def main(src: Path, dst: Path, letters: str) -> None:
+def main(src: Path, dst: Path, letters: str, includetestsymbols: bool) -> None:
     """Main entry point to find, process, and persist all data files.
 
     Args:
@@ -428,11 +428,19 @@ def main(src: Path, dst: Path, letters: str) -> None:
     master_files = list(src.glob('EQY_US_ALL_REF_MASTER_*.psv'))
     for file_path in master_files:
         logging.info("  Parsing file %s", file_path.name)
-        process(file_path, MASTER_SCHEMA, dst / 'master',
-            [partial(letter_filter, start_char, end_char), symbol_conv,
-            partial(convert_date_strings_to_date32, ['Effective_Date']),
-            partial(add_date_column, file_path), standardize_column_names],
-            pa.schema([('date', pa.date32())]))
+        master = parse_and_convert(file_path, MASTER_SCHEMA, [partial(letter_filter, start_char, end_char)])
+        if includetestsymbols:
+            master_extra_conv = extra_conv = lambda x: x
+        else:
+            test_symbols = master['Symbol'].filter(master['Test_Symbol_Flag'])
+            master_extra_conv = lambda t: t.filter(pc.invert(t['Test_Symbol_Flag']))
+            extra_conv = lambda t: t.filter(pc.invert(pc.is_in(t['Symbol'], test_symbols)))
+
+        master_conv= [master_extra_conv, symbol_conv,
+                      partial(convert_date_strings_to_date32, ['Effective_Date']),
+                      partial(add_date_column, file_path), standardize_column_names]
+        master= pipe(master, *master_conv)
+        persist(master, dst / 'master', pa.schema([('date', pa.date32())]))
 
     # Process quote files
     logging.info("Processing quote tables")
@@ -440,7 +448,7 @@ def main(src: Path, dst: Path, letters: str) -> None:
     for file_path in quote_files:
         logging.info("  Parsing file %s", file_path.name)
         process(file_path, QUOTE_SCHEMA, dst / 'quote',
-            [partial(letter_filter, start_char, end_char), symbol_conv,
+            [partial(letter_filter, start_char, end_char), extra_conv, symbol_conv,
             partial(trim_dict_encode, ['FINRA_BBO_Indicator']),
             partial(convert_time_strings_to_time64, ['Time', 'Participant_Timestamp', 'FINRA_ADF_Timestamp']),
             partial(add_date_column, file_path), standardize_column_names],
@@ -452,7 +460,7 @@ def main(src: Path, dst: Path, letters: str) -> None:
     for file_path in trade_files:
         logging.info("  Parsing file %s", file_path.name)
         process(file_path, TRADE_SCHEMA, dst / 'trade',
-            [partial(letter_filter, start_char, end_char), symbol_conv,
+            [partial(letter_filter, start_char, end_char), extra_conv, symbol_conv,
             partial(trim_dict_encode, ['Sale Condition']),
             partial(convert_time_strings_to_time64, ['Time', 'Participant Timestamp', 'Trade Reporting Facility TRF Timestamp']),
             partial(add_date_column, file_path), standardize_column_names],
@@ -478,6 +486,11 @@ if __name__ == '__main__':
         '-letters', type=str, default='A-Z',
         help="Symbol range to process, e.g., 'A-K'. Defaults to 'A-Z'."
     )
+
+    parser.add_argument(
+        '-includetestsymbols', action='store_true',
+        help="True if test symbols should be skipped. Defaults to False."
+    )
     args = parser.parse_args()
 
 # --- Logging Setup ---
@@ -489,4 +502,4 @@ if __name__ == '__main__':
         ]
     )
 
-    main(args.src, args.dst, args.letters)
+    main(args.src, args.dst, args.letters, args.includetestsymbols)
