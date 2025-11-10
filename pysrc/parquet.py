@@ -5,7 +5,8 @@ Script to parse NYSE TAQ PSV files, transform data using PyArrow,
 and persist to a hive-partitioned Parquet dataset.
 
 Environment variables:
-    COMPRESSION     Compression algorithm to be used when persisting data
+    COMPRESSION         Compression algorithm to be used when persisting data, e.g. ZSTD
+    COMPRESSION_LEVEL   Level of compression, e.g. 10
 """
 
 import os
@@ -23,6 +24,7 @@ import pyarrow as pa
 import pyarrow.compute as pc
 import pyarrow.csv as csv
 import pyarrow.dataset as ds
+import pyarrow.parquet as pq
 
 # Table master: EQY_US_ALL_REF_MASTER_*.csv
 MASTER_SCHEMA: Final[pa.Schema] = pa.schema([
@@ -340,16 +342,23 @@ def test_symbol_filter(test_symbols: pa.Array, table: pa.Table) -> pa.Table:
     return table.filter(pc.invert(pc.is_in(table['Symbol'], test_symbols)))
 
 # --- Main Processing ---
-def get_write_options() -> ds.FileWriteOptions:
+def get_write_options(sort_idx: int) -> ds.FileWriteOptions:
     """Get file write options (e.g. compression algorithm) based on environment variables.
     """
     compression = os.getenv('COMPRESSION')
     write_kwargs = {}
     if compression:
-        logging.info("Setting parquet compression to {compression}")
+        logging.info(f"Setting parquet compression to {compression}")
         write_kwargs['compression'] = compression
     else:
         write_kwargs['compression'] = None
+
+    compression_level = os.getenv('COMPRESSION_LEVEL')
+    if compression_level:
+        logging.info(f"Setting parquet compression level to {compression_level}")
+        write_kwargs['compression_level'] = int(compression_level)
+
+    write_kwargs['sorting_columns'] = [pq.SortingColumn(sort_idx)] # sorted by Time, a bit ugly hardcoding!
 
     return ds.ParquetFileFormat().make_write_options(**write_kwargs)
 
@@ -462,6 +471,7 @@ def main(date: datetime, src: Path, dst: Path, letters: str, includetestsymbols:
     master_file = f"{src}/EQY_US_ALL_REF_MASTER_{datestr}.psv"
 
     logging.info(f"  Parsing file {master_file}")
+    # no compression for the small master table
     master = parse_and_convert(master_file, MASTER_SCHEMA, [first_letter_filter])
     if includetestsymbols:
         master_extra_conv = extra_conv = IDENTITY
@@ -474,22 +484,20 @@ def main(date: datetime, src: Path, dst: Path, letters: str, includetestsymbols:
                   partial(convert_date_strings_to_date32, ['Effective_Date']),
                   partial(add_date_column, date), standardize_column_names]
     master= pipe(master, *master_conv)
-    persist(master, dst / 'master', pa.schema([('date', pa.date32())]),
-        ds.ParquetFileFormat().make_write_options(compression='none')) # no compression for the small master table
-
+    parquet_options_master = ds.ParquetFileFormat().make_write_options(compression='none')
+    persist(master, dst / 'master', pa.schema([('date', pa.date32())]), parquet_options_master)
     # Process quote files
-    parquet_options = get_write_options()
-
     logging.info("Processing quote tables")
     quote_files = list(src.glob(f"SPLITS_US_ALL_BBO_[{letters}]_{datestr}.psv")) # first letter filter happens here
     quote_conv = [extra_conv, symbol_conv,
             partial(trim_dict_encode, ['FINRA_BBO_Indicator']),
             partial(convert_time_strings_to_time64, ['Time', 'Participant_Timestamp', 'FINRA_ADF_Timestamp']),
             partial(add_date_column, date), standardize_column_names]
+    parquet_options_quote = get_write_options(QUOTE_SCHEMA.get_field_index('TIME'))
     for file_path in quote_files:
         logging.info(f"  Parsing file {file_path}", )
         process(file_path, QUOTE_SCHEMA, dst / 'quote', quote_conv,
-            pa.schema([('date', pa.date32()), ('Symbol', pa.string())]), parquet_options)
+            pa.schema([('date', pa.date32()), ('Symbol', pa.string())]), parquet_options_quote)
 
     # Process trade files
     logging.info("Processing trade tables")
@@ -499,8 +507,9 @@ def main(date: datetime, src: Path, dst: Path, letters: str, includetestsymbols:
         partial(trim_dict_encode, ['Sale Condition']),
         partial(convert_time_strings_to_time64, ['Time', 'Participant Timestamp', 'Trade Reporting Facility TRF Timestamp']),
         partial(add_date_column, date), standardize_column_names]
+    parquet_options_trade = get_write_options(TRADE_SCHEMA.get_field_index('TIME'))
     process(trade_file, TRADE_SCHEMA, dst / 'trade', trade_conv,
-        pa.schema([('date', pa.date32()), ('Symbol', pa.string())]), parquet_options)
+        pa.schema([('date', pa.date32()), ('Symbol', pa.string())]), parquet_options_trade)
 
     elapsed = datetime.now() - start_time
     logging.info(f"\nAll processing completed in {elapsed}")
