@@ -155,7 +155,7 @@ def letter_filter(start_char: str, end_char: str, table: pa.Table) -> pa.Table:
     Returns:
         The filtered PyArrow table.
     """
-    logging.info("    Starting Symbol first letter filtering")
+    logging.info("    Filtering based on the first letter of the Symbol values")
     symbol_col = pc.utf8_trim_whitespace(table['Symbol'])
     first_chars = pc.utf8_slice_codeunits(symbol_col, 0, 1)
     filter_expression = pc.and_(
@@ -173,7 +173,7 @@ def symbol_conv(table: pa.Table) -> pa.Table:
     Returns:
         The table with the modified 'Symbol' column.
     """
-    logging.info("    Starting Symbol conversion")
+    logging.info("    Converting the Symbol column")
     symbol_col = pc.replace_substring_regex(
         table['Symbol'],
         pattern=r'\s+',
@@ -191,6 +191,7 @@ def trim_dict_encode(trim_cols: List[str], table: pa.Table) -> pa.Table:
     Returns:
         The table with the modified columns.
     """
+    logging.info("    Trimming and dictionary encoding some columns")
     for col_name in trim_cols:
         trimmed_col = pc.utf8_trim_whitespace(table[col_name])
         casted_column = trimmed_col.cast(pa.dictionary(pa.int32(), pa.string()))
@@ -262,7 +263,7 @@ def convert_time_strings_to_time64(time_cols: List[str], table: pa.Table) -> pa.
     Returns:
         The table with converted time columns.
     """
-    logging.info("    Starting string to time64 conversion")
+    logging.info("    Converting some string columns to time64 columns")
     for col_name in time_cols:
         time_col = convert_time_string_array_to_time64(table[col_name])
         table = table.set_column(table.schema.get_field_index(col_name), col_name, time_col)
@@ -280,7 +281,7 @@ def convert_date_strings_to_date32(date_cols: List[str], table: pa.Table) -> pa.
     Returns:
         The table with converted date columns.
     """
-    logging.info("    Starting string to date32 conversion")
+    logging.info("    Converting some string columns to date32 columns")
     for col_name in date_cols:
         date_col = pc.strptime(pc.if_else(
                 pc.equal(pc.utf8_length(table[col_name]), 0), None, table[col_name]
@@ -319,9 +320,22 @@ def standardize_column_names(table: pa.Table) -> pa.Table:
     Returns:
         The table with renamed columns.
     """
-    logging.info("    standardizing column names")
+    logging.info("    Standardizing column names")
     new_names = [name.replace(" ", "").replace("_", "") for name in table.column_names]
     return table.rename_columns(new_names)
+
+def test_symbol_filter(test_symbols: pa.Array, table: pa.Table) -> pa.Table:
+    """Filtering out test symbol entries.
+
+    Args:
+        test_symbols: an array of the test symbols
+        table: The input PyArrow table.
+
+    Returns:
+        The table without test symbols.
+    """
+    logging.info("    Filtering out test symbol entries")
+    return table.filter(pc.invert(pc.is_in(table['Symbol'], test_symbols)))
 
 # --- Main Processing ---
 def parse_and_convert(file_path: Path, schema: pa.Schema, conv: List) -> pa.Table:
@@ -359,7 +373,7 @@ def persist(table: pa.Table, table_output_path: Path, partition_schema: pa.Schem
     if len(table) == 0:
         logging.info("  No rows after converting. Nothing to save.")
     else:
-        logging.info("  Writing %d rows", len(table))
+        logging.info("  Saving %d rows", len(table))
         ds.write_dataset(
             table,
             base_dir=table_output_path,
@@ -370,6 +384,7 @@ def persist(table: pa.Table, table_output_path: Path, partition_schema: pa.Schem
             file_options=PARQUET_OPTIONS,
             preserve_order=True # Assumes original data is sorted by Time
         )
+        logging.info(f"  Successfully wrote data to {table_output_path}")
 
 def process(file_path: Path, schema: pa.Schema, table_output_path: Path,
             conv: List, partition_schema: pa.Schema) -> None:
@@ -402,6 +417,7 @@ def main(date: datetime, src: Path, dst: Path, letters: str, includetestsymbols:
         SystemExit: If the source directory is invalid or the 'letters'
                     argument is malformed.
     """
+    start_time = datetime.now()
     if not src.is_dir():
         logging.error("Error: Data directory '%s' not found or is not a directory.", src)
         sys.exit(1)
@@ -433,7 +449,7 @@ def main(date: datetime, src: Path, dst: Path, letters: str, includetestsymbols:
     else:
         test_symbols = master['Symbol'].filter(master['Test_Symbol_Flag'])
         master_extra_conv = lambda t: t.filter(pc.invert(t['Test_Symbol_Flag']))
-        extra_conv = lambda t: t.filter(pc.invert(pc.is_in(t['Symbol'], test_symbols)))
+        extra_conv = partial(test_symbol_filter, test_symbols)
 
     master_conv= [master_extra_conv, symbol_conv,
                   partial(convert_date_strings_to_date32, ['Effective_Date']),
@@ -464,7 +480,8 @@ def main(date: datetime, src: Path, dst: Path, letters: str, includetestsymbols:
         partial(add_date_column, date), standardize_column_names],
         pa.schema([('date', pa.date32()), ('Symbol', pa.string())]))
 
-    logging.info("\nAll processing complete.")
+    elapsed = datetime.now() - start_time
+    logging.info(f"\nAll processing completed in {elapsed}")
 
 def parse_yyyymmdd(date_str: str):
     """

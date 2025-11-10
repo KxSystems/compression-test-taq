@@ -107,7 +107,7 @@ QUOTESCHEMA: ([
   ])
 
 symbolConv: {
-  .qlog.info "    Starting Symbol conversion";
+  .qlog.info "    Converting the Symbol column";
   update `$"."^Symbol from x}  / replace whitespace by dot
 
 parseAndConvert: {[schema;conv; fileName:`C]
@@ -136,13 +136,14 @@ process: {[date:`C; tableName:`s; schema; conv; op; fileName:`C]
   }
 
 testSymbolFilter: {[testSymbols; t]
-  .qlog.info "    Starting test Symbol filtering";
+  .qlog.info "    Filtering out test symbol entries";
   ?[t;enlist (not; (in; `Symbol; enlist testSymbols));0b;()]
   }
 
 main: {[date:`C; src:`C; dst; letters:`C; includetestsymbols:`b]
+  startTime: .z.p;
   letterFilter: $[count letters; {
-    .qlog.info "    Starting Symbol first letter filtering";
+    .qlog.info "    Filtering based on the first letter of the Symbol values";
     select from y where Symbol[;0] within x}[letters except "-"]; ::];
 
   .qlog.info "Processing master table...";
@@ -172,6 +173,8 @@ main: {[date:`C; src:`C; dst; letters:`C; includetestsymbols:`b]
   process[date; `trade;TRADESCHEMA;extraConv symbolConv letterFilter@;:; T];
   .qlog.info "  Adding parted attribute...";
   psym[`Symbol; .Q.par[dst; "D"$date; `trade]];
+
+  .qlog.info "\nAll processing completed in ", 2_string .z.p - startTime;
   }
 
 
@@ -192,5 +195,4 @@ if[(`letters in ko) and not o[`letters] like "?-?";
 
 main[o`date; o`src; DST; o `letters; `includetestsymbols in ko]
 
-.qlog.info "\nAll processing complete."
 if[not `debug in ko; exit 0]
