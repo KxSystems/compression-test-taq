@@ -106,7 +106,9 @@ QUOTESCHEMA: ([
   SecurityStatusIndicator:"C"
   ])
 
-symbolConv: {update `$"."^Symbol from x}  / replace whitespace by dot
+symbolConv: {
+  .qlog.info "    Starting Symbol conversion";
+  update `$"."^Symbol from x}  / replace whitespace by dot
 
 parseAndConvert: {[schema;conv; fileName:`C]
   .qlog.info "  Parsing file ", fileName;
@@ -133,27 +135,33 @@ process: {[date:`C; tableName:`s; schema; conv; op; fileName:`C]
   enumAndSave[t; tableName; op; date]
   }
 
+testSymbolFilter: {[testSymbols; t]
+  .qlog.info "    Starting test Symbol filtering";
+  ?[t;enlist (not; (in; `Symbol; enlist testSymbols));0b;()]
+  }
+
 main: {[date:`C; src:`C; dst; letters:`C; includetestsymbols:`b]
-  letterFilter: $[count letters; {select from y where Symbol[;0] within x}[letters except "-"]; ::];
+  letterFilter: $[count letters; {
+    .qlog.info "    Starting Symbol first letter filtering";
+    select from y where Symbol[;0] within x}[letters except "-"]; ::];
 
   .qlog.info "Processing master table...";
   M: src, "/EQY_US_ALL_REF_MASTER_", date, ".psv";
   master: parseAndConvert[MASTERSCHEMA;letterFilter; M];
   (masterExtraConv; extraConv): $[includetestsymbols; (::; ::); [
     testSymbols: asc first flip symbolConv select Symbol from master where TestSymbolFlag; / TODO: avoid first
-    (?[;enlist (not;`TestSymbolFlag);0b;()]; ?[;enlist (not; (in; `Symbol; enlist testSymbols));0b;()])]];
+    (?[;enlist (not; `TestSymbolFlag);0b;()]; testSymbolFilter[testSymbols])]];
 
   convMaster: symbolConv masterExtraConv@;
-  conv: extraConv symbolConv letterFilter@;
-
   enumAndSave[convMaster[master]; `master; :; date];
 
+  / We apply first letter filter in file selection
   quotePattern: "splits_us_all_bbo_[", $[count letters;lower letters;"a-z"], "]_", date, ".psv";
   F: key hsym`$src;
   Q: (src, "/"),/: string asc F where (lower F) like quotePattern;
   if[0<count Q;
     .qlog.info "Processing quote tables...";
-    processFn: process[date; `quote; QUOTESCHEMA; conv];
+    processFn: process[date; `quote; QUOTESCHEMA; extraConv symbolConv@];
     processFn[:; first Q];
     processFn[,] each 1_Q;
     .qlog.info "  Adding parted attribute...";
@@ -161,7 +169,7 @@ main: {[date:`C; src:`C; dst; letters:`C; includetestsymbols:`b]
 
   .qlog.info "Processing trade table...";
   T: src, "/EQY_US_ALL_TRADE_", date, ".psv";
-  process[date; `trade;TRADESCHEMA;conv;:; T];
+  process[date; `trade;TRADESCHEMA;extraConv symbolConv letterFilter@;:; T];
   .qlog.info "  Adding parted attribute...";
   psym[`Symbol; .Q.par[dst; "D"$date; `trade]];
   }
