@@ -3,6 +3,9 @@
 """
 Script to parse NYSE TAQ PSV files, transform data using PyArrow,
 and persist to a hive-partitioned Parquet dataset.
+
+Environment variables:
+    COMPRESSION     Compression algorithm to be used when persisting data
 """
 
 import os
@@ -347,11 +350,6 @@ def get_write_options() -> ds.FileWriteOptions:
         write_kwargs['compression'] = compression
     else:
         write_kwargs['compression'] = None
-
-    row_group_size = os.getenv('ROW_GROUP_SIZE')
-    if row_group_size:
-        logging.info("Setting parquet group size to {row_group_size}")
-        write_kwargs['row_group_size'] = row_group_size
 
     return ds.ParquetFileFormat().make_write_options(**write_kwargs)
 
