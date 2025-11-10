@@ -5,6 +5,7 @@ Script to parse NYSE TAQ PSV files, transform data using PyArrow,
 and persist to a hive-partitioned Parquet dataset.
 """
 
+import os
 import argparse
 import logging
 import sys
@@ -110,10 +111,6 @@ QUOTE_SCHEMA: Final[pa.Schema] = pa.schema([
 ])
 
 PARSE_OPTIONS = csv.ParseOptions(delimiter='|')
-
-PARQUET_OPTIONS = ds.ParquetFileFormat().make_write_options(
-    compression='none'
-)
 
 IDENTITY = lambda x: x
 
@@ -340,6 +337,24 @@ def test_symbol_filter(test_symbols: pa.Array, table: pa.Table) -> pa.Table:
     return table.filter(pc.invert(pc.is_in(table['Symbol'], test_symbols)))
 
 # --- Main Processing ---
+def get_write_options() -> ds.FileWriteOptions:
+    """Get file write options (e.g. compression algorithm) based on environment variables.
+    """
+    compression = os.getenv('COMPRESSION')
+    write_kwargs = {}
+    if compression:
+        logging.info("Setting parquet compression to {compression}")
+        write_kwargs['compression'] = compression
+    else:
+        write_kwargs['compression'] = None
+
+    row_group_size = os.getenv('ROW_GROUP_SIZE')
+    if row_group_size:
+        logging.info("Setting parquet group size to {row_group_size}")
+        write_kwargs['row_group_size'] = row_group_size
+
+    return ds.ParquetFileFormat().make_write_options(**write_kwargs)
+
 def parse_and_convert(file_path: Path, schema: pa.Schema, conv: List) -> pa.Table:
     """Parses a PSV file into a Pyarrow table and applies a list of transformation function on the table.
 
@@ -364,7 +379,7 @@ def parse_and_convert(file_path: Path, schema: pa.Schema, conv: List) -> pa.Tabl
     logging.info("  Renaming and converting")
     return pipe(table, *conv)
 
-def persist(table: pa.Table, table_output_path: Path, partition_schema: pa.Schema) -> None:
+def persist(table: pa.Table, table_output_path: Path, partition_schema: pa.Schema, parquet_options: ds.FileWriteOptions) -> None:
     """Persists a Pyarrow table to a Parquet dataset.
 
     Args:
@@ -375,7 +390,7 @@ def persist(table: pa.Table, table_output_path: Path, partition_schema: pa.Schem
     if len(table) == 0:
         logging.info("  No rows after converting. Nothing to save.")
     else:
-        logging.info("  Saving %d rows", len(table))
+        logging.info(f"  Saving {len(table)} rows")
         ds.write_dataset(
             table,
             base_dir=table_output_path,
@@ -383,13 +398,13 @@ def persist(table: pa.Table, table_output_path: Path, partition_schema: pa.Schem
             partitioning=ds.partitioning(partition_schema, flavor='hive'),
             max_partitions=15000,
             existing_data_behavior='overwrite_or_ignore',
-            file_options=PARQUET_OPTIONS,
+            file_options=parquet_options,
             preserve_order=True # Assumes original data is sorted by Time
         )
         logging.info(f"  Successfully wrote data to {table_output_path}")
 
 def process(file_path: Path, schema: pa.Schema, table_output_path: Path,
-            conv: List, partition_schema: pa.Schema) -> None:
+            conv: List, partition_schema: pa.Schema, parquet_options: ds.FileWriteOptions) -> None:
     """Reads, transforms, and persists a single PSV file to a Parquet dataset.
 
     Args:
@@ -401,7 +416,7 @@ def process(file_path: Path, schema: pa.Schema, table_output_path: Path,
     """
     try:
         table = parse_and_convert(file_path, schema, conv)
-        persist(table, table_output_path, partition_schema)
+        persist(table, table_output_path, partition_schema, parquet_options)
     except Exception as e:
         logging.error(
             "Error processing file %s: %s", file_path, e, exc_info=True
@@ -461,9 +476,12 @@ def main(date: datetime, src: Path, dst: Path, letters: str, includetestsymbols:
                   partial(convert_date_strings_to_date32, ['Effective_Date']),
                   partial(add_date_column, date), standardize_column_names]
     master= pipe(master, *master_conv)
-    persist(master, dst / 'master', pa.schema([('date', pa.date32())]))
+    persist(master, dst / 'master', pa.schema([('date', pa.date32())]),
+        ds.ParquetFileFormat().make_write_options(compression='none')) # no compression for the small master table
 
     # Process quote files
+    parquet_options = get_write_options()
+
     logging.info("Processing quote tables")
     quote_files = list(src.glob(f"SPLITS_US_ALL_BBO_[{letters}]_{datestr}.psv")) # first letter filter happens here
     quote_conv = [extra_conv, symbol_conv,
@@ -473,7 +491,7 @@ def main(date: datetime, src: Path, dst: Path, letters: str, includetestsymbols:
     for file_path in quote_files:
         logging.info(f"  Parsing file {file_path}", )
         process(file_path, QUOTE_SCHEMA, dst / 'quote', quote_conv,
-            pa.schema([('date', pa.date32()), ('Symbol', pa.string())]))
+            pa.schema([('date', pa.date32()), ('Symbol', pa.string())]), parquet_options)
 
     # Process trade files
     logging.info("Processing trade tables")
@@ -484,7 +502,7 @@ def main(date: datetime, src: Path, dst: Path, letters: str, includetestsymbols:
         partial(convert_time_strings_to_time64, ['Time', 'Participant Timestamp', 'Trade Reporting Facility TRF Timestamp']),
         partial(add_date_column, date), standardize_column_names]
     process(trade_file, TRADE_SCHEMA, dst / 'trade', trade_conv,
-        pa.schema([('date', pa.date32()), ('Symbol', pa.string())]))
+        pa.schema([('date', pa.date32()), ('Symbol', pa.string())]), parquet_options)
 
     elapsed = datetime.now() - start_time
     logging.info(f"\nAll processing completed in {elapsed}")
