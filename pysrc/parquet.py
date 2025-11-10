@@ -115,6 +115,8 @@ PARQUET_OPTIONS = ds.ParquetFileFormat().make_write_options(
     compression='none'
 )
 
+IDENTITY = lambda x: x
+
 # --- Helper Functions ---
 
 def get_convert_options(schema: pa.Schema) -> pa.csv.ConvertOptions:
@@ -424,17 +426,21 @@ def main(date: datetime, src: Path, dst: Path, letters: str, includetestsymbols:
 
     dst.mkdir(parents=True, exist_ok=True)
 
-    try:
-        start_char, end_char = letters.split('-')
-        if len(start_char) != 1 or len(end_char) != 1:
-             raise ValueError("Range must consist of single characters.")
-    except ValueError:
-        logging.error(
-            "Invalid letter parameter: '%s'. Must be in form START-END "
-            "(e.g., A-K or L-Z).",
-            letters
-        )
-        sys.exit(1)
+    if letters == "A-Z":
+        first_letter_filter = IDENTITY
+    else:
+        try:
+            start_char, end_char = letters.split('-')
+            if len(start_char) != 1 or len(end_char) != 1:
+                 raise ValueError("Range must consist of single characters.")
+            first_letter_filter = partial(letter_filter, start_char, end_char)
+        except ValueError:
+            logging.error(
+                "Invalid letter parameter: '%s'. Must be in form START-END "
+                "(e.g., A-K or L-Z).",
+                letters
+            )
+            sys.exit(1)
 
     datestr = date.strftime('%Y%m%d')
 
@@ -443,9 +449,9 @@ def main(date: datetime, src: Path, dst: Path, letters: str, includetestsymbols:
     master_file = f"{src}/EQY_US_ALL_REF_MASTER_{datestr}.psv"
 
     logging.info(f"  Parsing file {master_file}")
-    master = parse_and_convert(master_file, MASTER_SCHEMA, [partial(letter_filter, start_char, end_char)])
+    master = parse_and_convert(master_file, MASTER_SCHEMA, [first_letter_filter])
     if includetestsymbols:
-        master_extra_conv = extra_conv = lambda x: x
+        master_extra_conv = extra_conv = IDENTITY
     else:
         test_symbols = master['Symbol'].filter(master['Test_Symbol_Flag'])
         master_extra_conv = lambda t: t.filter(pc.invert(t['Test_Symbol_Flag']))
@@ -459,25 +465,25 @@ def main(date: datetime, src: Path, dst: Path, letters: str, includetestsymbols:
 
     # Process quote files
     logging.info("Processing quote tables")
-    quote_files = list(src.glob(f"SPLITS_US_ALL_BBO_[{letters}]_{datestr}.psv"))
-    for file_path in quote_files:
-        logging.info(f"  Parsing file {file_path}", )
-        process(file_path, QUOTE_SCHEMA, dst / 'quote',
-            [partial(letter_filter, start_char, end_char), extra_conv, symbol_conv,
+    quote_files = list(src.glob(f"SPLITS_US_ALL_BBO_[{letters}]_{datestr}.psv")) # first letter filter happens here
+    quote_conv = [extra_conv, symbol_conv,
             partial(trim_dict_encode, ['FINRA_BBO_Indicator']),
             partial(convert_time_strings_to_time64, ['Time', 'Participant_Timestamp', 'FINRA_ADF_Timestamp']),
-            partial(add_date_column, date), standardize_column_names],
+            partial(add_date_column, date), standardize_column_names]
+    for file_path in quote_files:
+        logging.info(f"  Parsing file {file_path}", )
+        process(file_path, QUOTE_SCHEMA, dst / 'quote', quote_conv,
             pa.schema([('date', pa.date32()), ('Symbol', pa.string())]))
 
     # Process trade files
     logging.info("Processing trade tables")
     trade_file = f"{src}/EQY_US_ALL_TRADE_{datestr}.psv"
     logging.info(f"  Parsing file {trade_file}")
-    process(trade_file, TRADE_SCHEMA, dst / 'trade',
-        [partial(letter_filter, start_char, end_char), extra_conv, symbol_conv,
+    trade_conv = [first_letter_filter, extra_conv, symbol_conv,
         partial(trim_dict_encode, ['Sale Condition']),
         partial(convert_time_strings_to_time64, ['Time', 'Participant Timestamp', 'Trade Reporting Facility TRF Timestamp']),
-        partial(add_date_column, date), standardize_column_names],
+        partial(add_date_column, date), standardize_column_names]
+    process(trade_file, TRADE_SCHEMA, dst / 'trade', trade_conv,
         pa.schema([('date', pa.date32()), ('Symbol', pa.string())]))
 
     elapsed = datetime.now() - start_time
@@ -542,4 +548,4 @@ if __name__ == '__main__':
         ]
     )
 
-    main(args.date, args.src, args.dst, args.letters, args.includetestsymbols)
+    main(args.date, args.src, args.dst, args.letters.upper(), args.includetestsymbols)
