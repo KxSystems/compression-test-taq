@@ -146,7 +146,7 @@ main: {[date:`C; src:`C; dst; letters:`C; includetestsymbols:`b]
   convMaster: symbolConv masterExtraConv@;
   conv: extraConv symbolConv letterFilter@;
 
-  enumAndSave[convMaster[master]; `master; :; M];
+  enumAndSave[convMaster[master]; `master; :; date];
 
   quotePattern: "splits_us_all_bbo_[", $[count letters;lower letters;"a-z"], "]_", date, ".psv";
   F: key hsym`$src;
