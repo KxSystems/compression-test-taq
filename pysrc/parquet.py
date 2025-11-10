@@ -155,6 +155,7 @@ def letter_filter(start_char: str, end_char: str, table: pa.Table) -> pa.Table:
     Returns:
         The filtered PyArrow table.
     """
+    logging.info("    Starting Symbol first letter filtering")
     symbol_col = pc.utf8_trim_whitespace(table['Symbol'])
     first_chars = pc.utf8_slice_codeunits(symbol_col, 0, 1)
     filter_expression = pc.and_(
@@ -172,6 +173,7 @@ def symbol_conv(table: pa.Table) -> pa.Table:
     Returns:
         The table with the modified 'Symbol' column.
     """
+    logging.info("    Starting Symbol conversion")
     symbol_col = pc.replace_substring_regex(
         table['Symbol'],
         pattern=r'\s+',
@@ -260,6 +262,7 @@ def convert_time_strings_to_time64(time_cols: List[str], table: pa.Table) -> pa.
     Returns:
         The table with converted time columns.
     """
+    logging.info("    Starting string to time64 conversion")
     for col_name in time_cols:
         time_col = convert_time_string_array_to_time64(table[col_name])
         table = table.set_column(table.schema.get_field_index(col_name), col_name, time_col)
@@ -277,6 +280,7 @@ def convert_date_strings_to_date32(date_cols: List[str], table: pa.Table) -> pa.
     Returns:
         The table with converted date columns.
     """
+    logging.info("    Starting string to date32 conversion")
     for col_name in date_cols:
         date_col = pc.strptime(pc.if_else(
                 pc.equal(pc.utf8_length(table[col_name]), 0), None, table[col_name]
@@ -300,6 +304,7 @@ def add_date_column(date: datetime, table: pa.Table) -> pa.Table:
         The table with the new 'date' column. If no date is found
         in the filename, the column will be all nulls.
     """
+    logging.info("    Adding date column")
     date_array = pa.array([date.date()] * len(table), type=pa.date32())
     return table.append_column('date', date_array)
 
@@ -314,6 +319,7 @@ def standardize_column_names(table: pa.Table) -> pa.Table:
     Returns:
         The table with renamed columns.
     """
+    logging.info("    standardizing column names")
     new_names = [name.replace(" ", "").replace("_", "") for name in table.column_names]
     return table.rename_columns(new_names)
 
