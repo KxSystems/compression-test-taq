@@ -128,6 +128,16 @@ parseAndConvert: {[schema;conv; fileName:`C]
   conv raw
  }
 
+genericSet:{[iter; path; tab]
+  .Q.dd[path;`.d] set cols tab;
+	iter[{[path;tab;c] .Q.dd[path;c] set tab c}[path;tab]; cols tab];
+	}
+
+
+genericUpsert:{[iter; path; tab]
+	iter[{[path;tab;c] .Q.dd[path;c] upsert tab c}[path;tab]; cols tab];
+	}
+
 enumAndSave: {[t; tableName:`s;op;date:`C]
   .qlog.info "  Enumerating and saving ", string[count t], " rows";
   p: .Q.dd[.Q.par[DST;"D"$date;tableName];`];
@@ -174,14 +184,14 @@ main: {[date:`C; src:`C; dst; letters:`C; includetestsymbols:`b]
   if[0<count Q;
     .qlog.info "Processing quote tables...";
     processFn: process[date; `quote; QUOTESCHEMA; extraConv symbolConv@];
-    processFn[set; first Q];
-    processFn[upsert] each 1_Q;
+    processFn[genericSet[peach]; first Q];
+    processFn[genericUpsert[peach]] each 1_Q;
     .qlog.info "  Adding parted attribute...";
     psym[`Symbol; .Q.par[dst; "D"$date; `quote]]]
 
   .qlog.info "Processing trade table...";
   T: src, "/EQY_US_ALL_TRADE_", date, ".psv";
-  process[date; `trade;TRADESCHEMA;extraConv symbolConv letterFilter@;set; T];
+  process[date; `trade;TRADESCHEMA;extraConv symbolConv letterFilter@;genericSet[peach]; T];
   .qlog.info "  Adding parted attribute...";
   psym[`Symbol; .Q.par[dst; "D"$date; `trade]];
 
