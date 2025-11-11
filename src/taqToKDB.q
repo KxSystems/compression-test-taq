@@ -4,10 +4,9 @@
 //
 // Environment variables:
 //   Compression related parameters: https://code.kx.com/q/kb/file-compression/#compression-parameters
-//    LOGICAL_BLOCK_SIZE  Logical block size for the compression
-//    COMPRESSION         Compression algorithm to be used when persisting data, e.g. ZSTD
-//    COMPRESSION_LEVEL   Level of compression, e.g. 10
-//    COMPRESSSYMBOLCOL   True is the symbol column should also be compressed
+//    LOGICAL_BLOCK_SIZE    Logical block size for the compression
+//    COMPRESSION           Compression algorithm to be used when persisting data, e.g. ZSTD
+//    COMPRESSION_LEVEL     Level of compression, e.g. 10
 //
 // Improvement of tq.q available at https://github.com/KxSystems/kdb-taq
 // Improvements include:
@@ -117,6 +116,18 @@ QUOTESCHEMA: ([
   SecurityStatusIndicator:"C"
   ])
 
+
+getCompParam:{[]
+  algomap: ("NONE"; "QIPC"; "GZIP"; "SNAPPY"; "LZ4"; "ZSTD")!0 1 2 3 4 5i;
+  compalgo: upper getenv `COMPRESSION;
+  if[count compalgo;
+    if[not compalgo in key algomap;
+      .qlog.error "Unsupported compression algorithm: ", compalgo;
+      exit 6];
+    :("I"$getenv `LOGICAL_BLOCK_SIZE; algomap compalgo; "I"$getenv `COMPRESSION_LEVEL)];
+  3#0i
+  }
+
 symbolConv: {
   .qlog.info "    Converting the Symbol column";
   update `$"."^Symbol from x}  / replace whitespace by dot
@@ -128,9 +139,9 @@ parseAndConvert: {[schema;conv; fileName:`C]
   conv raw
  }
 
-genericSet:{[iter; path; tab]
+customSet:{[iter; path; tab]
   .Q.dd[path;`.d] set cols tab;
-	iter[{[path;tab;c] .Q.dd[path;c] set tab c}[path;tab]; cols tab];
+  iter[{[path;tab;c] .Q.dd[path;c] set tab c}[path;tab]; cols tab];
 	}
 
 
@@ -140,7 +151,7 @@ genericUpsert:{[iter; path; tab]
 
 enumAndSave: {[t; tableName:`s;op;date:`C]
   .qlog.info "  Enumerating and saving ", string[count t], " rows";
-  p: .Q.dd[.Q.par[DST;"D"$date;tableName];`];
+  p: .Q.par[DST;"D"$date;tableName];
   op[p; .Q.en[DST] t];
   .qlog.info "  Successfully wrote data to ", 1_string p
  }
@@ -166,17 +177,19 @@ main: {[date:`C; src:`C; dst; letters:`C; includetestsymbols:`b]
   letterFilter: $[count letters; {
     .qlog.info "    Filtering based on the first letter of the Symbol values";
     select from y where Symbol[;0] within x}[letters except "-"]; ::];
+  compparam: getCompParam[]; / check compression parameters before persisting anything
 
   .qlog.info "Processing master table...";
   M: src, "/EQY_US_ALL_REF_MASTER_", date, ".psv";
   master: parseAndConvert[MASTERSCHEMA;letterFilter; M];
   (masterExtraConv; extraConv): $[includetestsymbols; (::; ::); [
-    testSymbols: asc first flip symbolConv select Symbol from master where TestSymbolFlag; / TODO: avoid first
+    testSymbols: asc first flip symbolConv select Symbol from master where TestSymbolFlag;
     (?[;enlist (not; `TestSymbolFlag);0b;()]; testSymbolFilter[testSymbols])]];
 
   convMaster: symbolConv masterExtraConv@;
   enumAndSave[convMaster[master]; `master; set; date];
 
+  .z.zd: compparam; / apply compression to quote and trade
   / We apply first letter filter in file selection
   quotePattern: "splits_us_all_bbo_[", $[count letters;lower letters;"a-z"], "]_", date, ".psv";
   F: key hsym`$src;
@@ -184,14 +197,14 @@ main: {[date:`C; src:`C; dst; letters:`C; includetestsymbols:`b]
   if[0<count Q;
     .qlog.info "Processing quote tables...";
     processFn: process[date; `quote; QUOTESCHEMA; extraConv symbolConv@];
-    processFn[genericSet[peach]; first Q];
+    processFn[customSet[peach]; first Q];
     processFn[genericUpsert[peach]] each 1_Q;
     .qlog.info "  Adding parted attribute...";
     psym[`Symbol; .Q.par[dst; "D"$date; `quote]]]
 
   .qlog.info "Processing trade table...";
   T: src, "/EQY_US_ALL_TRADE_", date, ".psv";
-  process[date; `trade;TRADESCHEMA;extraConv symbolConv letterFilter@;genericSet[peach]; T];
+  process[date; `trade;TRADESCHEMA;extraConv symbolConv letterFilter@;customSet[peach]; T];
   .qlog.info "  Adding parted attribute...";
   psym[`Symbol; .Q.par[dst; "D"$date; `trade]];
 
