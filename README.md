@@ -43,7 +43,7 @@ Only a few days of data is available at the NYSE TAQ site. These data are replac
 
    1. Downloads compressed CSVs using `wget -c`. Flag `-c` is used to resume downloading if internet connection breaks.
    1. Extracts files
-   1. Generates HDB using modified KX TAQ scripts `src/tq.q`
+   1. Generates HDB using modified KX TAQ scripts `src/taqtoKDB.q`
 
 The compression benefit depends on the disk speed. Build the HDB on a storage that you would like to test. The path of the HDB directory can be passed as the first parameter of `generateDB.sh`.
 
