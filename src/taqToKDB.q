@@ -1,3 +1,14 @@
+//
+// Script to parse NYSE TAQ PSV files, transform data
+// and persist to a date-partitioned kdb+ database.
+//
+// Environment variables:
+//   Compression related parameters: https://code.kx.com/q/kb/file-compression/#compression-parameters
+//    LOGICAL_BLOCK_SIZE  Logical block size for the compression
+//    COMPRESSION         Compression algorithm to be used when persisting data, e.g. ZSTD
+//    COMPRESSION_LEVEL   Level of compression, e.g. 10
+//    COMPRESSSYMBOLCOL   True is the symbol column should also be compressed
+//
 // Improvement of tq.q available at https://github.com/KxSystems/kdb-taq
 // Improvements include:
 //    * k code is rewritten to q
@@ -120,7 +131,7 @@ parseAndConvert: {[schema;conv; fileName:`C]
 enumAndSave: {[t; tableName:`s;op;date:`C]
   .qlog.info "  Enumerating and saving ", string[count t], " rows";
   p: .Q.dd[.Q.par[DST;"D"$date;tableName];`];
-  .[p;();op;.Q.en[DST] t];
+  op[p; .Q.en[DST] t];
   .qlog.info "  Successfully wrote data to ", 1_string p
  }
 
@@ -154,7 +165,7 @@ main: {[date:`C; src:`C; dst; letters:`C; includetestsymbols:`b]
     (?[;enlist (not; `TestSymbolFlag);0b;()]; testSymbolFilter[testSymbols])]];
 
   convMaster: symbolConv masterExtraConv@;
-  enumAndSave[convMaster[master]; `master; :; date];
+  enumAndSave[convMaster[master]; `master; set; date];
 
   / We apply first letter filter in file selection
   quotePattern: "splits_us_all_bbo_[", $[count letters;lower letters;"a-z"], "]_", date, ".psv";
@@ -163,14 +174,14 @@ main: {[date:`C; src:`C; dst; letters:`C; includetestsymbols:`b]
   if[0<count Q;
     .qlog.info "Processing quote tables...";
     processFn: process[date; `quote; QUOTESCHEMA; extraConv symbolConv@];
-    processFn[:; first Q];
-    processFn[,] each 1_Q;
+    processFn[set; first Q];
+    processFn[upsert] each 1_Q;
     .qlog.info "  Adding parted attribute...";
     psym[`Symbol; .Q.par[dst; "D"$date; `quote]]]
 
   .qlog.info "Processing trade table...";
   T: src, "/EQY_US_ALL_TRADE_", date, ".psv";
-  process[date; `trade;TRADESCHEMA;extraConv symbolConv letterFilter@;:; T];
+  process[date; `trade;TRADESCHEMA;extraConv symbolConv letterFilter@;set; T];
   .qlog.info "  Adding parted attribute...";
   psym[`Symbol; .Q.par[dst; "D"$date; `trade]];
 
