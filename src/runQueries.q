@@ -15,21 +15,27 @@ PARQUET: "parquet" ~ o `format
 / Temporal solution!
 pfind:{$[{x~key x}y;(();y)y like x;raze .z.s[x]each` sv'y,'key y]}
 loadParquet: {[db]
-  quotefiles:pfind["*.parquet";hsym `$db,"/quote"];
-  tradefiles:pfind["*.parquet";hsym `$db,"/trade"];
+  masterfiles: pfind["*.parquet";hsym `$db,"/master"];
+  quotefiles: pfind["*.parquet";hsym `$db,"/quote"];
+  tradefiles: pfind["*.parquet";hsym `$db,"/trade"];
 
+  masterpaths: split where any flip(split:flip "/"vs'string masterfiles) like\: "*=*";
   quotepaths: split where any flip(split:flip "/"vs'string quotefiles) like\: "*=*";
   tradepaths: split where any flip(split:flip "/"vs'string tradefiles) like\: "*=*";
 
+  masterhive: {("SD";"=")0: x} each masterpaths;
   quotehive: ({("SD";"=")0: x}; {("SS";"=")0: x})@' quotepaths;
   tradehive: ({("SD";"=")0: x}; {("SS";"=")0: x})@' tradepaths;
 
+  masterparts: flip (masterhive[;0;0], `file)!masterhive[;1;], enlist masterfiles;
   quoteparts: flip (quotehive[;0;0], `file)!quotehive[;1;], enlist quotefiles;
   tradeparts: flip (tradehive[;0;0], `file)!tradehive[;1;], enlist tradefiles;
 
-  quotevirts:quoteparts!pq peach quotefiles;
-  tradevirts:tradeparts!pq peach tradefiles;
+  mastervirts: masterparts!pq peach masterfiles;
+  quotevirts: quoteparts!pq peach quotefiles;
+  tradevirts: tradeparts!pq peach tradefiles;
 
+  `master set tb.mkP mastervirts;
   `quote set tb.mkP quotevirts;
   `trade set tb.mkP tradevirts;
   }
