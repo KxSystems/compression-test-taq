@@ -111,8 +111,8 @@ Device: getDevice[DB]
 
 
 $[PARQUET; [
-  tb:use`pq.t;
-  ([pq]):use`pq;
+  tb:use`kx.pq.t;
+  ([pq]):use`kx.pq;
 
   .qlog.info raze system getenv[`FLUSH], " ", DB;
   .qlog.info "Collecting garbage";
