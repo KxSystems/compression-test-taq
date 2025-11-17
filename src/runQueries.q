@@ -10,34 +10,22 @@ result: ([] query: (); run1: `long$(); run2:`long$(); run3: `long$();
   mem1kb: `long$(); mem2kb:`long$(); mem3kb:`long$(); io1kb: `long$(); io2kb:`long$(); io3kb:`long$());
 
 DB: o `db
-PARQUET: "parquet" ~ o `format
+PARQUET: upper[o `format] like "PARQUET*"
+PARQUETROWGROUP: upper[o `format] ~ "PARQUET_ROWGROUP"
 
-/ Temporal solution!
-pfind:{$[{x~key x}y;(();y)y like x;raze .z.s[x]each` sv'y,'key y]}
-loadParquet: {[db]
-  masterfiles: pfind["*.parquet";hsym `$db,"/master"];
-  quotefiles: pfind["*.parquet";hsym `$db,"/quote"];
-  tradefiles: pfind["*.parquet";hsym `$db,"/trade"];
+loadHiveTable: {[res; dir]
+  c: key dir;
+  $[all {x=key x} .Q.dd[dir; first c];
+    res cross ([] file: .Q.dd[dir] each c); [
+    tmp: "S=;"0:";" sv string c;
+    raze .z.s[first[res] ,/: flip enlist[tmp[0;0]]!enlist $[tmp[0;0]=`date;"D"$;`$] tmp 1] each .Q.dd[dir] each c
+  ]]
+  }
 
-  masterpaths: split where any flip(split:flip "/"vs'string masterfiles) like\: "*=*";
-  quotepaths: split where any flip(split:flip "/"vs'string quotefiles) like\: "*=*";
-  tradepaths: split where any flip(split:flip "/"vs'string tradefiles) like\: "*=*";
-
-  masterhive: {("SD";"=")0: x} each masterpaths;
-  quotehive: ({("SD";"=")0: x}; {("SS";"=")0: x})@' quotepaths;
-  tradehive: ({("SD";"=")0: x}; {("SS";"=")0: x})@' tradepaths;
-
-  masterparts: flip (masterhive[;0;0], `file)!masterhive[;1;], enlist masterfiles;
-  quoteparts: flip (quotehive[;0;0], `file)!quotehive[;1;], enlist quotefiles;
-  tradeparts: flip (tradehive[;0;0], `file)!tradehive[;1;], enlist tradefiles;
-
-  mastervirts: masterparts!pq peach masterfiles;
-  quotevirts: quoteparts!pq peach quotefiles;
-  tradevirts: tradeparts!pq peach tradefiles;
-
-  `master set tb.mkP mastervirts;
-  `quote set tb.mkP quotevirts;
-  `trade set tb.mkP tradevirts;
+loadHiveDataset: {[db]
+  tNames: key hsym `$db;
+  tparts: loadHiveTable[();] each .Q.dd[hsym `$db] each tNames;
+  tNames set' {tb.mkP x!pq peach last flip x} each tparts
   }
 
 getDeviceOSX:{[db:`C]
@@ -120,7 +108,7 @@ $[PARQUET; [
 
   .qlog.info "loading parquet dataset at ", DB;
   ios: getKBRead[Device]`kB_read;
-  ts: system "ts loadParquet DB";
+  ts: system "ts loadHiveDataset DB";
   ioe: getKBRead[Device]`kB_read;
   compparm: "nyi_nyi_nyi";
   ];[
@@ -146,28 +134,31 @@ someSyms1: -20?symFreq; / should be symbols of various quote counts to force dif
 someSyms2: -100?symFreq;
 infreqIdList: @[; til[500] + count[symFreq] div 10] symFreq; / many, but small quote count symbols
 
+SYMBOLEQUAL: $[PARQUETROWGROUP; "~\\:"; "="]
+/ SYMBOLEQUAL: $[PARQUETROWGROUP; "like"; "="]
+
 runQuery "select from quote where date=min date, Time<0D10"; / Huge amount of data
-runQuery "select from quote where Symbol=anInfreqSym, Time within 0D16:30 0D08:30";       / All data from one symbol
+runQuery "select from quote where Symbol ", SYMBOLEQUAL, " anInfreqSym, Time within 0D08:30 0D16:30";       / All data from one symbol
 
 / SourceofTrade is a string in parquet and a character in kdb+
 runQuery "select date, Symbol, Time, TradePrice, TradeVolume, TradeStopStockIndicator, SaleCondition, Exchange from trade where date=min date, SourceofTrade ",  / selected fields only
   $[PARQUET; "~\\: enlist \"N\""; "=\"N\""];
-runQuery "select Symbol, Time, MidPrice: (BidPrice + OfferSize) %2 from select from quote where Symbol=aFreqSym";
-runQuery "select date, Symbol, Time, BidPrice, OfferPrice, BidSize, OfferSize, QuoteCondition, Exchange from quote where Symbol=aFreqSym";
+runQuery "select Symbol, Time, MidPrice: (BidPrice + OfferSize) %2 from select from quote where Symbol ", SYMBOLEQUAL, " aFreqSym";
+runQuery "select date, Symbol, Time, BidPrice, OfferPrice, BidSize, OfferSize, QuoteCondition, Exchange from quote where Symbol ", SYMBOLEQUAL, " aFreqSym";
 
-runQuery "select avgMidSize: avg (BidPrice + OfferPrice) % 2 from quote where Symbol=anInfreqSym";
-runQuery "select avgSpread: avg OfferPrice - BidPrice by 0D00:10 xbar Time from quote where Symbol=aFreqSym";
+runQuery "select avgMidSize: avg (BidPrice + OfferPrice) % 2 from quote where Symbol ", SYMBOLEQUAL, " anInfreqSym";
+runQuery "select avgSpread: avg OfferPrice - BidPrice by 0D00:10 xbar Time from quote where Symbol ", SYMBOLEQUAL, " aFreqSym";
 
 runQuery "distinct select Symbol, Exchange from trade where TradeVolume > 700000";
 
 runQuery "select weightedBidPice: BidSize wavg BidPrice, weightedOfferPice: OfferSize wavg OfferPrice by Symbol from quote where Symbol in someSyms1";
-runQuery "select weightedSpread: (BidSize + OfferSize) wavg OfferPrice - BidPrice from quote where Symbol=anInfreqSym";
+runQuery "select weightedSpread: (BidSize + OfferSize) wavg OfferPrice - BidPrice from quote where Symbol ", SYMBOLEQUAL, " anInfreqSym";
 
-runQuery "select Time, 20 mavg TradePrice from trade where Symbol = aFreqSym";
+runQuery "select Time, 20 mavg TradePrice from trade where Symbol ", SYMBOLEQUAL, " aFreqSym";
 runQuery "select 5 mavg (OfferPrice + BidPrice) % 2, 5 mavg OfferSize + BidSize by Symbol from quote where Symbol in someSyms1";
-runQuery "raze {select Symbol, 5 mavg (OfferPrice + BidPrice) %2, 5 mavg OfferSize + BidSize from quote where Symbol=x} peach someSyms1";
+runQuery "raze {select Symbol, 5 mavg (OfferPrice + BidPrice) %2, 5 mavg OfferSize + BidSize from quote where Symbol ", SYMBOLEQUAL," x} peach someSyms1";
 
-runQuery "select Time, sums TradeVolume from trade where Symbol = aFreqSym";
+runQuery "select Time, sums TradeVolume from trade where Symbol ", SYMBOLEQUAL, " aFreqSym";
 / Exchange is a string in parquet and a character in kdb+
 runQuery "select Time, sums TradeVolume from trade where Exchange ",
   $[PARQUET; "~\\: enlist \"L\""; "= \"L\""];
@@ -178,7 +169,7 @@ runQuery "select Time, sums TradeVolume from trade where Exchange ",
 runQuery "select from trade where TradeVolume = (max;TradeVolume) fby Exchange";
 runQuery "select from quote where OfferPrice = (min;OfferPrice) fby ([] Exchange;Symbol)";
 
-runQuery "ungroup select from (select SequenceNumberDecr: SequenceNumber where (<) prior SequenceNumber by Symbol from trade) where 0< count each SequenceNumberDecr";
+runQuery "ungroup select from (select SequenceNumberDecr: SequenceNumber where (<) prior SequenceNumber by ", $[PARQUETROWGROUP; "`$"; ""], "Symbol from trade) where 0< count each SequenceNumberDecr";
 
 runQuery "select cnt: count i, sum TradeVolume by Exchange from trade where date=min date";
 
@@ -187,14 +178,14 @@ runQuery "select o: first TradePrice, h: max TradePrice, l: min TradePrice, c: l
   $[PARQUET; "0 < count each" ; "not null"], " TradeStopStockIndicator";
 
 runQuery "select inbal: (BidSize - OfferSize) % BidSize + OfferSize by ", / no dot notation in parquet yet
-   $[PARQUET; "minute: `minute$0D00:01 xbar Time"; "Time.minute"], " from quote where Symbol=anInfreqSym";
+   $[PARQUET; "minute: `minute$0D00:01 xbar Time"; "Time.minute"], " from quote where Symbol ", SYMBOLEQUAL, " anInfreqSym";
 
-runQuery "raze {select date, Symbol, Time, BidPrice, OfferPrice, BidSize, OfferSize, QuoteCondition, Exchange from quote where Symbol=x} each infreqIdList";
-runQuery "raze {select date, Symbol, Time, BidPrice, OfferPrice, BidSize, OfferSize, QuoteCondition, Exchange from quote where Symbol=x} peach infreqIdList";
-runQuery "raze {select date, Symbol, Time, BidPrice, OfferPrice, BidSize, OfferSize, QuoteCondition, Exchange from quote where Symbol=x, 2000<BidSize+OfferSize} peach infreqIdList";
+runQuery "raze {select date, Symbol, Time, BidPrice, OfferPrice, BidSize, OfferSize, QuoteCondition, Exchange from quote where Symbol ", SYMBOLEQUAL, " x} each infreqIdList";
+runQuery "raze {select date, Symbol, Time, BidPrice, OfferPrice, BidSize, OfferSize, QuoteCondition, Exchange from quote where Symbol ", SYMBOLEQUAL, " x} peach infreqIdList";
+runQuery "raze {select date, Symbol, Time, BidPrice, OfferPrice, BidSize, OfferSize, QuoteCondition, Exchange from quote where Symbol ", SYMBOLEQUAL, " x, 2000<BidSize+OfferSize} peach infreqIdList";
 
-runQuery "raze {select first Symbol, wsumAsk:OfferSize wsum OfferPrice, wsumBid: BidPrice wsum BidSize, sdevask: sdev OfferSize, sdevbid:sdev BidPrice, corPrice:OfferPrice cor BidPrice, corSize: OfferSize cor BidSize from quote where Symbol=x} each infreqIdList";
-runQuery "raze {select first Symbol, wsumAsk:OfferSize wsum OfferPrice, wsumBid: BidPrice wsum BidSize, sdevask: sdev OfferSize, sdevbid:sdev BidPrice, corPrice:OfferPrice cor BidPrice, corSize: OfferSize cor BidSize from quote where Symbol=x} peach infreqIdList";
+runQuery "raze {select first Symbol, wsumAsk:OfferSize wsum OfferPrice, wsumBid: BidPrice wsum BidSize, sdevask: sdev OfferSize, sdevbid:sdev BidPrice, corPrice:OfferPrice cor BidPrice, corSize: OfferSize cor BidSize from quote where Symbol ", SYMBOLEQUAL, " x} each infreqIdList";
+runQuery "raze {select first Symbol, wsumAsk:OfferSize wsum OfferPrice, wsumBid: BidPrice wsum BidSize, sdevask: sdev OfferSize, sdevbid:sdev BidPrice, corPrice:OfferPrice cor BidPrice, corSize: OfferSize cor BidSize from quote where Symbol ", SYMBOLEQUAL, " x} peach infreqIdList";
 
 if[not PARQUET; runQuery "select from trade where TradePrice = (min;TradePrice) fby Symbol"]; / fby clause does not work with partition column
 if[not PARQUET; runQuery "select medMidSize: med (BidSize + OfferSize) % 2 from quote where Symbol=anInfreqSym"]; / function med is not supported
