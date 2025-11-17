@@ -187,7 +187,7 @@ main: {[date:`C; src:`C; dst; letters:`C; includetestsymbols:`b]
     (?[;enlist (not; `TestSymbolFlag);0b;()]; testSymbolFilter[testSymbols])]];
 
   convMaster: symbolConv masterExtraConv@;
-  enumAndSave[convMaster[master]; `master; set; date];
+  enumAndSave[convMaster[master]; `$"master/"; set; date];
 
   .z.zd: compparam; / apply compression to quote and trade
   / We apply first letter filter in file selection
