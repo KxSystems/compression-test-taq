@@ -18,7 +18,7 @@ loadHiveTable: {[res; dir]
   $[all {x=key x} .Q.dd[dir; first c];
     res cross ([] file: .Q.dd[dir] each c); [
     tmp: "S=;"0:";" sv string c;
-    raze .z.s[first[res] ,/: flip enlist[tmp[0;0]]!enlist $[tmp[0;0]=`date;"D"$;`$] tmp 1] each .Q.dd[dir] each c
+    raze (enlist each first[res] ,/: flip enlist[tmp[0;0]]!enlist $[tmp[0;0]=`date;"D"$;`$] tmp 1) .z.s' .Q.dd[dir] each c
   ]]
   }
 
