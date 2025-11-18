@@ -169,7 +169,7 @@ runQuery "select Time, sums TradeVolume from trade where Exchange ",
 runQuery "select from trade where TradeVolume = (max;TradeVolume) fby Exchange";
 runQuery "select from quote where OfferPrice = (min;OfferPrice) fby ([] Exchange;Symbol)";
 
-runQuery "ungroup select from (select SequenceNumberDecr: SequenceNumber where (<) prior SequenceNumber by ", $[PARQUETROWGROUP; "`$"; ""], "Symbol from trade) where 0< count each SequenceNumberDecr";
+runQuery "ungroup select from (select SequenceNumberDecr: SequenceNumber where (<) prior SequenceNumber by ",$[PARQUETROWGROUP;"`$";""],"Symbol from trade) where 0< count each SequenceNumberDecr";
 
 runQuery "select cnt: count i, sum TradeVolume by Exchange from trade where date=min date";
 
@@ -187,7 +187,7 @@ runQuery "raze {select date, Symbol, Time, BidPrice, OfferPrice, BidSize, OfferS
 runQuery "raze {select first Symbol, wsumAsk:OfferSize wsum OfferPrice, wsumBid: BidPrice wsum BidSize, sdevask: sdev OfferSize, sdevbid:sdev BidPrice, corPrice:OfferPrice cor BidPrice, corSize: OfferSize cor BidSize from quote where Symbol ", SYMBOLEQUAL, " x} each infreqIdList";
 runQuery "raze {select first Symbol, wsumAsk:OfferSize wsum OfferPrice, wsumBid: BidPrice wsum BidSize, sdevask: sdev OfferSize, sdevbid:sdev BidPrice, corPrice:OfferPrice cor BidPrice, corSize: OfferSize cor BidSize from quote where Symbol ", SYMBOLEQUAL, " x} peach infreqIdList";
 
-if[not PARQUET; runQuery "select from trade where TradePrice = (min;TradePrice) fby Symbol"]; / fby clause does not work with partition column
+if[PARQUETROWGROUP or not PARQUET; runQuery "select from trade where TradePrice = (min;TradePrice) fby Symbol"]; / fby clause does not work with partition column
 if[not PARQUET; runQuery "select medMidSize: med (BidSize + OfferSize) % 2 from quote where Symbol=anInfreqSym"]; / function med is not supported
 
 if[not PARQUET; runQuery "aj[`Symbol`Time; select Symbol, Time, TradePrice, TradeVolume, TradeStopStockIndicator, SaleCondition, Exchange from trade where date=min date, Symbol in someSyms1; select Symbol, Time, BidPrice, OfferPrice, BidSize, OfferSize, QuoteCondition, Exchange from quote where date=min date]"]; / aj is slow in parquet
