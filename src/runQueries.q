@@ -13,18 +13,18 @@ DB: o `db
 PARQUET: upper[o `format] like "PARQUET*"
 PARQUETROWGROUP: upper[o `format] ~ "PARQUET_ROWGROUP"
 
+/ TODO: add error handling
 loadHiveTable: {[res; dir]
-  c: key dir;
-  $[all {x=key x} .Q.dd[dir; first c];
-    res cross ([] file: .Q.dd[dir] each c); [
+  res cross $[all {x=key x} .Q.dd[dir] first c: key dir;
+    ([] file: .Q.dd[dir] each c); [
     tmp: "S=;"0:";" sv string c;
-    raze (enlist each first[res] ,/: flip enlist[tmp[0;0]]!enlist $[tmp[0;0]=`date;"D"$;`$] tmp 1) .z.s' .Q.dd[dir] each c
+    raze (enlist each flip enlist[tmp[0;0]]!enlist $[tmp[0;0]=`date;"D"$;`$] tmp 1) .z.s' .Q.dd[dir] each c
   ]]
   }
 
 loadHiveDataset: {[db]
   tNames: key hsym `$db;
-  tparts: loadHiveTable[();] each .Q.dd[hsym `$db] each tNames;
+  tparts: loadHiveTable[enlist ()] each .Q.dd[hsym `$db] each tNames;
   tNames set' {tb.mkP x!pq peach last flip x} each tparts
   }
 
