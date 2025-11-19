@@ -6,9 +6,6 @@ if["" ~ getenv `FLUSH;
 
 ko: key o: first each .Q.opt .z.x;
 
-result: ([] query: (); run1: `long$(); run2:`long$(); run3: `long$();
-  mem1kb: `long$(); mem2kb:`long$(); mem3kb:`long$(); io1kb: `long$(); io2kb:`long$(); io3kb:`long$());
-
 DB: o `db
 PARQUET: upper[o `format] like "PARQUET*"
 PARQUETROWGROUP: upper[o `format] ~ "PARQUET_ROWGROUP"
@@ -91,12 +88,19 @@ runQuery: {[query:`C]
   ts,: enlist system "ts ", query;
   io,: getKBRead[Device]`kB_read;
 
-  `result insert enlist[enlist query], ts[;0], (ts[;1] div 1000), 1 _ deltas io
+  resultH ,[;"\n"] SEP sv (compparm; string system "s"; string IDX; query), string ts[;0], (ts[;1] div 1000), 1 _ deltas io;
+  IDX+:1;
   };
 
 Device: getDevice[DB]
 .qlog.info "Monitoring device ", Device
 
+resFile: $[`result in key o; o `result; "result.psv"];
+.qlog.info "saving results to ", resFile;
+resultH: hopen ":", resFile;
+SEP: "|"
+resultH "compparam|threadcount|idx|query|run1|run2|run3|mem1kb|mem2kb|mem3kb|io1kb|io2kb|io3kb\n"
+IDX:0
 
 $[PARQUET; [
   tb:use`kx.pq.t;
@@ -124,7 +128,8 @@ $[PARQUET; [
     .qlog.info "Loading encryption file ", o`encr;
     -36!@[; 0; hsym `$] ":" vs o`encr]]]
 
-`result insert enlist[enlist "load/mmap DB"], ts[0], 0Nj, 0Nj, (ts[1] div 1000), 0Nj, 0Nj, ioe - ios, 0Nj, 0Nj;
+resultH ,[;"\n"] SEP sv (compparm; string system "s"; string IDX; "load/mmap DB"), string ts[0], 0Nj, 0Nj, (ts[1] div 1000), 0Nj, 0Nj, ioe - ios, 0Nj, 0Nj;
+IDX+:1;
 
 symFreq: first flip key asc select count i by Symbol from quote where date=min date;
 
@@ -192,10 +197,5 @@ if[not PARQUET; runQuery "select medMidSize: med (BidSize + OfferSize) % 2 from 
 
 if[not PARQUET; runQuery "aj[`Symbol`Time; select Symbol, Time, TradePrice, TradeVolume, TradeStopStockIndicator, SaleCondition, Exchange from trade where date=min date, Symbol in someSyms1; select Symbol, Time, BidPrice, OfferPrice, BidSize, OfferSize, QuoteCondition, Exchange from quote where date=min date]"]; / aj is slow in parquet
 if[not PARQUET; runQuery "aj[`Symbol`Exchange`Time; select Symbol, Time, TradePrice, TradeVolume, TradeStopStockIndicator, SaleCondition, Exchange from trade where date=min date, TradeVolume>500000; select Symbol, Time, BidPrice, OfferPrice, BidSize, OfferSize, QuoteCondition, Exchange from quote where date=min date]"]; / aj by a string key (Exchange) is not supported
-
-resFile: $[`result in key o; o `result; "result.psv"];
-.qlog.info "saving results to ", resFile;
-
-(`$resFile) 0: "|" 0: ([] compparam: enlist compparm; threadcount: system "s") cross update idx: i from result;
 
 if[not `debug in key o; exit 0];
