@@ -145,7 +145,7 @@ runQuery "select from quote where ", $[PARQUETROWGROUP; "mySymbol"; "Symbol"], "
 
 / SourceofTrade is a string in parquet and a character in kdb+
 runQuery "select date, Symbol, Time, TradePrice, TradeVolume, TradeStopStockIndicator, SaleCondition, Exchange from trade where date=min date, SourceofTrade ",  / selected fields only
-  $[PARQUET; "~\\: enlist \"N\""; "=\"N\""];
+  $[PARQUET; "~\\: enlist \"N\""; "= \"N\""];
 runQuery "select Symbol, Time, MidPrice: (BidPrice + OfferSize) %2 from select from quote where ", $[PARQUETROWGROUP; "mySymbol"; "Symbol"], " = aFreqSym";
 runQuery "select date, Symbol, Time, BidPrice, OfferPrice, BidSize, OfferSize, QuoteCondition, Exchange from quote where ", $[PARQUETROWGROUP; "mySymbol"; "Symbol"], " = aFreqSym";
 
@@ -172,7 +172,7 @@ runQuery "select Time, sums TradeVolume from trade where Exchange ",
 runQuery "select from trade where TradeVolume = (max;TradeVolume) fby Exchange";
 runQuery "select from quote where OfferPrice = (min;OfferPrice) fby ([] Exchange;Symbol)";
 
-runQuery "ungroup select from (select SequenceNumberDecr: SequenceNumber where (<) prior SequenceNumber by ",$[PARQUETROWGROUP;"`$";""],"Symbol from trade) where 0< count each SequenceNumberDecr";
+runQuery "ungroup select from (select SequenceNumberDecr: SequenceNumber where (<) prior SequenceNumber by ",$[PARQUETROWGROUP;"`$";""],"Symbol from trade) where 0 < count each SequenceNumberDecr";
 
 runQuery "select cnt: count i, sum TradeVolume by Exchange from trade where date=min date";
 
