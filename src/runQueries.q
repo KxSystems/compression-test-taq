@@ -177,6 +177,8 @@ runQuery "ungroup select from (select SequenceNumberDecr: SequenceNumber where (
 
 timeBuckets: ([preopen: 0D09:00; open: 0D09:05; morning: 0D12:30; afternoon: 0D16:30; close: 1D])
 runQuery "update key[timeBuckets] timeBucket from `Exchange`timeBucket xasc select cnt: count i, sum TradeVolume by Exchange, timeBucket: value[timeBuckets] binr Time from trade where date=min date";
+/ We don't care about the time ordering:
+runQuery "select cnt: count i, sum TradeVolume by Symbol, timeBucket: timeBuckets binr Time from trade where date=min date, not TradeCorrectionIndicator=0";
 
 / TradeStopStockIndicator is a string in parquet and a symbol in kdb+
 runQuery "select o: first TradePrice, h: max TradePrice, l: min TradePrice, c: last TradePrice, s: sum TradeVolume by Symbol, 0D00:05 xbar Time from trade where ", SYMBOLCOLNAME, " in someSyms2, ",
