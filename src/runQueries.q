@@ -97,7 +97,8 @@ Device: getDevice[DB]
 
 resFile: $[`result in key o; o `result; "result.psv"];
 .qlog.info "saving results to ", resFile;
-resultH: hopen ":", resFile;
+if[not ()~key `$resFile: ":", resFile; hdel `$resFile];
+resultH: hopen resFile;
 SEP: "|"
 resultH "compparam|threadcount|idx|query|run1|run2|run3|mem1kb|mem2kb|mem3kb|io1kb|io2kb|io3kb\n"
 IDX:0
