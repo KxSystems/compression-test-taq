@@ -1,0 +1,31 @@
+
+
+
+
+
+
+
+
+
+
+
+raze {select Symbol, 5 mavg (OfferPrice + BidPrice) %2, 5 mavg OfferSize + BidSize from quote where Symbol = x} peach someSyms1
+
+
+
+
+
+
+
+
+
+
+
+raze {select date, Symbol, Time, BidPrice, OfferPrice, BidSize, OfferSize, QuoteCondition, Exchange from quote where Symbol = x} peach infreqIdList
+raze {select date, Symbol, Time, BidPrice, OfferPrice, BidSize, OfferSize, QuoteCondition, Exchange from quote where Symbol = x, 2000<BidSize+OfferSize} peach infreqIdList
+raze {select first Symbol, wsumAsk:OfferSize wsum OfferPrice, wsumBid: BidPrice wsum BidSize, sdevask: sdev OfferSize, sdevbid:sdev BidPrice, corPrice:OfferPrice cor BidPrice, corSize: OfferSize cor BidSize from quote where Symbol = x} peach infreqIdList
+
+
+
+
+

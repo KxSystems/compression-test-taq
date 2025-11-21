@@ -67,6 +67,11 @@ getKBReadLinux: {[device:`C]
 getKBRead: $[.z.o ~ `m64; getKBReadMac; getKBReadLinux]
 
 runQuery: {[query:`C]
+  IDX+:1;
+  if[not count query;
+    resultH ,[;"\n"] SEP sv (compparm; string system "s"; string IDX; query), 9#enlist"";
+    :();
+  ]
   ts: ();
   io: ();
   .qlog.info raze system getenv[`FLUSH], " ", DB;
@@ -89,7 +94,6 @@ runQuery: {[query:`C]
   io,: getKBRead[Device]`kB_read;
 
   resultH ,[;"\n"] SEP sv (compparm; string system "s"; string IDX; query), string ts[;0], (ts[;1] div 1000), 1 _ deltas io;
-  IDX+:1;
   };
 
 Device: getDevice[DB]
@@ -141,68 +145,10 @@ someSyms1: -20?symFreq; / should be symbols of various quote counts to force dif
 someSyms2: -100?symFreq;
 infreqIdList: @[; til[500] + count[symFreq] div 10] symFreq; / many, but small quote count symbols
 
-
-runQuery "select from quote where date=min date, Time<0D10"; / Huge amount of data
-runQuery "select from quote where ", SYMBOLCOLNAME, " = anInfreqSym, Time within 0D08:30 0D16:30";       / All data from one symbol
-
-/ SourceofTrade is a string in parquet and a character in kdb+
-runQuery "select date, Symbol, Time, TradePrice, TradeVolume, TradeStopStockIndicator, SaleCondition, Exchange from trade where date=min date, SourceofTrade ",  / selected fields only
-  $[PARQUET; "~\\: enlist \"N\""; "= \"N\""];
-runQuery "select Symbol, Time, MidPrice: (BidPrice + OfferSize) %2 from select from quote where ", SYMBOLCOLNAME, " = aFreqSym";
-runQuery "select date, Symbol, Time, BidPrice, OfferPrice, BidSize, OfferSize, QuoteCondition, Exchange from quote where ", SYMBOLCOLNAME, " = aFreqSym";
-
-runQuery "select avgMidSize: avg (BidPrice + OfferPrice) % 2 from quote where ", SYMBOLCOLNAME, " = anInfreqSym";
-runQuery "select avgSpread: avg OfferPrice - BidPrice by 0D00:10 xbar Time from quote where ", SYMBOLCOLNAME, " = aFreqSym";
-
-runQuery "distinct select Symbol, Exchange from trade where TradeVolume > 700000";
-
-runQuery "select weightedBidPice: BidSize wavg BidPrice, weightedOfferPice: OfferSize wavg OfferPrice by ", SYMBOLCOLNAME, " from quote where ", SYMBOLCOLNAME, " in someSyms1";
-runQuery "select weightedSpread: (BidSize + OfferSize) wavg OfferPrice - BidPrice from quote where ", SYMBOLCOLNAME, " = anInfreqSym";
-
-runQuery "select Time, 20 mavg TradePrice from trade where ", SYMBOLCOLNAME, " = aFreqSym";
-runQuery "select 5 mavg (OfferPrice + BidPrice) % 2, 5 mavg OfferSize + BidSize by ", SYMBOLCOLNAME, " from quote where ", SYMBOLCOLNAME, " in someSyms1";
-runQuery "raze {select Symbol, 5 mavg (OfferPrice + BidPrice) %2, 5 mavg OfferSize + BidSize from quote where ", SYMBOLCOLNAME, " = x} peach someSyms1";
-
-runQuery "select Time, sums TradeVolume from trade where ", SYMBOLCOLNAME, " = aFreqSym";
-/ Exchange is a string in parquet and a character in kdb+
-runQuery "select Time, sums TradeVolume from trade where Exchange ",
-  $[PARQUET; "~\\: enlist \"L\""; "= \"L\""];
-runQuery "update movingvwap:(sums TradePrice * TradeVolume) % sums TradeVolume by ", SYMBOLCOLNAME, " from select ", SYMBOLCOLNAME, ", Time, TradePrice, TradeVolume from trade where Time within 0D08:00 0D08:15";
-
-runQuery "select Time, sums TradeVolume from trade where Exchange ",
- $[PARQUET; "~\\: enlist \"T\""; "= \"T\""];
-
-runQuery "select from trade where TradeVolume = (max;TradeVolume) fby Exchange";
-runQuery "select from quote where OfferPrice = (min;OfferPrice) fby ([] Exchange;", SYMBOLCOLNAME, ")";
-
-runQuery "ungroup select from (select SequenceNumberDecr: SequenceNumber where (<) prior SequenceNumber by ", SYMBOLCOLNAME," from trade) where 0 < count each SequenceNumberDecr";
-
 timeBuckets: ([preopen: 0D08:30; open: 0D09:05; morning: 0D12:30; afternoon: 0D16:30; close: 1D])
-runQuery "update key[timeBuckets] timeBucket from `Exchange`timeBucket xasc select cnt: count i, sum TradeVolume by Exchange, timeBucket: value[timeBuckets] binr Time from trade where date=min date";
-/ We don't care about the time ordering:
-runQuery "select cnt: count i, sum TradeVolume by ", SYMBOLCOLNAME, ", timeBucket: timeBuckets binr Time from trade where date=min date, not TradeCorrectionIndicator=0";
 
-/ TradeStopStockIndicator is a string in parquet and a symbol in kdb+
-runQuery "select o: first TradePrice, h: max TradePrice, l: min TradePrice, c: last TradePrice, s: sum TradeVolume by ", SYMBOLCOLNAME, ", 0D00:05 xbar Time from trade where ", SYMBOLCOLNAME, " in someSyms2, ",
-  $[PARQUET; "0 < count each" ; "not null"], " TradeStopStockIndicator";
-
-runQuery "select inbal: (BidSize - OfferSize) % BidSize + OfferSize by ", / no dot notation in parquet yet
-   $[PARQUET; "minute: `minute$0D00:01 xbar Time"; "Time.minute"], " from quote where ", SYMBOLCOLNAME, " = anInfreqSym";
-
-runQuery "raze {select date, Symbol, Time, BidPrice, OfferPrice, BidSize, OfferSize, QuoteCondition, Exchange from quote where ", SYMBOLCOLNAME, " = x} each infreqIdList";
-runQuery "raze {select date, Symbol, Time, BidPrice, OfferPrice, BidSize, OfferSize, QuoteCondition, Exchange from quote where ", SYMBOLCOLNAME, " = x} peach infreqIdList";
-runQuery "raze {select date, Symbol, Time, BidPrice, OfferPrice, BidSize, OfferSize, QuoteCondition, Exchange from quote where ", SYMBOLCOLNAME, " = x, 2000<BidSize+OfferSize} peach infreqIdList";
-
-runQuery "raze {select first Symbol, wsumAsk:OfferSize wsum OfferPrice, wsumBid: BidPrice wsum BidSize, sdevask: sdev OfferSize, sdevbid:sdev BidPrice, corPrice:OfferPrice cor BidPrice, corSize: OfferSize cor BidSize from quote where ", SYMBOLCOLNAME, " = x} each infreqIdList";
-runQuery "raze {select first Symbol, wsumAsk:OfferSize wsum OfferPrice, wsumBid: BidPrice wsum BidSize, sdevask: sdev OfferSize, sdevbid:sdev BidPrice, corPrice:OfferPrice cor BidPrice, corSize: OfferSize cor BidSize from quote where ", SYMBOLCOLNAME, " = x} peach infreqIdList";
-
-if[PARQUETROWGROUP or not PARQUET; runQuery "select from trade where TradePrice = (min;TradePrice) fby Symbol"]; / fby clause does not work with partition column
-/ We want to calculate how much volume was transacted at each price - whenever the price changes, we want to restart the count
-if[PARQUETROWGROUP or not PARQUET; runQuery "select FirstTime: first Time, LastTime: last Time, first TradePrice, sum TradeVolume by ", SYMBOLCOLNAME, ",pricegroup:({sums differ x};TradePrice) fby Symbol from trade where Exchange in ",$[PARQUET;"enlist each ";""],"\"LM\""];
-
-if[not PARQUET; runQuery "select medMidSize: med (BidSize + OfferSize) % 2 from quote where Symbol=anInfreqSym"]; / function med is not supported
-
-if[not PARQUET; runQuery "aj[`Symbol`Time; select Symbol, Time, TradePrice, TradeVolume, TradeStopStockIndicator, SaleCondition, Exchange from trade where date=min date, Symbol in someSyms1; select Symbol, Time, BidPrice, OfferPrice, BidSize, OfferSize, QuoteCondition, Exchange from quote where date=min date]"]; / aj is slow in parquet
-if[not PARQUET; runQuery "aj[`Symbol`Exchange`Time; select Symbol, Time, TradePrice, TradeVolume, TradeStopStockIndicator, SaleCondition, Exchange from trade where date=min date, TradeVolume>500000; select Symbol, Time, BidPrice, OfferPrice, BidSize, OfferSize, QuoteCondition, Exchange from quote where date=min date]"]; / aj by a string key (Exchange) is not supported
+queryFile: o `queryfile;
+.qlog.info "Loading and executing queries from ", queryFile;
+runQuery each read0 `$queryFile;
 
 if[not `debug in key o; exit 0];

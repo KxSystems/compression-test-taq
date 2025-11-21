@@ -118,7 +118,7 @@ function test_queries () {
   for compparam in ${COMPPARRAY[@]}; do
     echo "Testing compression ${compparam}..."
     ${NUMACTL} ${QEXEC} ./src/runQueries.q -db $DSTKDB/zd${compparam} \
-      -result ${RESULTDIR}/tmp/query_${compparam}.psv \
+      -queryfile ./artifacts/kdb_simple.txt -result ${RESULTDIR}/tmp/query_${compparam}.psv \
       $ENCR -s ${COREPERSOCKET} -q
   done
 
