@@ -8,6 +8,8 @@ Environment variables:
     SYMBOLSTOREDAS      PartitionColumn or RowGroup
     COMPRESSION         Compression algorithm to be used when persisting data, e.g. ZSTD
     COMPRESSION_LEVEL   Level of compression, e.g. 10
+    PAGE_SIZE           Page size as power of 2 between 12 and 20. Value e.g. 17 means 128KB.
+                        The pyarrow default is 1 MB page size which corresponds to PAGE_SIZE value 20
 """
 
 import os
@@ -351,9 +353,6 @@ def get_write_options(sort_idx: int) -> Dict[str, Union[str, int]]:
     if compression:
         logging.info(f"Setting parquet compression to {compression}")
         write_kwargs['compression'] = compression
-    else:
-        write_kwargs['compression'] = None
-        write_kwargs['compression_level'] = None
 
     compression_level = os.getenv('COMPRESSION_LEVEL')
     if compression_level:
@@ -361,6 +360,14 @@ def get_write_options(sort_idx: int) -> Dict[str, Union[str, int]]:
         write_kwargs['compression_level'] = int(compression_level)
 
     write_kwargs['sorting_columns'] = [pq.SortingColumn(sort_idx)]
+
+    page_size = os.getenv('PAGE_SIZE')
+    if page_size:
+        ps =  2 ** int(page_size)
+        if ps > 1024*1024:
+            logging.warning(f"Page size value larger than 1 MB: {ps}")
+        logging.info(f"Setting parquet page size to {ps}")
+        write_kwargs['data_page_size'] = ps
 
     return write_kwargs
 
@@ -411,8 +418,7 @@ def persist_rowgroup_per_symbol(table: pa.Table, table_output_path: Path,
     # Group consecutive same symbols
     os.makedirs(f"{table_output_path}/date={date}", exist_ok=True)
     with pq.ParquetWriter(f"{table_output_path}/date={date}/part-0.parquet", table.schema,
-                          compression = parquet_options['compression'],
-                          compression_level = parquet_options['compression_level']) as writer:
+                          **parquet_options) as writer:
         start_idx = 0
         current_symbol = symbols[0]
 
