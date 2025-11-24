@@ -1,0 +1,32 @@
+idx|query
+1|select from quote where date=min date, Time<0D10
+2|select from quote where mySymbol = anInfreqSym, Time within 0D08:30 0D16:30
+3|select date, Symbol, Time, TradePrice, TradeVolume, TradeStopStockIndicator, SaleCondition, Exchange from trade where date=min date, SourceofTrade ~\: enlist "N"
+4|select Symbol, Time, MidPrice: (BidPrice + OfferSize) %2 from select from quote where mySymbol = aFreqSym
+5|select date, Symbol, Time, BidPrice, OfferPrice, BidSize, OfferSize, QuoteCondition, Exchange from quote where mySymbol = aFreqSym
+6|select avgMidSize: avg (BidPrice + OfferPrice) % 2 from quote where mySymbol = anInfreqSym
+7|select avgSpread: avg OfferPrice - BidPrice by 0D00:10 xbar Time from quote where mySymbol = aFreqSym
+8|distinct select Symbol, Exchange from trade where TradeVolume > 700000
+9|select weightedBidPice: BidSize wavg BidPrice, weightedOfferPice: OfferSize wavg OfferPrice by mySymbol from quote where mySymbol in someSyms1
+10|select weightedSpread: (BidSize + OfferSize) wavg OfferPrice - BidPrice from quote where mySymbol = anInfreqSym
+11|select Time, 20 mavg TradePrice from trade where mySymbol = aFreqSym
+12|select 5 mavg (OfferPrice + BidPrice) % 2, 5 mavg OfferSize + BidSize by mySymbol from quote where mySymbol in someSyms1
+13|raze {select Symbol, 5 mavg (OfferPrice + BidPrice) %2, 5 mavg OfferSize + BidSize from quote where mySymbol = x} peach someSyms1
+14|select Time, sums TradeVolume from trade where mySymbol = aFreqSym
+15|select Time, sums TradeVolume from trade where Exchange ~\: enlist "L"
+16|update movingvwap:(sums TradePrice * TradeVolume) % sums TradeVolume by mySymbol from select mySymbol, Time, TradePrice, TradeVolume from trade where Time within 0D08:00 0D08:15
+17|select Time, sums TradeVolume from trade where Exchange ~\: enlist "T"
+18|select from trade where TradeVolume = (max;TradeVolume) fby Exchange
+19|select from quote where OfferPrice = (min;OfferPrice) fby ([] Exchange;mySymbol)
+20|ungroup select from (select SequenceNumberDecr: SequenceNumber where (<) prior SequenceNumber by mySymbol from trade) where 0 < count each SequenceNumberDecr
+21|update key[timeBuckets] timeBucket from `Exchange`timeBucket xasc select cnt: count i, sum TradeVolume by Exchange, timeBucket: value[timeBuckets] binr Time from trade where date=min date
+22|select cnt: count i, sum TradeVolume by mySymbol, timeBucket: timeBuckets binr Time from trade where date=min date, not TradeCorrectionIndicator=0
+23|select o: first TradePrice, h: max TradePrice, l: min TradePrice, c: last TradePrice, s: sum TradeVolume by mySymbol, 0D00:05 xbar Time from trade where mySymbol in someSyms2, 0 < count each TradeStopStockIndicator
+24|select inbal: (BidSize - OfferSize) % BidSize + OfferSize by minute: `minute$0D00:01 xbar Time from quote where mySymbol = anInfreqSym
+25|raze {select date, Symbol, Time, BidPrice, OfferPrice, BidSize, OfferSize, QuoteCondition, Exchange from quote where mySymbol = x} each infreqIdList
+26|raze {select date, Symbol, Time, BidPrice, OfferPrice, BidSize, OfferSize, QuoteCondition, Exchange from quote where mySymbol = x} peach infreqIdList
+27|raze {select date, Symbol, Time, BidPrice, OfferPrice, BidSize, OfferSize, QuoteCondition, Exchange from quote where mySymbol = x, 2000<BidSize+OfferSize} peach infreqIdList
+28|raze {select first Symbol, wsumAsk:OfferSize wsum OfferPrice, wsumBid: BidPrice wsum BidSize, sdevask: sdev OfferSize, sdevbid:sdev BidPrice, corPrice:OfferPrice cor BidPrice, corSize: OfferSize cor BidSize from quote where mySymbol = x} each infreqIdList
+29|raze {select first Symbol, wsumAsk:OfferSize wsum OfferPrice, wsumBid: BidPrice wsum BidSize, sdevask: sdev OfferSize, sdevbid:sdev BidPrice, corPrice:OfferPrice cor BidPrice, corSize: OfferSize cor BidSize from quote where mySymbol = x} peach infreqIdList
+30|select from trade where TradePrice = (min;TradePrice) fby Symbol
+31|select FirstTime: first Time, LastTime: last Time, first TradePrice, sum TradeVolume by mySymbol,pricegroup:({sums differ x};TradePrice) fby Symbol from trade where Exchange in enlist each "LM"
