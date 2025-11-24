@@ -16,6 +16,7 @@
 //    * improved error handling
 //    * code quality improvements
 //    * option to drop test Symbols
+//    * columns are written in parallel
 
 
 \l src/log.q
@@ -132,7 +133,7 @@ symbolConv: {
   .qlog.info "    Converting the Symbol column";
   update `$"."^Symbol from x}  / replace whitespace by dot
 
-parseAndConvert: {[schema;conv; fileName:`C]
+parseAndConvert: {[schema; conv; fileName:`C]
   .qlog.info "  Parsing file ", fileName;
   raw: flip key[schema]!value flip(value schema; enlist"|") 0:hsym `$fileName;
   .qlog.info "  Converting";
@@ -143,11 +144,11 @@ genericUpsert:{[iter; path:`s; tab]
 	iter[{[path;tab;c] .Q.dd[path;c] upsert tab c}[path;tab]; cols tab];
 	}
 
-enumAndSave: {[t; tableName:`s; saveDotD:`b; date:`C]
+enumAndSave: {[t; dst:`s; tableName:`s; saveDotD:`b; date:`C]
   .qlog.info "  Enumerating and saving ", string[count t], " rows";
-  path: .Q.par[DST;"D"$date;tableName];
+  path: .Q.par[dst;"D"$date;tableName];
   if[saveDotD; .Q.dd[path;`.d] set cols t];
-  genericUpsert[peach; path; .Q.en[DST] t];
+  genericUpsert[peach; path; .Q.en[dst] t];
   .qlog.info "  Successfully wrote data to ", 1_string path
  }
 
@@ -157,9 +158,9 @@ psym: {[c:`s; x:`s]
     .qlog.error "parted attribute cannot be applied on ", string[c], " due to ", "," sv string broken]
   }
 
-process: {[date:`C; tableName:`s; schema; conv; saveDotD:`b; fileName:`C]
+process: {[date:`C; dst:`s; tableName:`s; schema; conv; saveDotD:`b; fileName:`C]
   t: parseAndConvert[schema; conv; fileName];
-  enumAndSave[t; tableName; saveDotD; date]
+  enumAndSave[t; dst; tableName; saveDotD; date]
   }
 
 testSymbolFilter: {[testSymbols:`S; t]
@@ -169,7 +170,7 @@ testSymbolFilter: {[testSymbols:`S; t]
 
 main: {[date:`C; src:`C; dst; letters:`C; includetestsymbols:`b]
   startTime: .z.p;
-  if[any (count key .Q.par[DST; "D"$o`date]@) each `master`quote`trade;
+  if[any (count key .Q.par[dst; "D"$o`date]@) each `master`quote`trade;
     .qlog.error "Destination directories exist. Clean up and rerun the script";
     exit 7];
   letterFilter: $[count letters; {
@@ -185,7 +186,7 @@ main: {[date:`C; src:`C; dst; letters:`C; includetestsymbols:`b]
     (?[;enlist (not; `TestSymbolFlag);0b;()]; testSymbolFilter[testSymbols])]];
 
   convMaster: symbolConv masterExtraConv@;
-  enumAndSave[convMaster[master]; `$"master/"; 1b; date];
+  enumAndSave[convMaster[master]; dst; `$"master/"; 1b; date];
 
   .z.zd: compparam; / apply compression to quote and trade
   / We apply first letter filter in file selection
@@ -194,13 +195,13 @@ main: {[date:`C; src:`C; dst; letters:`C; includetestsymbols:`b]
   Q: (src, "/"),/: string asc F where (lower F) like quotePattern;
   if[0<count Q;
     .qlog.info "Processing quote tables...";
-    @[count[Q]#0b;0;:;1b] process[date; `quote; QUOTESCHEMA; extraConv symbolConv@]' Q;
+    @[count[Q]#0b;0;:;1b] process[date; dst; `quote; QUOTESCHEMA; extraConv symbolConv@]' Q;
     .qlog.info "  Adding parted attribute...";
     psym[`Symbol; .Q.par[dst; "D"$date; `quote]]]
 
   .qlog.info "Processing trade table...";
   T: src, "/EQY_US_ALL_TRADE_", date, ".psv";
-  process[date; `trade;TRADESCHEMA;extraConv symbolConv letterFilter@; 1b; T];
+  process[date; dst; `trade;TRADESCHEMA;extraConv symbolConv letterFilter@; 1b; T];
   .qlog.info "  Adding parted attribute...";
   psym[`Symbol; .Q.par[dst; "D"$date; `trade]];
 
@@ -217,12 +218,11 @@ if[not `src in ko;
   -1 USAGE;
   .qlog.error "'src' parameter was not provided";
   exit 3];
-DST: hsym `kdbDB^`$o`dst
 
 if[(`letters in ko) and not o[`letters] like "?-?";
   .qlog.error "Invalid letter parameter. Must be in form START-END, for example A-K, got ", o[`letters];
   exit 4]
 
-main[o`date; o`src; DST; o `letters; `includetestsymbols in ko]
+main[o`date; o`src; hsym `kdbDB^`$o`dst; o `letters; `includetestsymbols in ko]
 
 if[not `debug in ko; exit 0]
