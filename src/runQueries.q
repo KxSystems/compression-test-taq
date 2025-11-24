@@ -66,7 +66,7 @@ getKBReadLinux: {[device:`C]
 
 getKBRead: $[.z.o ~ `m64; getKBReadMac; getKBReadLinux]
 
-runQuery: {[idx:`i; query:`C]
+runQuery: {[idx:`i; tags:`C; query:`C]
   if[not count query;
     resultH ,[;"\n"] SEP sv (compparm; string system "s"; string idx; query), 9#enlist"";
     :();
@@ -92,7 +92,7 @@ runQuery: {[idx:`i; query:`C]
   ts,: enlist system "ts ", query;
   io,: getKBRead[Device]`kB_read;
 
-  resultH ,[;"\n"] SEP sv (compparm; string system "s"; string idx; query), string ts[;0], (ts[;1] div 1000), 1 _ deltas io;
+  resultH ,[;"\n"] SEP sv (compparm; string system "s"; string idx; tags; query), string ts[;0], (ts[;1] div 1000), 1 _ deltas io;
   };
 
 Device: getDevice[DB]
@@ -103,7 +103,7 @@ resFile: $[`result in key o; o `result; "result.psv"];
 if[not ()~key `$resFile: ":", resFile; hdel `$resFile];
 resultH: hopen resFile;
 SEP: "|"
-resultH "compparam|threadcount|idx|query|run1|run2|run3|mem1kb|mem2kb|mem3kb|io1kb|io2kb|io3kb\n"
+resultH "compparam|threadcount|idx|tags|query|run1|run2|run3|mem1kb|mem2kb|mem3kb|io1kb|io2kb|io3kb\n"
 
 $[PARQUET; [
   tb:use`kx.pq.t;
@@ -131,7 +131,7 @@ $[PARQUET; [
     .qlog.info "Loading encryption file ", o`encr;
     -36!@[; 0; hsym `$] ":" vs o`encr]]]
 
-resultH ,[;"\n"] SEP sv (compparm; string system "s"; string 0; "load/mmap DB"), string ts[0], 0Nj, 0Nj, (ts[1] div 1000), 0Nj, 0Nj, ioe - ios, 0Nj, 0Nj;
+resultH ,[;"\n"] SEP sv (compparm; string system "s"; string 0; "";"load/mmap DB"), string ts[0], 0Nj, 0Nj, (ts[1] div 1000), 0Nj, 0Nj, ioe - ios, 0Nj, 0Nj;
 
 SYMBOLCOLNAME: $[PARQUETROWGROUP; "mySymbol"; "Symbol"]
 symFreq: eval parse "first flip key asc select count i by ", SYMBOLCOLNAME, " from quote where date=min date";
@@ -146,6 +146,6 @@ timeBuckets: ([preopen: 0D08:30; open: 0D09:05; morning: 0D12:30; afternoon: 0D1
 
 queryFile: o `queryfile;
 .qlog.info "Loading and executing queries from ", queryFile;
-(runQuery . value@) each ("I*";enlist "|") 0: `$queryFile;
+(runQuery . value@) each ("I**";enlist "|") 0: `$queryFile;
 
 if[not `debug in key o; exit 0];
