@@ -7,3 +7,4 @@ export SUDO="sudo"  # "" or "sudo" if sudo is required for some commands e.g. to
 
 export FORMAT="kdb" # or "parquet"
 
+export QMAP=false # set to true is .Q.MAP should be called after DB load

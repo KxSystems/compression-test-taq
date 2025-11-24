@@ -133,6 +133,10 @@ $[PARQUET; [
 
 resultH ,[;"\n"] SEP sv (compparm; string system "s"; string 0; "";"load/mmap DB"), string ts[0], 0Nj, 0Nj, (ts[1] div 1000), 0Nj, 0Nj, ioe - ios, 0Nj, 0Nj;
 
+if["true" ~ lower getenv `QMAP;
+  .qlog.info "Executing .Q.MAP[]";
+  .Q.MAP[]]
+
 SYMBOLCOLNAME: $[PARQUETROWGROUP; "mySymbol"; "Symbol"]
 symFreq: eval parse "first flip key asc select count i by ", SYMBOLCOLNAME, " from quote where date=min date";
 
