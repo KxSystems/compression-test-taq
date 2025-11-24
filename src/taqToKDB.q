@@ -139,21 +139,16 @@ parseAndConvert: {[schema;conv; fileName:`C]
   conv raw
  }
 
-customSet:{[iter; path; tab]
-  .Q.dd[path;`.d] set cols tab;
-  iter[{[path;tab;c] .Q.dd[path;c] set tab c}[path;tab]; cols tab];
-	}
-
-
-genericUpsert:{[iter; path; tab]
+genericUpsert:{[iter; path:`s; tab]
 	iter[{[path;tab;c] .Q.dd[path;c] upsert tab c}[path;tab]; cols tab];
 	}
 
-enumAndSave: {[t; tableName:`s;op;date:`C]
+enumAndSave: {[t; tableName:`s; saveDotD:`b; date:`C]
   .qlog.info "  Enumerating and saving ", string[count t], " rows";
-  p: .Q.par[DST;"D"$date;tableName];
-  op[p; .Q.en[DST] t];
-  .qlog.info "  Successfully wrote data to ", 1_string p
+  path: .Q.par[DST;"D"$date;tableName];
+  if[saveDotD; .Q.dd[path;`.d] set cols t];
+  genericUpsert[peach; path; .Q.en[DST] t];
+  .qlog.info "  Successfully wrote data to ", 1_string path
  }
 
 psym: {[c:`s; x:`s]
@@ -162,18 +157,21 @@ psym: {[c:`s; x:`s]
     .qlog.error "parted attribute cannot be applied on ", string[c], " due to ", "," sv string broken]
   }
 
-process: {[date:`C; tableName:`s; schema; conv; op; fileName:`C]
+process: {[date:`C; tableName:`s; schema; conv; saveDotD:`b; fileName:`C]
   t: parseAndConvert[schema; conv; fileName];
-  enumAndSave[t; tableName; op; date]
+  enumAndSave[t; tableName; saveDotD; date]
   }
 
-testSymbolFilter: {[testSymbols; t]
+testSymbolFilter: {[testSymbols:`S; t]
   .qlog.info "    Filtering out test symbol entries";
   ?[t;enlist (not; (in; `Symbol; enlist testSymbols));0b;()]
   }
 
 main: {[date:`C; src:`C; dst; letters:`C; includetestsymbols:`b]
   startTime: .z.p;
+  if[any (count key .Q.par[DST; "D"$o`date]@) each `master`quote`trade;
+    .qlog.error "Destination directories exist. Clean up and rerun the script";
+    exit 7];
   letterFilter: $[count letters; {
     .qlog.info "    Filtering based on the first letter of the Symbol values";
     select from y where Symbol[;0] within x}[letters except "-"]; ::];
@@ -187,7 +185,7 @@ main: {[date:`C; src:`C; dst; letters:`C; includetestsymbols:`b]
     (?[;enlist (not; `TestSymbolFlag);0b;()]; testSymbolFilter[testSymbols])]];
 
   convMaster: symbolConv masterExtraConv@;
-  enumAndSave[convMaster[master]; `$"master/"; set; date];
+  enumAndSave[convMaster[master]; `$"master/"; 1b; date];
 
   .z.zd: compparam; / apply compression to quote and trade
   / We apply first letter filter in file selection
@@ -196,15 +194,13 @@ main: {[date:`C; src:`C; dst; letters:`C; includetestsymbols:`b]
   Q: (src, "/"),/: string asc F where (lower F) like quotePattern;
   if[0<count Q;
     .qlog.info "Processing quote tables...";
-    processFn: process[date; `quote; QUOTESCHEMA; extraConv symbolConv@];
-    processFn[customSet[peach]; first Q];
-    processFn[genericUpsert[peach]] each 1_Q;
+    @[count[Q]#0b;0;:;1b] process[date; `quote; QUOTESCHEMA; extraConv symbolConv@]' Q;
     .qlog.info "  Adding parted attribute...";
     psym[`Symbol; .Q.par[dst; "D"$date; `quote]]]
 
   .qlog.info "Processing trade table...";
   T: src, "/EQY_US_ALL_TRADE_", date, ".psv";
-  process[date; `trade;TRADESCHEMA;extraConv symbolConv letterFilter@;customSet[peach]; T];
+  process[date; `trade;TRADESCHEMA;extraConv symbolConv letterFilter@; 1b; T];
   .qlog.info "  Adding parted attribute...";
   psym[`Symbol; .Q.par[dst; "D"$date; `trade]];
 
