@@ -17,12 +17,13 @@
 //    * code quality improvements
 //    * option to drop test Symbols
 //    * columns are written in parallel
+//    * support of batch processing for smaller memory usage
 
 
 \l src/log.q
 
 if[(4.1>.z.K); .qlog.error "kdb+ 4.1 is required";exit 1];
-USAGE: "usage: q ", string[.z.f], " [-help] -date DATE -src SRC [-dst DST] [-letters START-END] [-includetestsymbols]\n\n",
+USAGE: "usage: q ", string[.z.f], " [-help] -date DATE -src SRC [-dst DST] [-batchsize N] [-letters START-END] [-includetestsymbols]\n\n",
   "Parses NYSE TAQ PSV files and persists the content into a partitioned kdb+ database."
 ko: key o: first each .Q.opt .z.x
 if[`help in ko; -1 USAGE; exit 0]
@@ -130,7 +131,6 @@ getCompParam:{[]
   }
 
 symbolConv: {
-  .qlog.info "    Converting the Symbol column";
   update `$"."^Symbol from x}  / replace whitespace by dot
 
 parseAndConvert: {[schema; conv; fileName:`C]
@@ -145,11 +145,9 @@ genericUpsert:{[iter; path:`s; tab]
 	}
 
 enumAndSave: {[t; dst:`s; tableName:`s; saveDotD:`b; date:`C]
-  .qlog.info "  Enumerating and saving ", string[count t], " rows";
   path: .Q.par[dst;"D"$date;tableName];
   if[saveDotD; .Q.dd[path;`.d] set cols t];
   genericUpsert[peach; path; .Q.en[dst] t];
-  .qlog.info "  Successfully wrote data to ", 1_string path
  }
 
 psym: {[c:`s; x:`s]
@@ -158,23 +156,40 @@ psym: {[c:`s; x:`s]
     .qlog.error "parted attribute cannot be applied on ", string[c], " due to ", "," sv string broken]
   }
 
-process: {[date:`C; dst:`s; tableName:`s; schema; conv; saveDotD:`b; fileName:`C]
-  t: parseAndConvert[schema; conv; fileName];
-  enumAndSave[t; dst; tableName; saveDotD; date]
+batchProcess: {[schema; conv; dst:`s; tableName:`s; date:`C; rows]
+  $[firstRow; [
+    t: conv flip key[schema]!(value schema; "|") 0:1_rows; / drop header
+    enumAndSave[t; dst; tableName; 1b; date];
+    `firstRow set 0b;
+  ]; [
+    t: conv flip key[schema]!(value schema; "|") 0:rows;
+    if[count t; enumAndSave[t; dst; tableName; 0b; date]];
+  ]
+  ]
+  };
+
+process: {[date:`C; dst:`s; tableName:`s; schema; conv; batchsize: `i; saveDotD:`b; fileName:`C]
+  $[null batchsize; [
+    t: parseAndConvert[schema; conv; fileName];
+    .qlog.info "  Enumerating and saving ", string[count t], " rows";
+    enumAndSave[t; dst; tableName; saveDotD; date]];[
+    .qlog.info "  Starting batch processing file ", fileName;
+    `firstRow set 1b;
+    .Q.fsn[batchProcess[schema; conv; dst; tableName; date]; hsym `$fileName; batchsize];
+    ]]
+  .qlog.info "  Data successfully persisted";
   }
 
 testSymbolFilter: {[testSymbols:`S; t]
-  .qlog.info "    Filtering out test symbol entries";
   ?[t;enlist (not; (in; `Symbol; enlist testSymbols));0b;()]
   }
 
-main: {[date:`C; src:`C; dst; letters:`C; includetestsymbols:`b]
+main: {[date:`C; src:`C; dst; letters:`C; includetestsymbols:`b; batchsize: `i]
   startTime: .z.p;
   if[any (count key .Q.par[dst; "D"$o`date]@) each `master`quote`trade;
     .qlog.error "Destination directories exist. Clean up and rerun the script";
     exit 7];
   letterFilter: $[count letters; {
-    .qlog.info "    Filtering based on the first letter of the Symbol values";
     select from y where Symbol[;0] within x}[letters except "-"]; ::];
   compparam: getCompParam[]; / check compression parameters before persisting anything
 
@@ -195,13 +210,13 @@ main: {[date:`C; src:`C; dst; letters:`C; includetestsymbols:`b]
   Q: (src, "/"),/: string asc F where (lower F) like quotePattern;
   if[0<count Q;
     .qlog.info "Processing quote tables...";
-    @[count[Q]#0b;0;:;1b] process[date; dst; `quote; QUOTESCHEMA; extraConv symbolConv@]' Q;
+    @[count[Q]#0b;0;:;1b] process[date; dst; `quote; QUOTESCHEMA; extraConv symbolConv@; batchsize]' Q;
     .qlog.info "  Adding parted attribute...";
     psym[`Symbol; .Q.par[dst; "D"$date; `quote]]]
 
   .qlog.info "Processing trade table...";
   T: src, "/EQY_US_ALL_TRADE_", date, ".psv";
-  process[date; dst; `trade;TRADESCHEMA;extraConv symbolConv letterFilter@; 1b; T];
+  process[date; dst; `trade;TRADESCHEMA;extraConv symbolConv letterFilter@; batchsize; 1b; T];
   .qlog.info "  Adding parted attribute...";
   psym[`Symbol; .Q.par[dst; "D"$date; `trade]];
 
@@ -223,6 +238,9 @@ if[(`letters in ko) and not o[`letters] like "?-?";
   .qlog.error "Invalid letter parameter. Must be in form START-END, for example A-K, got ", o[`letters];
   exit 4]
 
-main[o`date; o`src; hsym `kdbDB^`$o`dst; o `letters; `includetestsymbols in ko]
+
+batchsize: $[not `batchsize in ko; 0Ni; () ~ o`batchsize; 10000000i; "I"$ o`batchsize]
+
+main[o`date; o`src; hsym `kdbDB^`$o`dst; o `letters; `includetestsymbols in ko; batchsize]
 
 if[not `debug in ko; exit 0]
