@@ -215,7 +215,7 @@ def persist_rowgroup_per_symbol(table: pa.Table, table_output_path: Path,
 
     logging.info(f"  Saving {len(table)} rows")
 
-    symbols = table.column("Symbol").to_pylist()
+    symbols = table.column("Symbol")
     date = table.column("date")[0].as_py().strftime('%Y-%m-%d') # TODO: make it more robust
     table = table.drop(['date'])
     # partition_schema=pa.schema([('date', pa.date32())])
