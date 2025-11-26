@@ -11,22 +11,19 @@ idx|tags|query
 10|advanced|select weightedSpread: (BidSize + OfferSize) wavg OfferPrice - BidPrice from quote where mySymbol = anInfreqSym
 11|advanced|select Time, 20 mavg TradePrice from trade where mySymbol = aFreqSym
 12|advanced|select 5 mavg (OfferPrice + BidPrice) % 2, 5 mavg OfferSize + BidSize by mySymbol from quote where mySymbol in someSyms1
-13|advanced|raze {select Symbol, 5 mavg (OfferPrice + BidPrice) %2, 5 mavg OfferSize + BidSize from quote where mySymbol = x} peach someSyms1
-14|advanced|select Time, sums TradeVolume from trade where mySymbol = aFreqSym
-15|advanced|select Time, sums TradeVolume from trade where Exchange ~\: enlist "L"
-16|complex|update movingvwap:(sums TradePrice * TradeVolume) % sums TradeVolume by mySymbol from select mySymbol, Time, TradePrice, TradeVolume from trade where Time within 0D08:00 0D08:15
-17|advanced|select Time, sums TradeVolume from trade where Exchange ~\: enlist "T"
-18|advanced|select from trade where TradeVolume = (max;TradeVolume) fby Exchange
-19|advanced|select from quote where OfferPrice = (min;OfferPrice) fby ([] Exchange;mySymbol)
-20|advanced|ungroup select from (select SequenceNumberDecr: SequenceNumber where (<) prior SequenceNumber by mySymbol from trade) where 0 < count each SequenceNumberDecr
-21|advanced|update key[timeBuckets] timeBucket from `Exchange`timeBucket xasc select cnt: count i, sum TradeVolume by Exchange, timeBucket: value[timeBuckets] binr Time from trade where date=min date
-22|advanced|select cnt: count i, sum TradeVolume by mySymbol, timeBucket: timeBuckets binr Time from trade where date=min date, not TradeCorrectionIndicator=0
-23|simple|select o: first TradePrice, h: max TradePrice, l: min TradePrice, c: last TradePrice, s: sum TradeVolume by mySymbol, 0D00:05 xbar Time from trade where mySymbol in someSyms2, 0 < count each TradeStopStockIndicator
-24|simple|select inbal: (BidSize - OfferSize) % BidSize + OfferSize by minute: `minute$0D00:01 xbar Time from quote where mySymbol = anInfreqSym
-25|simple|raze {select date, Symbol, Time, BidPrice, OfferPrice, BidSize, OfferSize, QuoteCondition, Exchange from quote where mySymbol = x} each infreqIdList
-26|simple|raze {select date, Symbol, Time, BidPrice, OfferPrice, BidSize, OfferSize, QuoteCondition, Exchange from quote where mySymbol = x} peach infreqIdList
-27|simple|raze {select date, Symbol, Time, BidPrice, OfferPrice, BidSize, OfferSize, QuoteCondition, Exchange from quote where mySymbol = x, 2000<BidSize+OfferSize} peach infreqIdList
-28|simple|raze {select first Symbol, wsumAsk:OfferSize wsum OfferPrice, wsumBid: BidPrice wsum BidSize, sdevask: sdev OfferSize, sdevbid:sdev BidPrice, corPrice:OfferPrice cor BidPrice, corSize: OfferSize cor BidSize from quote where mySymbol = x} each infreqIdList
-29|simple|raze {select first Symbol, wsumAsk:OfferSize wsum OfferPrice, wsumBid: BidPrice wsum BidSize, sdevask: sdev OfferSize, sdevbid:sdev BidPrice, corPrice:OfferPrice cor BidPrice, corSize: OfferSize cor BidSize from quote where mySymbol = x} peach infreqIdList
-30|advanced|select from trade where TradePrice = (min;TradePrice) fby Symbol
-31|advanced|select FirstTime: first Time, LastTime: last Time, first TradePrice, sum TradeVolume by mySymbol,pricegroup:({sums differ x};TradePrice) fby Symbol from trade where Exchange in enlist each "LM"
+13|advanced|select Time, sums TradeVolume from trade where mySymbol = aFreqSym
+14|advanced|select Time, sums TradeVolume from trade where Exchange ~\: enlist "L"
+15|complex|update movingvwap:(sums TradePrice * TradeVolume) % sums TradeVolume by mySymbol from select mySymbol, Time, TradePrice, TradeVolume from trade where Time within 0D08:00 0D08:15
+16|advanced|select Time, sums TradeVolume from trade where Exchange ~\: enlist "T"
+17|advanced|select from trade where TradeVolume = (max;TradeVolume) fby Exchange
+18|advanced|select from quote where OfferPrice = (min;OfferPrice) fby ([] Exchange;mySymbol)
+19|advanced|ungroup select from (select SequenceNumberDecr: SequenceNumber where (<) prior SequenceNumber by mySymbol from trade) where 0 < count each SequenceNumberDecr
+20|advanced|update key[timeBuckets] timeBucket from `Exchange`timeBucket xasc select cnt: count i, sum TradeVolume by Exchange, timeBucket: value[timeBuckets] binr Time from trade where date=min date
+21|advanced|select cnt: count i, sum TradeVolume by mySymbol, timeBucket: timeBuckets binr Time from trade where date=min date, not TradeCorrectionIndicator=0
+22|simple|select o: first TradePrice, h: max TradePrice, l: min TradePrice, c: last TradePrice, s: sum TradeVolume by mySymbol, 0D00:05 xbar Time from trade where mySymbol in someSyms2, 0 < count each TradeStopStockIndicator
+23|simple|select inbal: (BidSize - OfferSize) % BidSize + OfferSize by minute: `minute$0D00:01 xbar Time from quote where mySymbol = anInfreqSym
+24|simple|raze {select date, Symbol, Time, BidPrice, OfferPrice, BidSize, OfferSize, QuoteCondition, Exchange from quote where mySymbol = x} each infreqIdList
+25|simple|raze {select date, Symbol, Time, BidPrice, OfferPrice, BidSize, OfferSize, QuoteCondition, Exchange from quote where mySymbol = x, 2000<BidSize+OfferSize} each infreqIdList
+26|simple|raze {select first Symbol, wsumAsk:OfferSize wsum OfferPrice, wsumBid: BidPrice wsum BidSize, sdevask: sdev OfferSize, sdevbid:sdev BidPrice, corPrice:OfferPrice cor BidPrice, corSize: OfferSize cor BidSize from quote where mySymbol = x} each infreqIdList
+27|advanced|select from trade where TradePrice = (min;TradePrice) fby Symbol
+28|complex|select FirstTime: first Time, LastTime: last Time, first TradePrice, sum TradeVolume by mySymbol,pricegroup:({sums differ x};TradePrice) fby Symbol from trade where Exchange in enlist each "LM"
