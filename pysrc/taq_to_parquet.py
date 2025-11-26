@@ -6,6 +6,7 @@ and persist to a hive-partitioned Parquet dataset.
 
 Environment variables:
     SYMBOLSTOREDAS      PartitionColumn or RowGroup
+    MINROWGROUPSIZE     If SYMBOLSTOREDAS=RowGroup then only row groups of size at least MINROWGROUPSIZE will be created
     COMPRESSION         Compression algorithm to be used when persisting data, e.g. ZSTD
     COMPRESSION_LEVEL   Level of compression, e.g. 10
     PAGE_SIZE           Page size as power of 2 between 12 and 20. Value e.g. 17 means 128KB.
@@ -215,6 +216,7 @@ def persist_rowgroup_per_symbol(table: pa.Table, table_output_path: Path,
 
     logging.info(f"  Saving {len(table)} rows")
 
+    minrowgroupsize=0 if os.getenv('MINROWGROUPSIZE') is None else int(os.getenv('MINROWGROUPSIZE'))
     symbols = table.column("Symbol")
     date = table.column("date")[0].as_py().strftime('%Y-%m-%d') # TODO: make it more robust
     table = table.drop(['date'])
@@ -227,7 +229,7 @@ def persist_rowgroup_per_symbol(table: pa.Table, table_output_path: Path,
         current_symbol = symbols[0]
 
         for i, symbol in enumerate(symbols):
-            if symbol != current_symbol:
+            if symbol != current_symbol and i - start_idx > minrowgroupsize:
                 # Write row group for previous symbol
                 writer.write_table(table.slice(start_idx, i - start_idx), row_group_size=64 * 1024 * 1024)
                 start_idx = i
