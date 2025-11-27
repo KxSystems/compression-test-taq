@@ -1,5 +1,0 @@
-idx|tags|query
-12|advanced,manualparallelization|raze {select Symbol, 5 mavg (OfferPrice + BidPrice) %2, 5 mavg OfferSize + BidSize from quote where mySymbol = x} peach someSyms1
-24|simple,manualparallelization|raze {select date, Symbol, Time, BidPrice, OfferPrice, BidSize, OfferSize, QuoteCondition, Exchange from quote where mySymbol = x} peach infreqIdList
-25|simple,manualparallelization|raze {select date, Symbol, Time, BidPrice, OfferPrice, BidSize, OfferSize, QuoteCondition, Exchange from quote where mySymbol = x, 2000<BidSize+OfferSize} peach infreqIdList
-26|advanced,manualparallelization|raze {select first Symbol, wsumAsk:OfferSize wsum OfferPrice, wsumBid: BidPrice wsum BidSize, sdevask: sdev OfferSize, sdevbid:sdev BidPrice, corPrice:OfferPrice cor BidPrice, corSize: OfferSize cor BidSize from quote where mySymbol = x} peach infreqIdList
