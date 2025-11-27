@@ -1,6 +1,6 @@
 import logging
 from datetime import datetime
-from typing import List
+from typing import List, Dict
 
 import pyarrow as pa
 import pyarrow.compute as pc
@@ -173,20 +173,8 @@ def add_date_column(date: datetime, table: pa.Table) -> pa.Table:
     date_array = pa.array([date.date()] * len(table), type=pa.date32())
     return table.append_column('date', date_array)
 
-def standardize_column_names(table: pa.Table) -> pa.Table:
-    """Standardizes column names by removing spaces and underscores.
-
-    Example: 'Sale Condition' becomes 'SaleCondition'.
-
-    Args:
-        table: The input PyArrow table.
-
-    Returns:
-        The table with renamed columns.
-    """
-    logging.info("    Standardizing column names")
-    new_names = [name.replace(" ", "").replace("_", "") for name in table.column_names]
-    return table.rename_columns(new_names)
+def rename(colMap: Dict, table: pa.Table) -> pa.Table:
+    return table.rename_columns(colMap)
 
 def test_symbol_filter(test_symbols: pa.Array, table: pa.Table) -> pa.Table:
     """Filtering out test symbol entries.

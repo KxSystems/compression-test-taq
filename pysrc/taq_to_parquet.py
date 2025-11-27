@@ -75,6 +75,48 @@ MASTER_SCHEMA: Final[pa.Schema] = pa.schema([
     pa.field('TradedOnMIAX', pa.bool_())
 ])
 
+MASTERRENAME: Dict = {
+    'Symbol': 'sym',
+    'Security_Description': 'description',
+    'CUSIP': 'cusip',
+    'Security_Type': 'securityType',
+    'SIP_Symbol': 'SIPSymbol',
+    'Old_Symbol': 'oldSym',
+    'Test_Symbol_Flag': 'testSymFlag',
+    'Listed_Exchange': 'ex',
+    'Tape': 'tap',
+    'Unit_Of_Trade': 'unit',
+    'Round_Lot': 'roundLot',
+    'NYSE_Industry_Code': 'NYSEIndustryCode',
+    'Shares_Outstanding': 'sharesOutstanding',
+    'Halt_Delay_Reason': 'haltDelayReason',
+    'Specialist_Clearing_Agent': 'specialistClearingAgent',
+    'Specialist_Clearing_Number': 'specialistClearingNumber',
+    'Specialist_Post_Number': 'specialistPostNumber',
+    'Specialist_Panel': 'specialistPanel',
+    'TradedOnNYSEMKT': 'tradedOnNYSEMKT',
+    'TradedOnNASDAQBX': 'tradedOnNASDAQBX',
+    'TradedOnNSX': 'tradedOnNSX',
+    'TradedOnFINRA': 'tradedOnFINRA',
+    'TradedOnISE': 'tradedOnISE',
+    'TradedOnEdgeA': 'tradedOnEdgeA',
+    'TradedOnEdgeX': 'tradedOnEdgeX',
+    'TradedOnNYSETexas': 'tradedOnNYSETexas',
+    'TradedOnNYSE': 'tradedOnNYSE',
+    'TradedOnArca': 'tradedOnArca',
+    'TradedOnNasdaq': 'tradedOnNasdaq',
+    'TradedOnCBOE': 'tradedOnCBOE',
+    'TradedOnPSX': 'tradedOnPSX',
+    'TradedOnBATSY': 'tradedOnBATSY',
+    'TradedOnBATS': 'tradedOnBATS',
+    'TradedOnIEX': 'tradedOnIEX',
+    'Tick_Pilot_Indicator': 'tickPilotIndicator',
+    'Effective_Date': 'effectiveDate',
+    'TradedOnLTSE': 'tradedOnLTSE',
+    'TradedOnMEMX': 'tradedOnMEMX',
+    'TradedOnMIAX': 'tradedOnMIAX'
+}
+
 # Table trade: EQY_US_ALL_TRADE_*.csv
 TRADE_SCHEMA: Final[pa.Schema] = pa.schema([
     pa.field('Time', pa.string()), # transformed to: pa.time64('ns')
@@ -93,6 +135,24 @@ TRADE_SCHEMA: Final[pa.Schema] = pa.schema([
     pa.field('Trade Reporting Facility TRF Timestamp', pa.string()), # transformed to: pa.time64('ns')
     pa.field('Trade Through Exempt Indicator', pa.bool_())
 ])
+
+TRADERENAME:Dict = {
+    'Time': 'time',
+    'Exchange': 'ex',
+    'Symbol': 'sym',
+    'Sale Condition': 'cond',
+    'Trade Volume': 'size',
+    'Trade Price': 'price',
+    'Trade Stop Stock Indicator': 'stop',
+    'Trade Correction Indicator': 'corr',
+    'Sequence Number': 'seq',
+    'Trade Id': 'tradeId',
+    'Source of Trade': 'source',
+    'Trade Reporting Facility': 'tradeReportingFacility',
+    'Participant Timestamp': 'participantTimestamp',
+    'Trade Reporting Facility TRF Timestamp': 'tradeReportingFacilityTRFTimestamp',
+    'Trade Through Exempt Indicator': 'tradeThroughExemptIndicator'
+}
 
 # Table quote: splits_us_all_bbo_*[0-9]_*.csv
 QUOTE_SCHEMA: Final[pa.Schema] = pa.schema([
@@ -120,6 +180,32 @@ QUOTE_SCHEMA: Final[pa.Schema] = pa.schema([
     pa.field('FINRA_ADF_Market_Participant_Quote_Indicator', pa.dictionary(pa.int32(), pa.string())),
     pa.field('Security_Status_Indicator', pa.dictionary(pa.int32(), pa.string()))
 ])
+
+QUOTERENAME : Dict = {
+    'Time': 'time',
+    'Exchange': 'ex',
+    'Symbol': 'sym',
+    'Bid_Price': 'bid',
+    'Bid_Size': 'bsize',
+    'Offer_Price': 'ask',
+    'Offer_Size': 'asize',
+    'Quote_Condition': 'cond',
+    'Sequence_Number': 'seq',
+    'National_BBO_Ind': 'nationalBBOInd',
+    'FINRA_BBO_Indicator': 'finraBBOIndicator',
+    'FINRA_ADF_MPID_Indicator': 'finraADFMPIDIndicator',
+    'Quote_Cancel_Correction': 'corr',
+    'Source_Of_Quote': 'source',
+    'Retail_Interest_Indicator': 'retailInterestIndicator',
+    'Short_Sale_Restriction_Indicator': 'shortSaleRestrictionIndicator',
+    'LULD_BBO_Indicator': 'LULDBBOIndicator',
+    'SIP_Generated_Message_Identifier': 'SIPGeneratedMessageIdentifier',
+    'National_BBO_LULD_Indicator': 'NationalBBOLULDIndicator',
+    'Participant_Timestamp': 'ParticipantTimestamp',
+    'FINRA_ADF_Timestamp': 'FINRAADFTimestamp',
+    'FINRA_ADF_Market_Participant_Quote_Indicator': 'FINRAADFMarketParticipantQuoteIndicator',
+    'Security_Status_Indicator': 'securityStatusIndicator'
+}
 
 PARSE_OPTIONS = csv.ParseOptions(delimiter='|')
 
@@ -217,7 +303,7 @@ def persist_rowgroup_per_symbol(table: pa.Table, table_output_path: Path,
     logging.info(f"  Saving {len(table)} rows")
 
     minrowgroupsize=0 if os.getenv('MINROWGROUPSIZE') is None else int(os.getenv('MINROWGROUPSIZE'))
-    symbols = table.column("Symbol")
+    symbols = table.column("sym")
     date = table.column("date")[0].as_py().strftime('%Y-%m-%d') # TODO: make it more robust
     table = table.drop(['date'])
     # partition_schema=pa.schema([('date', pa.date32())])
@@ -254,7 +340,7 @@ def persistHive(table: pa.Table, table_output_path: Path,
 
     logging.info(f"  Saving {len(table)} rows")
 
-    partition_schema=pa.schema([('date', pa.date32()), ('Symbol', pa.string())])
+    partition_schema=pa.schema([('date', pa.date32()), ('sym', pa.string())])
     ds.write_dataset(
         table,
         base_dir=table_output_path,
@@ -320,7 +406,7 @@ def main(date: datetime, src: Path, dst: Path, letters: str, includetestsymbols:
 
     master_conv= [master_extra_conv, conv.symbol_conv,
                   partial(conv.convert_date_strings_to_date32, ['Effective_Date']),
-                  partial(conv.add_date_column, date), conv.standardize_column_names]
+                  partial(conv.add_date_column, date), partial(conv.rename, MASTERRENAME)]
     master= pipe(master, *master_conv)
     parquet_options_master = {'compression': 'none'}
     if len(master) == 0:
@@ -344,7 +430,7 @@ def main(date: datetime, src: Path, dst: Path, letters: str, includetestsymbols:
     quote_conv = [extra_conv, conv.symbol_conv,
             partial(conv.trim_dict_encode, ['FINRA_BBO_Indicator']),
             partial(conv.convert_time_strings_to_time64, ['Time', 'Participant_Timestamp', 'FINRA_ADF_Timestamp']),
-            partial(conv.add_date_column, date), conv.standardize_column_names]
+            partial(conv.add_date_column, date), partial(conv.rename, QUOTERENAME)]
     parquet_options_quote = get_write_options(QUOTE_SCHEMA.get_field_index('TIME'))
 
     symbolstoredas = os.getenv('SYMBOLSTOREDAS')
@@ -367,7 +453,7 @@ def main(date: datetime, src: Path, dst: Path, letters: str, includetestsymbols:
     trade_conv = [first_letter_filter, extra_conv, conv.symbol_conv,
         partial(conv.trim_dict_encode, ['Sale Condition']),
         partial(conv.convert_time_strings_to_time64, ['Time', 'Participant Timestamp', 'Trade Reporting Facility TRF Timestamp']),
-        partial(conv.add_date_column, date), conv.standardize_column_names]
+        partial(conv.add_date_column, date), partial(conv.rename, TRADERENAME)]
     parquet_options_trade = get_write_options(TRADE_SCHEMA.get_field_index('TIME'))
     trade = parse_and_convert(trade_file, TRADE_SCHEMA, trade_conv)
     if symbolstoredas is None or symbolstoredas.upper() == "PARTITIONCOLUMN":

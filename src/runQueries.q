@@ -124,7 +124,7 @@ $[PARQUET; [
   ts: system "ts .Q.lo[`$DB;0;0]";
   ioe: getKBRead[Device]`kB_read;
 
-  compparmall: -21!hsym `$DB,"/",string[first key hsym `$DB],"/quote/Symbol";   // or assume that db dir name reflects compression
+  compparmall: -21!hsym `$DB,"/",string[first key hsym `$DB],"/quote/sym";   // or assume that db dir name reflects compression
   compparm: $[count compparmall; "_" sv string @[;`logicalBlockSize`algorithm`zipLevel] compparmall; "0_0_0"];
 
   if[`encr in ko;
@@ -137,7 +137,7 @@ if["true" ~ lower getenv `QMAP;
   .qlog.info "Executing .Q.MAP[]";
   .Q.MAP[]]
 
-SYMBOLCOLNAME: $[PARQUETROWGROUP; "mySymbol"; "Symbol"]
+SYMBOLCOLNAME: $[PARQUETROWGROUP; "mysym"; "sym"]
 symFreq: eval parse "first flip key asc select count i by ", SYMBOLCOLNAME, " from quote where date=min date";
 
 aFreqSym: @[; floor 0.80 * count symFreq] symFreq;

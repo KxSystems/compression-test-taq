@@ -31,91 +31,91 @@ if[`help in ko; -1 USAGE; exit 0]
 
 / Table master: EQY_US_ALL_REF_MASTER_*.csv
 MASTERSCHEMA: ([
-  Symbol:"*";
-  Security_Description:"*";
-  CUSIP:"S";
-  SecurityType:"S";
+  sym:"*";
+  description:"*";
+  cusip:"S";
+  securityType:"S";
   SIPSymbol:"S";
-  OldSymbol:"S";
-  TestSymbolFlag:"B";
-  ListedExchange:"C";
-  Tape:"C";
-  UnitOfTrade:"H";
-  RoundLot:"H";
+  oldSym:"S";
+  testFlag:"B";
+  ex:"C";
+  tape:"C";
+  unit:"H";
+  roundLot:"H";
   NYSEIndustryCode:"S";
-  SharesOutstanding:"F";
-  HaltDelayReason:"C";
-  SpecialistClearingAgent:"S";
-  SpecialistClearingNumber:"S";
-  SpecialistPost_Number:"H";
-  SpecialistPanel:"C";
-  TradedOnNYSEMKT:"B";
-  TradedOnNASDAQBX:"B";
-  TradedOnNSX:"B";
-  TradedOnFINRA:"B";
-  TradedOnISE:"B";
-  TradedOnEdgeA:"B";
-  TradedOnEdgeX:"B";
-  TradedOnNYSETexas:"B";
-  TradedOnNYSE:"B";
-  TradedOnArca:"B";
-  TradedOnNasdaq:"B";
-  TradedOnCBOE:"B";
-  TradedOnPSX:"B";
-  TradedOnBATSY:"B";
-  TradedOnBATS:"B";
-  TradedOnIEX:"B";
-  TickPilotIndicator:"C";
-  Effective_Date:"D";
-  TradedOnLTSE:"B";
-  TradedOnMEMX:"B";
-  TradedOnMIAX:"B"
+  sharesOutstanding:"F";
+  haltDelayReason:"C";
+  specialistClearingAgent:"S";
+  specialistClearingNumber:"S";
+  specialistPostNumber:"H";
+  specialistPanel:"C";
+  tradedOnNYSEMKT:"B";
+  tradedOnNASDAQBX:"B";
+  tradedOnNSX:"B";
+  tradedOnFINRA:"B";
+  tradedOnISE:"B";
+  tradedOnEdgeA:"B";
+  tradedOnEdgeX:"B";
+  tradedOnNYSETexas:"B";
+  tradedOnNYSE:"B";
+  tradedOnArca:"B";
+  tradedOnNasdaq:"B";
+  tradedOnCBOE:"B";
+  tradedOnPSX:"B";
+  tradedOnBATSY:"B";
+  tradedOnBATS:"B";
+  tradedOnIEX:"B";
+  tickPilotIndicator:"C";
+  effectiveDate:"D";
+  tradedOnLTSE:"B";
+  tradedOnMEMX:"B";
+  tradedOnMIAX:"B"
   ])
 
 / Table trade: EQY_US_ALL_TRADE_*.csv
 TRADESCHEMA: ([
-  Time:"N";
-  Exchange:"C";
-  Symbol:"*";
-  SaleCondition:"S";
-  TradeVolume:"I";
-  TradePrice:"E";
-  TradeStopStockIndicator:"S";
-  TradeCorrectionIndicator:"H";
-  SequenceNumber:"I";
-  TradeId:"J";
-  SourceofTrade:"C";
-  TradeReportingFacility:"S";
-  ParticipantTimestamp:"N";
-  TradeReportingFacilityTRFTimestamp:"N";
-  TradeThroughExemptIndicator:"B"
+  time:"N";
+  ex:"C";
+  sym:"*";
+  cond:"S";
+  size:"I";
+  price:"E";
+  stop:"S";
+  corr:"H";
+  seq:"I";
+  tradeId:"J";
+  source:"C";
+  tradeReportingFacility:"S";
+  participantTimestamp:"N";
+  tradeReportingFacilityTRFTimestamp:"N";
+  tradeThroughExemptIndicator:"B"
   ])
 
 / Table quote: splits_us_all_bbo_*[0-9]_*.csv
 QUOTESCHEMA: ([
-  Time:"N";
-  Exchange:"C";
-  Symbol:"*";
-  BidPrice:"E";
-  BidSize:"I";
-  OfferPrice:"E";
-  OfferSize:"I";
-  QuoteCondition:"C";
-  SequenceNumber:"I";
-  NationalBBOInd:"C";
-  FINRABBOIndicator:"C";
-  FINRAADFMPIDIndicator:"C";
-  QuoteCancelCorrection:"C";
-  SourceOfQuote:"C";
-  RetailInterestIndicator:"C";
-  ShortSaleRestrictionIndicator:"C";
+  time:"N";
+  ex:"C";
+  sym:"*";
+  bid:"E";
+  bsize:"I";
+  ask:"E";
+  asize:"I";
+  cond:"C";
+  seq:"I";
+  nationalBBOInd:"C";
+  finraBBOIndicator:"C";
+  finraADFMPIDIndicator:"C";
+  corr:"C";
+  source:"C";
+  retailInterestIndicator:"C";
+  shortSaleRestrictionIndicator:"C";
   LULDBBOIndicator:"C";
   SIPGeneratedMessageIdentifier:"N";
   NationalBBOLULDIndicator:"N";
   ParticipantTimestamp:"C";
   FINRAADFTimestamp:"C";
   FINRAADFMarketParticipantQuoteIndicator:"C";
-  SecurityStatusIndicator:"C"
+  securityStatusIndicator:"C"
   ])
 
 
@@ -131,7 +131,7 @@ getCompParam:{[]
   }
 
 symbolConv: {
-  update `$"."^Symbol from x}  / replace whitespace by dot
+  update `$"."^sym from x}  / replace whitespace by dot
 
 parseAndConvert: {[schema; conv; fileName:`C]
   .qlog.info "  Parsing file ", fileName;
@@ -181,7 +181,7 @@ process: {[date:`C; dst:`s; tableName:`s; schema; conv; batchsize: `i; saveDotD:
   }
 
 testSymbolFilter: {[testSymbols:`S; t]
-  ?[t;enlist (not; (in; `Symbol; enlist testSymbols));0b;()]
+  ?[t;enlist (not; (in; `sym; enlist testSymbols));0b;()]
   }
 
 main: {[date:`C; src:`C; dst; letters:`C; includetestsymbols:`b; batchsize: `i]
@@ -190,15 +190,15 @@ main: {[date:`C; src:`C; dst; letters:`C; includetestsymbols:`b; batchsize: `i]
     .qlog.error "Destination directories exist. Clean up and rerun the script";
     exit 7];
   letterFilter: $[count letters; {
-    select from y where Symbol[;0] within x}[letters except "-"]; ::];
+    select from y where sym[;0] within x}[letters except "-"]; ::];
   compparam: getCompParam[]; / check compression parameters before persisting anything
 
   .qlog.info "Processing master table...";
   M: src, "/EQY_US_ALL_REF_MASTER_", date, ".psv";
   master: parseAndConvert[MASTERSCHEMA;letterFilter; M];
   (masterExtraConv; extraConv): $[includetestsymbols; (::; ::); [
-    testSymbols: asc first flip symbolConv select Symbol from master where TestSymbolFlag;
-    (?[;enlist (not; `TestSymbolFlag);0b;()]; testSymbolFilter[testSymbols])]];
+    testSymbols: asc first flip symbolConv select sym from master where testFlag;
+    (?[;enlist (not; `testFlag);0b;()]; testSymbolFilter[testSymbols])]];
 
   convMaster: symbolConv masterExtraConv@;
   enumAndSave[convMaster[master]; dst; `$"master/"; 1b; date];
@@ -212,13 +212,13 @@ main: {[date:`C; src:`C; dst; letters:`C; includetestsymbols:`b; batchsize: `i]
     .qlog.info "Processing quote tables...";
     @[count[Q]#0b;0;:;1b] process[date; dst; `quote; QUOTESCHEMA; extraConv symbolConv@; batchsize]' Q;
     .qlog.info "  Adding parted attribute...";
-    psym[`Symbol; .Q.par[dst; "D"$date; `quote]]]
+    psym[`sym; .Q.par[dst; "D"$date; `quote]]]
 
   .qlog.info "Processing trade table...";
   T: src, "/EQY_US_ALL_TRADE_", date, ".psv";
   process[date; dst; `trade;TRADESCHEMA;extraConv symbolConv letterFilter@; batchsize; 1b; T];
   .qlog.info "  Adding parted attribute...";
-  psym[`Symbol; .Q.par[dst; "D"$date; `trade]];
+  psym[`sym; .Q.par[dst; "D"$date; `trade]];
 
   .qlog.info "\nAll processing completed in ", 2_string .z.p - startTime;
   }
