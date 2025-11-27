@@ -22,7 +22,7 @@ loadHiveTable: {[res; dir]
 loadHiveDataset: {[db]
   tNames: key hsym `$db;
   tparts: loadHiveTable[enlist ()] each .Q.dd[hsym `$db] each tNames;
-  tNames set' {tb.mkP ![x;(); 0b; enlist `file]!$[PARQUETROWGROUP; {(`T!([t:(:{x,'([]mySymbol:`$x`9Symbol9min)})!])):x}; ::] each pq peach last flip x} each tparts
+  tNames set' {tb.mkP ![x;(); 0b; enlist `file]!$[PARQUETROWGROUP; {(`T!([t:(:{x,'([]mysym:`$x`9sym9min)})!])):x}; ::] each pq peach last flip x} each tparts
   }
 
 getDeviceOSX:{[db:`C]
