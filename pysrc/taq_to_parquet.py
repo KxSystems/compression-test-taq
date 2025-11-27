@@ -245,10 +245,12 @@ def get_write_options(sort_idx: int) -> Dict[str, Union[str, int]]:
         logging.info(f"Setting parquet compression to {compression}")
         write_kwargs['compression'] = compression
 
-    compression_level = os.getenv('COMPRESSION_LEVEL')
-    if compression_level:
-        logging.info(f"Setting parquet compression level to {compression_level}")
-        write_kwargs['compression_level'] = int(compression_level)
+        compression_level = os.getenv('COMPRESSION_LEVEL')
+        if compression_level:
+            logging.info(f"Setting parquet compression level to {compression_level}")
+            write_kwargs['compression_level'] = int(compression_level)
+    else:
+        write_kwargs['compression'] = None
 
     write_kwargs['sorting_columns'] = [pq.SortingColumn(sort_idx)]
 
