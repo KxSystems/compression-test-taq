@@ -433,7 +433,7 @@ def main(date: datetime, src: Path, dst: Path, letters: str, includetestsymbols:
             partial(conv.trim_dict_encode, ['FINRA_BBO_Indicator']),
             partial(conv.convert_time_strings_to_time64, ['Time', 'Participant_Timestamp', 'FINRA_ADF_Timestamp']),
             partial(conv.add_date_column, date), partial(conv.rename, QUOTERENAME)]
-    parquet_options_quote = get_write_options(QUOTE_SCHEMA.get_field_index('TIME'))
+    parquet_options_quote = get_write_options(QUOTE_SCHEMA.get_field_index('time'))
 
     symbolstoredas = os.getenv('SYMBOLSTOREDAS')
     if symbolstoredas is None or symbolstoredas.upper() == "PARTITIONCOLUMN":
@@ -456,7 +456,7 @@ def main(date: datetime, src: Path, dst: Path, letters: str, includetestsymbols:
         partial(conv.trim_dict_encode, ['Sale Condition']),
         partial(conv.convert_time_strings_to_time64, ['Time', 'Participant Timestamp', 'Trade Reporting Facility TRF Timestamp']),
         partial(conv.add_date_column, date), partial(conv.rename, TRADERENAME)]
-    parquet_options_trade = get_write_options(TRADE_SCHEMA.get_field_index('TIME'))
+    parquet_options_trade = get_write_options(TRADE_SCHEMA.get_field_index('time'))
     trade = parse_and_convert(trade_file, TRADE_SCHEMA, trade_conv)
     if symbolstoredas is None or symbolstoredas.upper() == "PARTITIONCOLUMN":
         persistHive(trade, dst / 'trade', parquet_options_trade)
