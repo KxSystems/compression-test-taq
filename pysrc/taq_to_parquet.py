@@ -123,11 +123,11 @@ TRADE_SCHEMA: Final[pa.Schema] = pa.schema([
     pa.field('Exchange', pa.dictionary(pa.int32(), pa.string())),
     pa.field('Symbol', pa.string()),
     pa.field('Sale Condition', pa.string()), # transformed to: pa.dictionary(pa.int32(), pa.string())
-    pa.field('Trade Volume', pa.uint32()),
+    pa.field('Trade Volume', pa.int32()),  # or pa.uint32
     pa.field('Trade Price', pa.float32()),
     pa.field('Trade Stop Stock Indicator', pa.dictionary(pa.int32(), pa.string())),
     pa.field('Trade Correction Indicator', pa.uint16()),
-    pa.field('Sequence Number', pa.uint32()),
+    pa.field('Sequence Number', pa.int32()),  # or pa.uint32
     pa.field('Trade Id', pa.uint64()),
     pa.field('Source of Trade', pa.dictionary(pa.int32(), pa.string())),
     pa.field('Trade Reporting Facility', pa.dictionary(pa.int32(), pa.string())),
@@ -160,11 +160,11 @@ QUOTE_SCHEMA: Final[pa.Schema] = pa.schema([
     pa.field('Exchange', pa.dictionary(pa.int32(), pa.string())),
     pa.field('Symbol', pa.string()),
     pa.field('Bid_Price', pa.float32()),
-    pa.field('Bid_Size', pa.uint32()),
+    pa.field('Bid_Size', pa.int32()),  # or pa.uint32
     pa.field('Offer_Price', pa.float32()),
-    pa.field('Offer_Size', pa.uint32()),
+    pa.field('Offer_Size', pa.int32()),  # or pa.uint32
     pa.field('Quote_Condition', pa.dictionary(pa.int32(), pa.string())),
-    pa.field('Sequence_Number', pa.uint32()),
+    pa.field('Sequence_Number', pa.int32()),  # or pa.uint32
     pa.field('National_BBO_Ind', pa.dictionary(pa.int32(), pa.string())),
     pa.field('FINRA_BBO_Indicator', pa.string()), # transformed to pa.dictionary(pa.int32(), pa.string())
     pa.field('FINRA_ADF_MPID_Indicator', pa.dictionary(pa.int32(), pa.string())),
