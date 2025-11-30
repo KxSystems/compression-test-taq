@@ -103,7 +103,7 @@ resFile: $[`result in key o; o `result; "result.psv"];
 if[not ()~key `$resFile: ":", resFile; hdel `$resFile];
 resultH: hopen resFile;
 SEP: "|"
-resultH "compparam|threadcount|idx|tags|query|run1|run2|run3|mem1kb|mem2kb|mem3kb|io1kb|io2kb|io3kb\n"
+resultH "compparam|threadcount|idx|tags|query|run1timeMS|run2timeMS|run3timeMS|run1memKB|run2memKB|run3memKB|run1ioKB|run2ioKB|run3ioKB\n"
 
 $[PARQUET; [
   tb:use`kx.pq.t;
