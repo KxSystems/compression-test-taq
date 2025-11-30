@@ -2,7 +2,7 @@ idx|tags|description|
 1|simple|select all data from quote before 10am|
 2|simple,emptyresult||
 3|simple||
-4|simple||
+4|simple,singleinstrument||
 5|simple||
 6|simple,singleinstrument||
 7|simple,singleinstrument||
