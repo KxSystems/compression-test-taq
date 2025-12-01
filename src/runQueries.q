@@ -7,6 +7,7 @@ if["" ~ getenv `FLUSH;
 ko: key o: first each .Q.opt .z.x;
 
 DB: o `db
+PARAMDIR:  hsym `$o`paramdir
 PARQUET: upper[o `format] like "PARQUET*"
 PARQUETROWGROUP: upper[o `format] ~ "PARQUET_ROWGROUP"
 
@@ -137,14 +138,12 @@ if["true" ~ lower getenv `QMAP;
   .qlog.info "Executing .Q.MAP[]";
   .Q.MAP[]]
 
-SYMBOLCOLNAME: $[PARQUETROWGROUP; "mysym"; "sym"]
-symFreq: eval parse "first flip key asc select count i by ", SYMBOLCOLNAME, " from quote where date=min date";
-
-aFreqSym: @[; floor 0.80 * count symFreq] symFreq;
-anInfreqSym: @[; floor 0.2 * count symFreq] symFreq;
-someSyms1: -20?symFreq; / should be symbols of various quote counts to force different execution times
-someSyms2: -100?symFreq;
-infreqIdList: @[; til[500] + count[symFreq] div 10] symFreq; / many, but small quote count symbols
+.qlog.info "Loading parameters from ", 1_string PARAMDIR
+aFreqSym: first `$read0 .Q.dd[PARAMDIR;`aFreqSym.txt]
+anInfreqSym: first `$read0 .Q.dd[PARAMDIR;`anInfreqSym.txt]
+someSyms1: `$read0 .Q.dd[PARAMDIR;`someSyms1.txt]
+someSyms2: `$read0 .Q.dd[PARAMDIR;`someSyms2.txt]
+infreqIdList: `$read0 .Q.dd[PARAMDIR;`infreqIdList.txt]
 
 timeBuckets: ([preopen: 0D08:30; open: 0D09:05; morning: 0D12:30; afternoon: 0D16:30; close: 1D])
 
