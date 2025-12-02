@@ -17,8 +17,8 @@ idx|tags|query
 16|manualparallelization|raze {select sym, weightedBidPice: bsize wavg bid, weightedOfferPice: asize wavg ask from quote where sym = x} peach someSyms1
 17||select weightedSpread: (bsize + asize) wavg ask - bid from quote where sym = anInfreqSym
 18||select time, 20 mavg price from trade where sym = aFreqSym
-19||select 5 mavg (ask + bid) % 2, 5 mavg asize + bsize by sym from quote where sym in someSyms1
-20|manualparallelization|raze {select sym, 5 mavg (ask + bid) % 2, 5 mavg asize + bsize from quote where sym = x} peach someSyms1
+19||ungroup select time, movingmid: 5 mavg (ask + bid) % 2, movingsize: 5 mavg asize + bsize by sym from quote where sym in someSyms1
+20|manualparallelization|raze {select sym, time, 5 mavg (ask + bid) % 2, 5 mavg asize + bsize from quote where sym = x} peach someSyms1
 21||select time, sums size from trade where sym = aFreqSym
 22||select time, sums size from trade where ex ~\: enlist "L"
 23||update movingvwap:(sums price * size) % sums size by sym from select sym, time, price, size from trade where time within 0D08:00 0D08:15
