@@ -18,7 +18,7 @@ idx|tags|query
 17||select weightedSpread: (bsize + asize) wavg ask - bid from quote where mysym = anInfreqSym
 18||select time, 20 mavg price from trade where mysym = aFreqSym
 19||ungroup select time, movingmid: 5 mavg (ask + bid) % 2, movingsize: 5 mavg asize + bsize by mysym from quote where mysym in someSyms1
-20|manualparallelization|raze {select mysym, time, 5 mavg (ask + bid) % 2, 5 mavg asize + bsize from quote where mysym = x} peach someSyms1
+20|manualparallelization|raze {select mysym, time, movingmid: 5 mavg (ask + bid) % 2, movingsize: 5 mavg asize + bsize from quote where mysym = x} peach someSyms1
 21||select time, sums size from trade where mysym = aFreqSym
 22||select time, sums size from trade where ex ~\: enlist "L"
 23||update movingvwap:(sums price * size) % sums size by mysym from select mysym, time, price, size from trade where time within 0D08:00 0D08:15
