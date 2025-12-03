@@ -35,6 +35,6 @@ idx|tags|query
 34|manualparallelization|raze {select first sym, wsumAsk:asize wsum ask, wsumBid: bid wsum bsize, sdevasksize: sdev asize, sdevbid:sdev bid, corPrice:ask cor bid, corSize: asize cor bsize from quote where sym = x} peach infreqIdList
 35|hugedataread|select from trade where price = (min;price) fby sym
 36|largedataread|select FirstTime: first time, LastTime: last time, first price, sum size by sym,pricegroup:({sums differ x};price) fby sym from trade where ex in "LM"
-37|smalldataread|select medMidSize: med (bsize + asize) % 2 from quote where sym=anInfreqSym
-38||aj[`sym`time; select sym, time, price, size, stop, cond, ex from trade where date=min date, sym in someSyms1; select sym, time, bid, ask, bsize, asize, quotecond: cond, ex from quote where date=min date]
+37|smalldataread|select medMidSize: med (bsize + asize) from quote where sym=anInfreqSym
+38||aj[`sym`time; select sym, time, price, size, stop, cond, ex from trade where date=min date, sym in someSyms1; select sym, time, bid, ask, bsize, asize, quotecond: cond, quoteex: ex from quote where date=min date]
 39|largedataread|aj[`sym`ex`time; select sym, time, price, size, stop, cond, ex from trade where date=min date, size>500000; select sym, time, bid, ask, bsize, asize, quotecond: cond, ex from quote where date=min date]
