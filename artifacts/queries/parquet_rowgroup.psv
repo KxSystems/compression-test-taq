@@ -30,8 +30,8 @@ idx|tags|query
 29||select cnt: count i, sum size by mysym, timeBucket: timeBuckets binr time from trade where date=min date, not corr=0
 30||select o: first price, h: max price, l: min price, c: last price, s: sum size by mysym, 0D00:05 xbar time from trade where mysym in someSyms2, 0 < count each stop
 31|manualparallelization|raze {select first mysym, o: first price, h: max price, l: min price, c: last price, s: sum size by 0D00:05 xbar time from trade where mysym = x, 0 < count each stop} peach someSyms2
-32||select inbal: (bsize - asize) % bsize + asize by minute: `minute$0D00:01 xbar time from quote where mysym = anInfreqSym
-33||select wsumAsk:asize wsum ask, wsumBid: bid wsum bsize, sdevask: sdev asize, sdevbid:sdev bid, corPrice:ask cor bid, corSize: asize cor bsize by mysym from quote where mysym in infreqIdList
-34|manualparallelization|raze {select first mysym, wsumAsk:asize wsum ask, wsumBid: bid wsum bsize, sdevask: sdev asize, sdevbid:sdev bid, corPrice:ask cor bid, corSize: asize cor bsize from quote where mysym = x} peach infreqIdList
+32||update inbal: (bsize - asize) % bsize + asize from select first asize, first bsize by minute: `minute$0D00:01 xbar time from quote where mysym = anInfreqSym
+33||select wsumAsk:asize wsum ask, wsumBid: bid wsum bsize, sdevasksize: sdev asize, sdevbid:sdev bid, corPrice:ask cor bid, corSize: asize cor bsize by mysym from quote where mysym in infreqIdList
+34|manualparallelization|raze {select first mysym, wsumAsk:asize wsum ask, wsumBid: bid wsum bsize, sdevasksize: sdev asize, sdevbid:sdev bid, corPrice:ask cor bid, corSize: asize cor bsize from quote where mysym = x} peach infreqIdList
 35||select from trade where price = (min;price) fby sym
 36||select Firsttime: first time, Lasttime: last time, first price, sum size by mysym,pricegroup:({sums differ x};price) fby sym from trade where ex in enlist each "LM"
