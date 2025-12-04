@@ -67,9 +67,9 @@ getKBReadLinux: {[device:`C]
 
 getKBRead: $[.z.o ~ `m64; getKBReadMac; getKBReadLinux]
 
-runQuery: {[idx:`i; tags:`C; query:`C]
+runQuery: {[idx:`C; tags:`C; query:`C]
   if[not count query;
-    resultH ,[;"\n"] SEP sv (compparm; string system "s"; string idx; query), 9#enlist"";
+    resultH ,[;"\n"] SEP sv (compparm; string system "s"; idx; query), 9#enlist"";
     :();
   ]
   ts: ();
@@ -93,7 +93,7 @@ runQuery: {[idx:`i; tags:`C; query:`C]
   ts,: enlist system "ts ", query;
   io,: getKBRead[Device]`kB_read;
 
-  resultH ,[;"\n"] SEP sv (compparm; string system "s"; string idx; tags; query), string ts[;0], (ts[;1] div 1000), 1 _ deltas io;
+  resultH ,[;"\n"] SEP sv (compparm; string system "s"; idx; tags; query), string ts[;0], (ts[;1] div 1000), 1 _ deltas io;
   };
 
 Device: getDevice[DB]
@@ -149,6 +149,6 @@ timeBuckets: ([preopen: 0D08:30; open: 0D09:05; morning: 0D12:30; afternoon: 0D1
 
 queryFile: o `queryfile;
 .qlog.info "Loading and executing queries from ", queryFile;
-(runQuery . value@) each ("I**";enlist "|") 0: `$queryFile;
+{$["#" ~ first first x; ::; runQuery . value x]} each ("***";enlist "|") 0: `$queryFile; / skip comments
 
 if[not `debug in key o; exit 0];
