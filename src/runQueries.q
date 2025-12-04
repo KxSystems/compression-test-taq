@@ -72,17 +72,18 @@ runQuery: {[idx:`C; tags:`C; query:`C]
     resultH ,[;"\n"] SEP sv (compparm; string system "s"; idx; query), 9#enlist"";
     :();
   ]
-  ts: ();
-  io: ();
+  ts:io: ();
   .qlog.info raze system getenv[`FLUSH], " ", DB;
   .qlog.info "Collecting garbage";
   .Q.gc[];
   .qlog.info "Running query: ", query;
   io,: getKBRead[Device]`kB_read;
-  ts,: enlist system "ts ", query;
+  ts,: enlist system "ts res:", query;
   io,: getKBRead[Device]`kB_read;
+  .qlog.info "  Shape of the result: ", string[count res], " x ", string count cols res;
+  delete res from `.;
 
-  .qlog.info "Collecting garbage";
+  .qlog.info "  Collecting garbage";
   .Q.gc[];
   .qlog.info "Running query again";
   ts,: enlist system "ts ", query;
