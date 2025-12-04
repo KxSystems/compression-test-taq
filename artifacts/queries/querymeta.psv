@@ -26,8 +26,8 @@ idx|tags|description|
 25|advanced|select largest trades on all exchanges|
 26|advanced||
 27|advanced|select the indices of all rows in which the sequence number decreases for the instrument|
-28|advanced||
-29|advanced||
+28|complex||
+29|complex||
 30|simple,fewinstruments||
 31|simple,fewinstruments||
 32|simple,singleinstrument||
