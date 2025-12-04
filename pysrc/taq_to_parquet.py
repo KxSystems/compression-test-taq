@@ -200,8 +200,8 @@ QUOTERENAME : Dict = {
     'Short_Sale_Restriction_Indicator': 'shortSaleRestrictionIndicator',
     'LULD_BBO_Indicator': 'LULDBBOIndicator',
     'SIP_Generated_Message_Identifier': 'SIPGeneratedMessageIdentifier',
-    'National_BBO_LULD_Indicator': 'NationalBBOLULDIndicator',
-    'Participant_Timestamp': 'ParticipantTimestamp',
+    'National_BBO_LULD_Indicator': 'nationalBBOLULDIndicator',
+    'Participant_Timestamp': 'participantTimestamp',
     'FINRA_ADF_Timestamp': 'FINRAADFTimestamp',
     'FINRA_ADF_Market_Participant_Quote_Indicator': 'FINRAADFMarketParticipantQuoteIndicator',
     'Security_Status_Indicator': 'securityStatusIndicator'
@@ -525,4 +525,4 @@ if __name__ == '__main__':
         ]
     )
 
-    main(args.date, args.src, args.dst, args.letters.upper(), args.includetestsymbols)
+main(args.date, args.src, args.dst, args.letters.upper(), args.includetestsymbols)

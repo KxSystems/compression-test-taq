@@ -111,9 +111,9 @@ QUOTESCHEMA: ([
   shortSaleRestrictionIndicator:"C";
   LULDBBOIndicator:"C";
   SIPGeneratedMessageIdentifier:"N";
-  NationalBBOLULDIndicator:"N";
-  ParticipantTimestamp:"C";
-  FINRAADFTimestamp:"C";
+  nationalBBOLULDIndicator:"C";
+  participantTimestamp:"N";
+  FINRAADFTimestamp:"N";
   FINRAADFMarketParticipantQuoteIndicator:"C";
   securityStatusIndicator:"C"
   ])
