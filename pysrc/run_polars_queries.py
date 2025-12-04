@@ -1,3 +1,9 @@
+"""
+Script to run polars queries on NYSE TAQ and collect performance metrics (like execution time)
+
+Environment variables:
+    SCANAPI_CACHE   True/False, Passed to polars.scan_parquet cache parameter
+"""
 import argparse
 import csv
 import gc
@@ -70,10 +76,14 @@ class BenchmarkRunner:
         t0 = time_mod.perf_counter()
         logger.info("Initializing database connections...")
 
+        scan_parquet_args = {}
+        if os.getenv('SCANAPI_CACHE'):
+            scan_parquet_args['cache'] = os.getenv('SCANAPI_CACHE').strip().lower in ["true", "1", "yes", "y"]
+
         # Load Polars Scans
-        self.master = pl.scan_parquet(self.db_path / "master/date=*/*.parquet", hive_partitioning=True)
-        self.trade = pl.scan_parquet(self.db_path / "trade/date=*/*.parquet", hive_partitioning=True)
-        self.quote = pl.scan_parquet(self.db_path / "quote/date=*/*.parquet", hive_partitioning=True)
+        self.master = pl.scan_parquet(self.db_path / "master/date=*/*.parquet", hive_partitioning=True, **scan_parquet_args)
+        self.trade = pl.scan_parquet(self.db_path / "trade/date=*/*.parquet", hive_partitioning=True, **scan_parquet_args)
+        self.quote = pl.scan_parquet(self.db_path / "quote/date=*/*.parquet", hive_partitioning=True, **scan_parquet_args)
 
         logger.info("Loading parameter files...")
         try:
@@ -126,7 +136,7 @@ class BenchmarkRunner:
         except Exception as e:
             logger.warning(f"Unexpected error clearing cache: {e}")
 
-    def _execute_query(self, query_str: str) -> None:
+    def _execute_query(self, query_str: str) -> pl.DataFrame:
         """
         Safely executes the query string using the loaded data and parameters.
         """
@@ -143,7 +153,7 @@ class BenchmarkRunner:
         # We use eval here because the requirement is to run arbitrary queries
         # defined in a text file.
         # .collect() triggers the actual computation for LazyFrames
-        eval(query_str, {"__builtins__": None}, eval_context).collect()
+        return eval(query_str, {"__builtins__": None}, eval_context).collect()
 
     def run_query(self, idx: str, query_str: str) -> QueryResult:
         """
@@ -164,7 +174,12 @@ class BenchmarkRunner:
             # Execute and Time
             t_start = time_mod.perf_counter()
             try:
-                self._execute_query(query_str)
+                if i == 0:
+                    res = self._execute_query(query_str)
+                    logger.info(f"[{idx}]   Shape of the result: {res.shape[0]} x {res.shape[1]}")
+                    del res
+                else:
+                    self._execute_query(query_str)
             except Exception as e:
                 logger.error(f"Query {idx} failed: {e}")
                 # Return 0.0 or -1.0 to indicate failure in results

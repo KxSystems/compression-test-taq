@@ -76,21 +76,21 @@ runQuery: {[idx:`C; tags:`C; query:`C]
   .qlog.info raze system getenv[`FLUSH], " ", DB;
   .qlog.info "Collecting garbage";
   .Q.gc[];
-  .qlog.info "Running query: ", query;
+  .qlog.info "[", idx, "] Running query: ", query;
   io,: getKBRead[Device]`kB_read;
   ts,: enlist system "ts res:", query;
   io,: getKBRead[Device]`kB_read;
-  .qlog.info "  Shape of the result: ", string[count res], " x ", string count cols res;
+  .qlog.info "[", idx, "]   Shape of the result: ", string[count res], " x ", string count cols res;
   delete res from `.;
 
-  .qlog.info "  Collecting garbage";
+  .qlog.info "[", idx, "]   Collecting garbage";
   .Q.gc[];
-  .qlog.info "Running query again";
+  .qlog.info "[", idx, "] Running query again";
   ts,: enlist system "ts ", query;
   io,: getKBRead[Device]`kB_read;
 
   .Q.gc[];
-  .qlog.info "Running query third time";
+  .qlog.info "[", idx, "] Running query third time";
   ts,: enlist system "ts ", query;
   io,: getKBRead[Device]`kB_read;
 
