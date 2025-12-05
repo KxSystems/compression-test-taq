@@ -2,7 +2,6 @@
 Script to run polars queries on NYSE TAQ and collect performance metrics (like execution time)
 
 Environment variables:
-    SCANAPI_CACHE   True/False, Passed to polars.scan_parquet cache parameter
 """
 import argparse
 import csv
@@ -76,15 +75,10 @@ class BenchmarkRunner:
         t0 = time_mod.perf_counter()
         logger.info("Initializing database connections...")
 
-        scan_parquet_args = {}
-        if os.getenv('SCANAPI_CACHE'):
-            scan_parquet_args['cache'] = os.getenv('SCANAPI_CACHE').strip().lower in ["true", "1", "yes", "y"]
-            logger.info(f"cache parameter of scan_parquet was set to {scan_parquet_args['cache']}")
-
         # Load Polars Scans
-        self.master = pl.scan_parquet(self.db_path / "master/date=*/*.parquet", hive_partitioning=True, **scan_parquet_args)
-        self.trade = pl.scan_parquet(self.db_path / "trade/date=*/*.parquet", hive_partitioning=True, **scan_parquet_args)
-        self.quote = pl.scan_parquet(self.db_path / "quote/date=*/*.parquet", hive_partitioning=True, **scan_parquet_args)
+        self.master = pl.scan_parquet(self.db_path / "master/date=*/*.parquet", hive_partitioning=True)
+        self.trade = pl.scan_parquet(self.db_path / "trade/date=*/*.parquet", hive_partitioning=True)
+        self.quote = pl.scan_parquet(self.db_path / "quote/date=*/*.parquet", hive_partitioning=True)
 
         logger.info("Loading parameter files...")
         try:
