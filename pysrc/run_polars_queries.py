@@ -79,6 +79,7 @@ class BenchmarkRunner:
         scan_parquet_args = {}
         if os.getenv('SCANAPI_CACHE'):
             scan_parquet_args['cache'] = os.getenv('SCANAPI_CACHE').strip().lower in ["true", "1", "yes", "y"]
+            logger.info(f"cache parameter of scan_parquet was set to {scan_parquet_args['cache']}")
 
         # Load Polars Scans
         self.master = pl.scan_parquet(self.db_path / "master/date=*/*.parquet", hive_partitioning=True, **scan_parquet_args)
@@ -176,16 +177,16 @@ class BenchmarkRunner:
             try:
                 if i == 0:
                     res = self._execute_query(query_str)
+                    t_end = time_mod.perf_counter()
                     logger.info(f"[{idx}]   Shape of the result: {res.shape[0]} x {res.shape[1]}")
                     del res
                 else:
                     self._execute_query(query_str)
+                    t_end = time_mod.perf_counter()
             except Exception as e:
                 logger.error(f"Query {idx} failed: {e}")
                 # Return 0.0 or -1.0 to indicate failure in results
                 return QueryResult(pl.thread_pool_size(), idx, query_str, -1.0, -1.0, -1.0)
-
-            t_end = time_mod.perf_counter()
             times.append((t_end - t_start) * 1000)
 
         return QueryResult(
