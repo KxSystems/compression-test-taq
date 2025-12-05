@@ -1,40 +1,42 @@
 idx|tags|description|
 1|simple|select all data from quote before 10am|
 2|simple,emptyresult||
-3|simple||
-4|simple,singleinstrument||
-5|simple||
-6|simple,singleinstrument||
+3|simple,manydummyfilters|query contains manny filters that do not filter anything
+4|simple||
+5|simple,singleinstrument||
+6|simple||
 7|simple,singleinstrument||
-8|simple,fewinstruments||
+8|simple,singleinstrument||
 9|simple,fewinstruments||
-10|simple,singleinstrument||
+10|simple,fewinstruments||
 11|simple,singleinstrument||
-12|simple,fewinstruments||
+12|simple,singleinstrument||
 13|simple,fewinstruments||
-14|simple||
-15|simple,fewinstruments||
+14|simple,fewinstruments||
+15|simple||
 16|simple,fewinstruments||
-17|advanced,singleinstrument||
+17|simple,fewinstruments||
 18|advanced,singleinstrument||
-19|advanced,fewinstruments||
+19|advanced,singleinstrument||
 20|advanced,fewinstruments||
-21|advanced,singleinstrument|select cummulative trade sizes for a given instrument|
-22|advanced||
-23|complex||
-24|advanced||
-25|advanced|select largest trades on all exchanges|
-26|advanced||
-27|advanced|select the indices of all rows in which the sequence number decreases for the instrument|
-28|complex||
+21|advanced,fewinstruments||
+22|advanced,singleinstrument|select cummulative trade sizes for a given instrument|
+23|advanced||
+24|complex||
+25|advanced||
+26|advanced|select largest trades on all exchanges|
+27|advanced||
+28|advanced|select the indices of all rows in which the sequence number decreases for the instrument|
 29|complex||
-30|simple,fewinstruments||
+30|complex||
 31|simple,fewinstruments||
-32|simple,singleinstrument||
-33|advanced,fewinstruments||
+32|simple,fewinstruments||
+33|simple,singleinstrument||
 34|advanced,fewinstruments||
-35|advanced||
-36|complex|We want to calculate how much volume was transacted at each price. Whenever the price changes, we want to restart the count. We only want to consider prices for the same instrument|
-37|advanced,singleinstrument||
-38|advanced,fewinstruments||
-39|advanced||
+35|advanced,fewinstruments||
+36|advanced||
+37|complex|We want to calculate how much volume was transacted at each price. Whenever the price changes, we want to restart the count. We only want to consider prices for the same instrument|
+38|advanced,singleinstrument||
+39|advanced,fewinstruments||
+40|advanced,singleinstrument||
+41|advanced||
