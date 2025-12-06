@@ -319,12 +319,12 @@ def persist_rowgroup_per_symbol(table: pa.Table, table_output_path: Path,
         for i, symbol in enumerate(symbols):
             if symbol != current_symbol and i - start_idx > minrowgroupsize:
                 # Write row group for previous symbol
-                writer.write_table(table.slice(start_idx, i - start_idx), row_group_size=64 * 1024 * 1024)
+                writer.write(table.slice(start_idx, i - start_idx), row_group_size=64 * 1024 * 1024)
                 start_idx = i
                 current_symbol = symbol
 
         # Write the final row group
-        writer.write_table(table.slice(start_idx))
+        writer.write(table.slice(start_idx), row_group_size=64 * 1024 * 1024)
 
     logging.info(f"  Successfully wrote data to {table_output_path}")
 
