@@ -1,7 +1,7 @@
 idx|tags|query
-1||quote.filter(pl.col("date") == pl.col("date").min()).filter(pl.col("time") < time(10, 0))
+1||quote.filter(pl.col("date") == pl.col("date").min()).filter(pl.col("time") < time(9, 0))
 2||quote.filter(pl.col("seq") == 0)
-3||quote.filter((pl.col("seq") > 0) & (pl.col("ex") >= "A") & (pl.col("ex") <= "Z") & pl.col("time").is_between(time(0, 0), time(23, 59, 59, 999999), closed="both") & (pl.col("asize") < 2147483647) & (pl.col("bsize") < 2147483647) & pl.col("cond").is_in(["R","O","C","L", "Y", "N", " "]) & (pl.col("nationalBBOInd") == "O"))
+3||quote.filter((pl.col("seq") > 0) & (pl.col("ex") >= "A") & (pl.col("ex") <= "Z") & pl.col("time").is_between(time(0, 0), time(23, 59, 59, 999999), closed="both") & (pl.col("asize") < 2147483647) & (pl.col("bsize") < 2147483647) & (pl.col("nationalBBOInd") == "O"))
 4||trade.filter(pl.col("date") == pl.col("date").min()).filter(pl.col("time").is_between(time(10), time(10, 0, 10), closed="both"))
 5||quote.filter(pl.col("sym") == anInfreqSym).filter(pl.col("time").is_between(time(8, 30), time(16, 30), closed="both"))
 6||trade.filter(pl.col("date") == pl.col("date").min()).filter(pl.col("source") == "N").select("date", "sym", "time", "price", "size", "stop", "cond", "ex")
@@ -25,7 +25,7 @@ idx|tags|query
 24||trade.filter(pl.col("time").is_between(time(8), time(8, 15), closed="both")).group_by("sym").agg(pl.col("time"), pl.col("price"), pl.col("size"), ((pl.col("price") * pl.col("size")).cum_sum() / pl.col("size").cum_sum()).alias("movingvwap")).explode(["time", "price", "size", "movingvwap"])
 25||trade.filter(pl.col("ex") == "T").select("time", pl.col("size").cum_sum())
 26||trade.filter(pl.col("size") == pl.col("size").max().over("ex"))
-27||quote.filter(pl.col("ask") == pl.col("ask").min().over(["ex", "sym"]))
+27||trade.filter(pl.col("size") == pl.col("size").min().over(["ex", "sym"]))
 28||trade.with_columns((pl.col("seq").diff().over("sym")).alias("seq_delta")).filter(pl.col("seq_delta") < 0).select("sym", "seq")
 29||
 30||

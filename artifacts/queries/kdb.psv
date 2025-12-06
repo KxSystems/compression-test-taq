@@ -1,7 +1,7 @@
 idx|tags|query
-1|hugedataread|select from quote where date=min date, time<0D10
+1|hugedataread|select from quote where date=min date, time<0D9
 2|hugedataread|select from quote where seq=0
-3||select from quote where 0<seq, ex within "AZ", time within 0D 1D, asize < 0Wi-1, bsize < 0Wi-1, cond in "ROCLYN ", nationalBBOInd = "O"
+3||select from quote where 0<seq, ex within "AZ", time within 0D 1D, asize < 0Wi-1, bsize < 0Wi-1, nationalBBOInd = "O"
 4|hugedataread|select from trade where date=min date, time within 0D10:00:00 0D10:00:10
 5|smalldataread|select from quote where sym = anInfreqSym, time within 0D08:30 0D16:30
 6|largedataread|select date, sym, time, price, size, stop, cond, ex from trade where date=min date, source = "N"
@@ -25,7 +25,7 @@ idx|tags|query
 24|largedataread|update movingvwap:(sums price * size) % sums size by sym from select sym, time, price, size from trade where time within 0D08:00 0D08:15
 25|largedataread|select time, sums size from trade where ex = "T"
 26||select from trade where size = (max;size) fby ex
-27|hugedataread|select from quote where ask = (min;ask) fby ([] ex;sym)
+27|hugedataread|select from trade where size = (min;size) fby ([] ex;sym)
 28||ungroup select from (select seqDecr: seq where (<) prior seq by sym from trade) where 0 < count each seqDecr
 29|largedataread|update key[timeBuckets] timeBucket from `ex`timeBucket xasc select cnt: count i, sum size by ex, timeBucket: value[timeBuckets] binr time from trade where date=min date
 30||select cnt: count i, sum size by sym, timeBucket: timeBuckets binr time from trade where date=min date, not corr=0

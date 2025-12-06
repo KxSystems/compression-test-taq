@@ -154,6 +154,12 @@ class BenchmarkRunner:
         """
         Runs a specific query 3 times (Cold, Warm, Warm) and records timing.
         """
+        if idx.startswith("#"):
+            return QueryResult(thread_count=pl.thread_pool_size(), idx=idx[1:], query_raw=query_str,
+                               run1_time_ms=None, run2_time_ms=None, run3_time_ms=None)
+        if query_str == '':
+            return QueryResult(thread_count=pl.thread_pool_size(), idx=idx, query_raw=query_str,
+                               run1_time_ms=None, run2_time_ms=None, run3_time_ms=None)
         times: List[float] = []
 
         for i in range(3):
