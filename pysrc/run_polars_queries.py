@@ -38,7 +38,7 @@ class QueryResult:
     run2_time_ms: float
     run3_time_ms: float
     # Placeholder for future memory/IO implementation
-    metrics: List[Optional[float]] = field(default_factory=lambda: [None] * 6)
+    metrics: List[Optional[float]] = field(default_factory=lambda: [None] * 4)
 
     def to_csv_row(self) -> List[Any]:
         return [
@@ -173,21 +173,21 @@ class BenchmarkRunner:
             gc.collect()
 
             # Execute and Time
-            t_start = time_mod.perf_counter()
+            t_start = time_mod.perf_counter_ns()
             try:
                 if i == 0:
                     res = self._execute_query(query_str)
-                    t_end = time_mod.perf_counter()
+                    t_elapsed = time_mod.perf_counter_ns() - t_start
                     logger.info(f"[{idx}]   Shape of the result: {res.shape[0]} x {res.shape[1]}")
                     del res
                 else:
                     self._execute_query(query_str)
-                    t_end = time_mod.perf_counter()
+                    t_elapsed = time_mod.perf_counter_ns() - t_start
             except Exception as e:
                 logger.error(f"Query {idx} failed: {e}")
                 # Return 0.0 or -1.0 to indicate failure in results
                 return QueryResult(pl.thread_pool_size(), idx, query_str, -1.0, -1.0, -1.0)
-            times.append((t_end - t_start) * 1000)
+            times.append(t_elapsed)
 
         return QueryResult(
             thread_count=pl.thread_pool_size(),
@@ -220,16 +220,16 @@ def main():
     runner = BenchmarkRunner(args.db, args.paramdir)
 
     # Load DB and Params (Time this operation for the first CSV row)
-    t_load_start = time_mod.perf_counter()
+    t_load_start = time_mod.perf_counter_ns()
     runner.load_resources()
-    t_load_end = time_mod.perf_counter()
-    load_time_ms = (t_load_end - t_load_start) * 1000
+    t_load_elapsed = time_mod.perf_counter_ns() - t_load_start
+    load_time_ns = t_load_elapsed
 
     # Initialize Result File
     headers = [
         "threadcount", "idx", "query",
-        "run1timeMS", "run2timeMS", "run3timeMS",
-        "run1memKB", "run2memKB", "run3memKB",
+        "run1timeNS", "run2timeNS", "run3timeNS",
+        "run1memKB",
         "run1ioKB", "run2ioKB", "run3ioKB"
     ]
 
@@ -239,7 +239,7 @@ def main():
         writer.writerow(headers)
 
         # Log DB Load time as idx 0
-        writer.writerow([pl.thread_pool_size(), 0, "loaddb", load_time_ms] + [None] * 8)
+        writer.writerow([pl.thread_pool_size(), 0, "loaddb", load_time_ns] + [None] * 6)
         f_out.flush() # Ensure header is written
 
         # Process Queries

@@ -72,13 +72,15 @@ runQuery: {[idx:`C; tags:`C; query:`C]
     resultH ,[;"\n"] SEP sv (compparm; string system "s"; idx; query), 9#enlist"";
     :();
   ]
-  ts:io: ();
+  ts: io: ();
   .qlog.info raze system getenv[`FLUSH], " ", DB;
   .qlog.info "Collecting garbage";
   .Q.gc[];
   .qlog.info "[", idx, "] Running query: ", query;
   io,: getKBRead[Device]`kB_read;
-  ts,: enlist system "ts res:", query;
+  s: .z.p;
+  memusage: last system "ts res:", query; / \ts does not collect memory usage of the secondary threads
+  ts,: .z.p-s;
   io,: getKBRead[Device]`kB_read;
   .qlog.info "[", idx, "]   Shape of the result: ", string[count res], " x ", string count cols res;
   delete res from `.;
@@ -86,15 +88,19 @@ runQuery: {[idx:`C; tags:`C; query:`C]
   .qlog.info "[", idx, "]   Collecting garbage";
   .Q.gc[];
   .qlog.info "[", idx, "] Running query again";
-  ts,: enlist system "ts ", query;
+  s: .z.p;
+  eval parse query;
+  ts,: .z.p-s;
   io,: getKBRead[Device]`kB_read;
 
   .Q.gc[];
   .qlog.info "[", idx, "] Running query third time";
-  ts,: enlist system "ts ", query;
+  s: .z.p;
+  eval parse query;
+  ts,: .z.p-s;
   io,: getKBRead[Device]`kB_read;
 
-  resultH ,[;"\n"] SEP sv (compparm; string system "s"; idx; tags; query), string ts[;0], (ts[;1] div 1000), 1 _ deltas io;
+  resultH ,[;"\n"] SEP sv (compparm; string system "s"; idx; tags; query), string (`long$ts), (memusage div 1000), 1 _ deltas io;
   };
 
 Device: getDevice[DB]
@@ -105,7 +111,7 @@ resFile: $[`result in key o; o `result; "result.psv"];
 if[not ()~key `$resFile: ":", resFile; hdel `$resFile];
 resultH: hopen resFile;
 SEP: "|"
-resultH "compparam|threadcount|idx|tags|query|run1timeMS|run2timeMS|run3timeMS|run1memKB|run2memKB|run3memKB|run1ioKB|run2ioKB|run3ioKB\n"
+resultH "compparam|threadcount|idx|tags|query|run1timeNS|run2timeNS|run3timeNS|run1memKB|run1ioKB|run2ioKB|run3ioKB\n"
 
 $[PARQUET; [
   tb:use`kx.pq.t;
@@ -117,13 +123,17 @@ $[PARQUET; [
 
   .qlog.info "loading parquet dataset at ", DB;
   ios: getKBRead[Device]`kB_read;
-  ts: system "ts loadHiveDataset DB";
+  s: .z.p;
+  mem: last system "ts loadHiveDataset DB";
+  ts: .z.p-s
   ioe: getKBRead[Device]`kB_read;
   compparm: "nyi_nyi_nyi";
   ];[
   .qlog.info "loading kdb DB ", DB;
   ios: getKBRead[Device]`kB_read;
-  ts: system "ts .Q.lo[`$DB;0;0]";
+  s: .z.p;
+  mem: last system "ts .Q.lo[`$DB;0;0]";
+  ts: .z.p-s;
   ioe: getKBRead[Device]`kB_read;
 
   compparmall: -21!hsym `$DB,"/",string[first key hsym `$DB],"/quote/sym";   // or assume that db dir name reflects compression
@@ -133,7 +143,7 @@ $[PARQUET; [
     .qlog.info "Loading encryption file ", o`encr;
     -36!@[; 0; hsym `$] ":" vs o`encr]]]
 
-resultH ,[;"\n"] SEP sv (compparm; string system "s"; string 0; "";"load/mmap DB"), string ts[0], 0Nj, 0Nj, (ts[1] div 1000), 0Nj, 0Nj, ioe - ios, 0Nj, 0Nj;
+resultH ,[;"\n"] SEP sv (compparm; string system "s"; string 0; "";"load/mmap DB"), string `long$ts, 0Nj, 0Nj, (mem div 1000), ioe - ios, 0Nj, 0Nj;
 
 if["true" ~ lower getenv `QMAP;
   .qlog.info "Executing .Q.MAP[]";
