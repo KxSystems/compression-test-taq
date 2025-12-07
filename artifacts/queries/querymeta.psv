@@ -25,18 +25,19 @@ idx|tags|description|
 24|complex||
 25|advanced||
 26|advanced|select largest trades on all exchanges|
-27|advanced||
-28|advanced|select the indices of all rows in which the sequence number decreases for the instrument|
-29|complex||
+27|advanced,singleinstrument|select all rows from quote when a given instrument first reaches its daily maximal bid price or daily minimal ask price. Introduce a new `tag` column that can take either value `maxbid` or `minask`|
+28|advanced||
+29|advanced|select the indices of all rows in which the sequence number decreases for the instrument|
 30|complex||
-31|simple,fewinstruments||
+31|complex||
 32|simple,fewinstruments||
-33|simple,singleinstrument||
-34|advanced,fewinstruments||
+33|simple,fewinstruments||
+34|simple,singleinstrument||
 35|advanced,fewinstruments||
-36|advanced||
-37|complex|We want to calculate how much volume was transacted at each price. Whenever the price changes, we want to restart the count. We only want to consider prices for the same instrument|
-38|advanced,singleinstrument||
-39|advanced,fewinstruments||
-40|advanced,singleinstrument||
-41|advanced||
+36|advanced,fewinstruments||
+37|advanced||
+38|complex|We want to calculate how much volume was transacted at each price. Whenever the price changes, we want to restart the count. We only want to consider prices for the same instrument|
+39|advanced,singleinstrument||
+40|advanced,fewinstruments||
+41|advanced,singleinstrument||
+42|advanced||
