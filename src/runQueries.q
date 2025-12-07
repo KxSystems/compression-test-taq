@@ -11,21 +11,6 @@ PARAMDIR:  hsym `$o`paramdir
 PARQUET: upper[o `format] like "PARQUET*"
 PARQUETROWGROUP: upper[o `format] ~ "PARQUET_ROWGROUP"
 
-/ TODO: add error handling
-loadHiveTable: {[res; dir]
-  res cross $[all {x=key x} .Q.dd[dir] first c: key dir;
-    ([] file: .Q.dd[dir] each c); [
-    tmp: "S=;"0:";" sv string c;
-    raze (enlist each flip enlist[tmp[0;0]]!enlist $[tmp[0;0]=`date;"D"$;`$] tmp 1) .z.s' .Q.dd[dir] each c
-  ]]
-  }
-
-loadHiveDataset: {[db]
-  tNames: key hsym `$db;
-  tparts: loadHiveTable[enlist ()] each .Q.dd[hsym `$db] each tNames;
-  tNames set' {tb.mkP ![x;(); 0b; enlist `file]!$[PARQUETROWGROUP; {(`T!([t:(:{x,'([]mysym:`$x`9sym9min)})!])):x}; ::] each pq peach last flip x} each tparts
-  }
-
 getDeviceOSX:{[db:`C]
   "disk0"  / TODO: Implement a proper solution
   }
@@ -114,8 +99,7 @@ SEP: "|"
 resultH "compparam|threadcount|idx|tags|query|run1timeNS|run2timeNS|run3timeNS|run1memKB|run1ioKB|run2ioKB|run3ioKB\n"
 
 $[PARQUET; [
-  tb:use`kx.pq.t;
-  ([pq]):use`kx.pq;
+  system "l src/loadHiveDataset.q";
 
   .qlog.info raze system getenv[`FLUSH], " ", DB;
   .qlog.info "Collecting garbage";
@@ -124,7 +108,7 @@ $[PARQUET; [
   .qlog.info "loading parquet dataset at ", DB;
   ios: getKBRead[Device]`kB_read;
   s: .z.p;
-  mem: last system "ts loadHiveDataset DB";
+  mem: last system "ts loadHiveDataset[DB; PARQUETROWGROUP]";
   ts: .z.p-s;
   ioe: getKBRead[Device]`kB_read;
   compparm: "nyi_nyi_nyi";
