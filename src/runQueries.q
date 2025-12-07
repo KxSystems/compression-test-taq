@@ -125,7 +125,7 @@ $[PARQUET; [
   ios: getKBRead[Device]`kB_read;
   s: .z.p;
   mem: last system "ts loadHiveDataset DB";
-  ts: .z.p-s
+  ts: .z.p-s;
   ioe: getKBRead[Device]`kB_read;
   compparm: "nyi_nyi_nyi";
   ];[
