@@ -12,6 +12,11 @@ loadHiveTable: {[res; dir]
 
 loadHiveDataset: {[db:`C; createmysym:`b]
   tNames: key hsym `$db;
-  tparts: loadHiveTable[enlist ()] each .Q.dd[hsym `$db] each tNames;
-  tNames set' createmysym {[createmysym;x] tb.mkP ![x;(); 0b; enlist `file]!$[createmysym; {(`T!([t:(:{x,'([]mysym:`$x`9sym9min)})!])):x}; ::] each pq peach last flip x}' tparts
+
+  hiveTablesNames: tNames where not {all x=key x} each dirs: .Q.dd[hsym `$db] each tNames;
+  tparts: loadHiveTable[enlist ()] each .Q.dd[hsym `$db] each hiveTablesNames;
+  hiveTablesNames set' createmysym {[createmysym;x] tb.mkP ![x;(); 0b; enlist `file]!$[createmysym; {(`T!([t:(:{x,'([]mysym:`$x`9sym9min)})!])):x}; ::] each pq peach last flip x}' tparts;
+
+  parquetTables: tNames except hiveTablesNames;
+  (`$("." vs' string parquetTables)[;0]) set' pq each .Q.dd[hsym `$db] each parquetTables;
   }
