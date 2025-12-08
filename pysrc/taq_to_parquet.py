@@ -117,6 +117,14 @@ MASTERRENAME: Dict = {
     'TradedOnMIAX': 'tradedOnMIAX'
 }
 
+# Exchange ID to Exchange name mapping
+EXNAMES: Dict = {"A": "NYSE American", "B": "NASDAQ OMX BX", "C": "NYSE National", "D": "FINRA Alternative Display Facility",
+  "I": "International Securities Exchange", "J": "Cboe EDGA Exchange", "K": "Cboe EDGX Exchange",
+  "L": "Long-Term Stock Exchange,", "M": "Chicago Stock Exchange",
+  "N": "New York Stock Exchange", "P": "NYSE Arca", "S": "Consolidated Tape System", "T": "NASDAQ Stock Market",
+  "Q": "NASDAQ Stock Exchange", "V": "The Investors’ Exchange", "W": "Chicago Broad Options Exchange",
+  "X": "NASDAQ OMX PSX", "Y": "Cboe BYX Exchange", "Z": "Cboe BZX Exchange"}
+
 # Table trade: EQY_US_ALL_TRADE_*.csv
 TRADE_SCHEMA: Final[pa.Schema] = pa.schema([
     pa.field('Time', pa.string()), # transformed to: pa.time64('ns')
@@ -250,7 +258,7 @@ def get_write_options(sort_idx: int) -> Dict[str, Union[str, int]]:
             logging.info(f"Setting parquet compression level to {compression_level}")
             write_kwargs['compression_level'] = int(compression_level)
     else:
-        write_kwargs['compression'] = None
+        write_kwargs['compression'] = 'NONE'
 
     write_kwargs['sorting_columns'] = [pq.SortingColumn(sort_idx)]
 
@@ -375,6 +383,9 @@ def main(date: datetime, src: Path, dst: Path, letters: str, includetestsymbols:
 
     dst.mkdir(parents=True, exist_ok=True)
 
+    logging.info("Saving exchange names...")
+    pq.write_table(pa.table({'ex': EXNAMES.keys(), 'name': EXNAMES.values()}), dst / 'exnames.parquet', compression = 'NONE')
+
     if letters == "A-Z":
         first_letter_filter = IDENTITY
     else:
@@ -410,7 +421,7 @@ def main(date: datetime, src: Path, dst: Path, letters: str, includetestsymbols:
                   partial(conv.convert_date_strings_to_date32, ['Effective_Date']),
                   partial(conv.add_date_column, date), partial(conv.rename, MASTERRENAME)]
     master= pipe(master, *master_conv)
-    parquet_options_master = {'compression': 'none'}
+    parquet_options_master = {'compression': 'NONE'}
     if len(master) == 0:
         logging.info("  No rows after converting. Nothing to save. exiting")
         sys.exit()
