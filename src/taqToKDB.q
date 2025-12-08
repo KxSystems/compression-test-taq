@@ -72,9 +72,10 @@ MASTERSCHEMA: ([
   tradedOnMIAX:"B"
   ])
 
+/ Exchange ID to Exchange name mapping
 EXNAMES: ([A: "NYSE American"; B: "NASDAQ OMX BX"; C: "NYSE National"; D: "FINRA Alternative Display Facility";
   I: "International Securities Exchange"; J: "Cboe EDGA Exchange"; K: "Cboe EDGX Exchange";
-  L: "Long-Term Stock Exchange,"; M: "Chicago Stock Exchange",
+  L: "Long-Term Stock Exchange"; M: "Chicago Stock Exchange",
   N: "New York Stock Exchange"; P: "NYSE Arca"; S: "Consolidated Tape System"; T: "NASDAQ Stock Market";
   Q: "NASDAQ Stock Exchange"; V: "The Investors’ Exchange"; W: "Chicago Broad Options Exchange";
   X: "NASDAQ OMX PSX"; Y: "Cboe BYX Exchange"; Z: "Cboe BZX Exchange"])

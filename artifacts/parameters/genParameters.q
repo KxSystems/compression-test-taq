@@ -10,6 +10,9 @@ DST: hsym `$o `dst
 
 symFreq: first flip key asc select count i by sym from quote where date=min date
 
+mostFreqSym: last symFreq
+.Q.dd[DST; `mostFreqSym.txt] 0: enlist string mostFreqSym
+
 aFreqSym: @[; floor 0.80 * count symFreq] symFreq;
 .Q.dd[DST; `aFreqSym.txt] 0: enlist string aFreqSym
 

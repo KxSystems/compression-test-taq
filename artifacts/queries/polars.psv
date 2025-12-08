@@ -13,31 +13,34 @@ idx|tags|query
 12||quote.filter(pl.col("sym") == aFreqSym).with_columns(pl.col("date").dt.combine(pl.col("time")).alias("datetime")).group_by_dynamic(index_column="datetime", every="10m", closed="left").agg((pl.col("ask") - pl.col("bid")).mean().alias("avgSpread"))
 13||quote.filter(pl.col("sym").is_in(someSyms2)).with_columns(pl.col("date").dt.combine(pl.col("time")).alias("datetime")).group_by_dynamic(index_column="datetime", every="10m", closed="left", group_by=["sym"]).agg((pl.col("ask") - pl.col("bid")).mean().alias("avgSpread"))
 14||
-15||trade.filter(pl.col("size") > 700000).select("sym", "ex").unique()
-16||quote.filter(pl.col("sym").is_in(someSyms1)).group_by("sym").agg(((pl.col("bid") * pl.col("bsize")).sum() / pl.col("bsize").sum()).alias("weightedBidPice"), ((pl.col("ask") * pl.col("asize")).sum() / pl.col("asize").sum()).alias("weightedOfferPice"))
+15||
+16||
 17||
-18||quote.filter(pl.col("sym") == anInfreqSym).select((((pl.col("ask") - pl.col("bid")) * (pl.col("bsize") + pl.col("asize"))).sum() / (pl.col("bsize") + pl.col("asize")).sum()).alias("weightedSpread"))
-19||trade.filter(pl.col("sym") == aFreqSym).select("time", pl.col("price").rolling_mean(window_size=20))
-20||quote.filter(pl.col("sym").is_in(someSyms1)).group_by("sym").agg(pl.col("time"), ((pl.col("ask") + pl.col("bid")) / 2).rolling_mean(window_size=5).alias("movingmid"), ((pl.col("asize") + pl.col("bsize")) / 2).rolling_mean(window_size=5).alias("movingsize")).explode(["time", "movingmid", "movingsize"])
-21||
-22||trade.filter(pl.col("sym") == aFreqSym).select("time", pl.col("size").cum_sum())
-23||trade.filter(pl.col("ex") == "L").select("time", pl.col("size").cum_sum())
-24||trade.filter(pl.col("time").is_between(time(8), time(8, 15), closed="both")).group_by("sym").agg(pl.col("time"), pl.col("price"), pl.col("size"), ((pl.col("price") * pl.col("size")).cum_sum() / pl.col("size").cum_sum()).alias("movingvwap")).explode(["time", "price", "size", "movingvwap"])
-25||trade.filter(pl.col("ex") == "T").select("time", pl.col("size").cum_sum())
-26||trade.filter(pl.col("size") == pl.col("size").max().over("ex"))
-27||pl.concat([quote.filter(pl.col("sym") == aFreqSym).filter(pl.col("bid") == pl.col("bid").max().over("ex")).filter(pl.col("time") == pl.col("time").min().over("ex")).with_columns(pl.lit("maxbid").alias("tag")), quote.filter(pl.col("sym") == aFreqSym).filter(pl.col("ask") == pl.col("ask").min().over("ex")).filter(pl.col("time") == pl.col("time").min().over("ex")).with_columns(pl.lit("minask").alias("tag"))])
-28||trade.filter(pl.col("size") == pl.col("size").min().over(["ex", "sym"]))
-29||trade.with_columns((pl.col("seq").diff().over("sym")).alias("seq_delta")).filter(pl.col("seq_delta") < 0).select("sym", "seq")
-30||
-31||
-32||trade.filter((pl.col("sym").is_in(someSyms2)) & (pl.col("stop") != "")).with_columns(pl.col("date").dt.combine(pl.col("time")).alias("datetime")).group_by_dynamic(index_column="datetime", every="5m", closed="left", group_by=["sym"]).agg(pl.col("price").first().alias("o"), pl.col("price").max().alias("h"), pl.col("price").min().alias("l"), pl.col("price").last().alias("c"), pl.col("size").sum().alias("s"))
+18||trade.filter(pl.col("size") > 700000).select("sym", "ex").unique()
+19||quote.filter(pl.col("sym").is_in(someSyms1)).group_by("sym").agg(((pl.col("bid") * pl.col("bsize")).sum() / pl.col("bsize").sum()).alias("weightedBidPice"), ((pl.col("ask") * pl.col("asize")).sum() / pl.col("asize").sum()).alias("weightedOfferPice"))
+20||
+21||quote.filter(pl.col("sym") == anInfreqSym).select((((pl.col("ask") - pl.col("bid")) * (pl.col("bsize") + pl.col("asize"))).sum() / (pl.col("bsize") + pl.col("asize")).sum()).alias("weightedSpread"))
+22||trade.filter(pl.col("sym") == aFreqSym).select("time", pl.col("price").rolling_mean(window_size=20))
+23||quote.filter(pl.col("sym").is_in(someSyms1)).group_by("sym").agg(pl.col("time"), ((pl.col("ask") + pl.col("bid")) / 2).rolling_mean(window_size=5).alias("movingmid"), ((pl.col("asize") + pl.col("bsize")) / 2).rolling_mean(window_size=5).alias("movingsize")).explode(["time", "movingmid", "movingsize"])
+24||
+25||trade.filter(pl.col("sym") == aFreqSym).select("time", pl.col("size").cum_sum())
+26||trade.filter(pl.col("ex") == "L").select("time", pl.col("size").cum_sum())
+27||trade.filter(pl.col("time").is_between(time(8), time(8, 15), closed="both")).group_by("sym").agg(pl.col("time"), pl.col("price"), pl.col("size"), ((pl.col("price") * pl.col("size")).cum_sum() / pl.col("size").cum_sum()).alias("movingvwap")).explode(["time", "price", "size", "movingvwap"])
+28||trade.filter(pl.col("ex") == "T").select("time", pl.col("size").cum_sum())
+29||trade.filter(pl.col("size") == pl.col("size").max().over("ex"))
+30||pl.concat([quote.filter(pl.col("sym") == aFreqSym).filter(pl.col("bid") == pl.col("bid").max().over("ex")).filter(pl.col("time") == pl.col("time").min().over("ex")).with_columns(pl.lit("maxbid").alias("tag")), quote.filter(pl.col("sym") == aFreqSym).filter(pl.col("ask") == pl.col("ask").min().over("ex")).filter(pl.col("time") == pl.col("time").min().over("ex")).with_columns(pl.lit("minask").alias("tag"))])
+31||trade.filter(pl.col("size") == pl.col("size").min().over(["ex", "sym"]))
+32||trade.with_columns((pl.col("seq").diff().over("sym")).alias("seq_delta")).filter(pl.col("seq_delta") < 0).select("sym", "seq")
 33||
-34||quote.filter(pl.col("sym") == anInfreqSym).with_columns(pl.col("date").dt.combine(pl.col("time")).alias("datetime")).group_by_dynamic(index_column="datetime", every="1m", closed="left").agg(pl.col("asize").first(), pl.col("bsize").first()).select("asize", "bsize", ((pl.col("bsize") - pl.col("asize")) / (pl.col("bsize") + pl.col("asize"))).alias("inbal"))
-35||quote.filter(pl.col("sym").is_in(infreqIdList)).group_by("sym").agg((pl.col("ask") * pl.col("asize")).sum().alias("wsumAsk"), (pl.col("bid") * pl.col("bsize")).sum().alias("wsumBid"), pl.col("asize").std().alias("sdevasksize"), pl.col("bid").std().alias("sdevbid"), pl.corr("ask", "bid").alias("corPrice"), pl.corr("asize", "bsize").alias("corSize"))
+34||
+35||trade.filter((pl.col("sym").is_in(someSyms2)) & (pl.col("stop") != "")).with_columns(pl.col("date").dt.combine(pl.col("time")).alias("datetime")).group_by_dynamic(index_column="datetime", every="5m", closed="left", group_by=["sym"]).agg(pl.col("price").first().alias("o"), pl.col("price").max().alias("h"), pl.col("price").min().alias("l"), pl.col("price").last().alias("c"), pl.col("size").sum().alias("s"))
 36||
-37||trade.filter(pl.col("price") == pl.col("price").min().over("sym"))
-38||
-39||quote.filter(pl.col("sym").is_in(infreqIdList)).select((pl.col("bsize") + pl.col("asize")).median().alias("medMidSize"))
-40||trade.filter((pl.col("date") == pl.col("date").min()) & pl.col("sym").is_in(someSyms1)).select("sym", "time", "price", "size", "stop", "cond", "ex").join_asof(quote.filter(pl.col("date") == pl.col("date").min()).select("sym", "time", "bid", "ask", "bsize", "asize", "cond", "ex").rename({"cond": "quotecond", "ex": "quoteex"}), by="sym", on="time")
-41||trade.filter((pl.col("date") == pl.col("date").min()) & (pl.col("sym") == aFreqSym)).select("time", "price", "size", "stop", "cond", "ex").join_asof(quote.filter((pl.col("date") == pl.col("date").min()) & (pl.col("sym") == aFreqSym)).select("time", "bid", "ask", "bsize", "asize", "cond", "ex").rename({"cond": "quotecond", "ex": "quoteex"}), on="time")
-42||trade.filter((pl.col("date") == pl.col("date").min()) & (pl.col("size") > 500000)).select("sym", "time", "price", "size", "stop", "cond", "ex").join_asof(quote.filter(pl.col("date") == pl.col("date").min()).select("sym", "time", "bid", "ask", "bsize", "asize", "cond", "ex").rename({"cond": "quotecond"}), by=["sym", "ex"], on="time")
+37||quote.filter(pl.col("sym") == anInfreqSym).with_columns(pl.col("date").dt.combine(pl.col("time")).alias("datetime")).group_by_dynamic(index_column="datetime", every="1m", closed="left").agg(pl.col("asize").first(), pl.col("bsize").first()).select("asize", "bsize", ((pl.col("bsize") - pl.col("asize")) / (pl.col("bsize") + pl.col("asize"))).alias("inbal"))
+38||quote.filter(pl.col("sym").is_in(infreqIdList)).group_by("sym").agg((pl.col("ask") * pl.col("asize")).sum().alias("wsumAsk"), (pl.col("bid") * pl.col("bsize")).sum().alias("wsumBid"), pl.col("asize").std().alias("sdevasksize"), pl.col("bid").std().alias("sdevbid"), pl.corr("ask", "bid").alias("corPrice"), pl.corr("asize", "bsize").alias("corSize"))
+39||
+40||trade.filter(pl.col("price") == pl.col("price").min().over("sym"))
+41||
+42||quote.filter(pl.col("sym").is_in(infreqIdList)).select((pl.col("bsize") + pl.col("asize")).median().alias("medMidSize"))
+43||trade.filter((pl.col("date") == pl.col("date").min()) & pl.col("sym").is_in(someSyms1)).select("sym", "time", "price", "size", "stop", "cond", "ex").join_asof(quote.filter(pl.col("date") == pl.col("date").min()).select("sym", "time", "bid", "ask", "bsize", "asize", "cond", "ex").rename({"cond": "quotecond", "ex": "quoteex"}), by="sym", on="time")
+44||trade.filter((pl.col("date") == pl.col("date").min()) & (pl.col("sym") == aFreqSym)).select("time", "price", "size", "stop", "cond", "ex").join_asof(quote.filter((pl.col("date") == pl.col("date").min()) & (pl.col("sym") == aFreqSym)).select("time", "bid", "ask", "bsize", "asize", "cond", "ex").rename({"cond": "quotecond", "ex": "quoteex"}), on="time")
+45||trade.filter((pl.col("date") == pl.col("date").min()) & (pl.col("size") > 500000)).select("sym", "time", "price", "size", "stop", "cond", "ex").join_asof(quote.filter(pl.col("date") == pl.col("date").min()).select("sym", "time", "bid", "ask", "bsize", "asize", "cond", "ex").rename({"cond": "quotecond"}), by=["sym", "ex"], on="time")

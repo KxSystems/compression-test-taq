@@ -77,6 +77,7 @@ class BenchmarkRunner:
 
         # Load Polars Scans
         self.master = pl.scan_parquet(self.db_path / "master/date=*/*.parquet", hive_partitioning=True)
+        self.exnames = pl.scan_parquet(self.db_path / "exnames.parquet")
         self.trade = pl.scan_parquet(self.db_path / "trade/date=*/*.parquet", hive_partitioning=True)
         self.quote = pl.scan_parquet(self.db_path / "quote/date=*/*.parquet", hive_partitioning=True)
 

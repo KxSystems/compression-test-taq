@@ -12,32 +12,35 @@ idx|tags|description|
 11|simple,singleinstrument||
 12|simple,singleinstrument||
 13|simple,fewinstruments||
-14|simple,fewinstruments||
-15|simple||
-16|simple,fewinstruments||
+14|simple,singleinstrument|calculate weighted average spread and deviation of spread by exchange names
+15|simple,fewinstruments|calculate weighted average spread and deviation of spread by exchange names and instrument
+16|simple|calculate weighted average spread and deviation of spread by exchange names
 17|simple,fewinstruments||
-18|advanced,singleinstrument||
-19|advanced,singleinstrument||
-20|advanced,fewinstruments||
-21|advanced,fewinstruments||
-22|advanced,singleinstrument|select cummulative trade sizes for a given instrument|
-23|advanced||
-24|complex||
-25|advanced||
-26|advanced|select largest trades on all exchanges|
-27|advanced,singleinstrument|select all rows from quote when a given instrument first reaches its daily maximal bid price or daily minimal ask price. Introduce a new `tag` column that can take either value `maxbid` or `minask`|
+18|simple||
+19|simple,fewinstruments||
+20|simple,fewinstruments||
+21|advanced,singleinstrument||
+22|advanced,singleinstrument||
+23|advanced,fewinstruments||
+24|advanced,fewinstruments||
+25|advanced,singleinstrument|select cummulative trade sizes for a given instrument|
+26|advanced||
+27|complex||
 28|advanced||
-29|advanced|select the indices of all rows in which the sequence number decreases for the instrument|
-30|complex||
-31|complex||
-32|simple,fewinstruments||
-33|simple,fewinstruments||
-34|simple,singleinstrument||
-35|advanced,fewinstruments||
-36|advanced,fewinstruments||
-37|advanced||
-38|complex|We want to calculate how much volume was transacted at each price. Whenever the price changes, we want to restart the count. We only want to consider prices for the same instrument|
-39|advanced,singleinstrument||
-40|advanced,fewinstruments||
-41|advanced,singleinstrument||
-42|advanced||
+29|advanced|select largest trades on all exchanges|
+30|advanced,singleinstrument|select all rows from quote when a given instrument first reaches its daily maximal bid price or daily minimal ask price. Introduce a new `tag` column that can take either value `maxbid` or `minask`|
+31|advanced||
+32|advanced|select the indices of all rows in which the sequence number decreases for the instrument|
+33|complex||
+34|complex||
+35|simple,fewinstruments||
+36|simple,fewinstruments||
+37|simple,singleinstrument||
+38|advanced,fewinstruments||
+39|advanced,fewinstruments||
+40|advanced||
+41|complex|We want to calculate how much volume was transacted at each price. Whenever the price changes, we want to restart the count. We only want to consider prices for the same instrument|
+42|advanced,singleinstrument||
+43|advanced,fewinstruments||
+44|advanced,singleinstrument||
+45|advanced||
