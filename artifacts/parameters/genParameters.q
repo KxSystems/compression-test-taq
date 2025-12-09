@@ -10,22 +10,22 @@ DST: hsym `$o `dst
 
 symFreq: first flip key asc select count i by sym from quote where date=min date
 
-mostFreqSym: last symFreq
-.Q.dd[DST; `mostFreqSym.txt] 0: enlist string mostFreqSym
+mostFreqInstr: last symFreq
+.Q.dd[DST; `mostFreqInstr.txt] 0: enlist string mostFreqInstr
 
-aFreqSym: @[; floor 0.80 * count symFreq] symFreq;
-.Q.dd[DST; `aFreqSym.txt] 0: enlist string aFreqSym
+aFreqInstr: @[; floor 0.80 * count symFreq] symFreq;
+.Q.dd[DST; `aFreqInstr.txt] 0: enlist string aFreqInstr
 
-anInfreqSym: @[; floor 0.2 * count symFreq] symFreq;
-.Q.dd[DST; `anInfreqSym.txt] 0: enlist string anInfreqSym
+anInfreqInstr: @[; floor 0.2 * count symFreq] symFreq;
+.Q.dd[DST; `anInfreqInstr.txt] 0: enlist string anInfreqInstr
 
-twentySyms: -20?symFreq; / should be symbols of various quote counts to force different execution times
-.Q.dd[DST; `twentySyms.txt] 0: string twentySyms
+twentyInstrs: -20?symFreq; / should be symbols of various quote counts to force different execution times
+.Q.dd[DST; `twentyInstrs.txt] 0: string twentyInstrs
 
-hundredSyms: -100?symFreq;
-.Q.dd[DST; `hundredSyms.txt] 0: string hundredSyms
+hundredInstrs: -100?symFreq;
+.Q.dd[DST; `hundredInstrs.txt] 0: string hundredInstrs
 
-infreqIdList: @[; til[500] + count[symFreq] div 10] symFreq; / many, but small quote count symbols
-.Q.dd[DST; `infreqIdList.txt] 0: string infreqIdList
+fivehundredInfreqInstrs: @[; til[500] + count[symFreq] div 10] symFreq; / many, but small quote count symbols
+.Q.dd[DST; `fivehundredInfreqInstrs.txt] 0: string fivehundredInfreqInstrs
 
 exit 0

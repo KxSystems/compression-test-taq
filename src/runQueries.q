@@ -135,12 +135,12 @@ if["true" ~ lower getenv `QMAP;
   .Q.MAP[]]
 
 .qlog.info "Loading parameters from ", 1_string PARAMDIR
-aFreqSym: first `$read0 .Q.dd[PARAMDIR;`aFreqSym.txt]
-mostFreqSym: first `$read0 .Q.dd[PARAMDIR;`mostFreqSym.txt]
-anInfreqSym: first `$read0 .Q.dd[PARAMDIR;`anInfreqSym.txt]
-twentySyms: `$read0 .Q.dd[PARAMDIR;`twentySyms.txt]
-hundredSyms: `$read0 .Q.dd[PARAMDIR;`hundredSyms.txt]
-infreqIdList: `$read0 .Q.dd[PARAMDIR;`infreqIdList.txt]
+aFreqInstr: first `$read0 .Q.dd[PARAMDIR;`aFreqInstr.txt]
+mostFreqInstr: first `$read0 .Q.dd[PARAMDIR;`mostFreqInstr.txt]
+anInfreqInstr: first `$read0 .Q.dd[PARAMDIR;`anInfreqInstr.txt]
+twentyInstrs: `$read0 .Q.dd[PARAMDIR;`twentyInstrs.txt]
+hundredInstrs: `$read0 .Q.dd[PARAMDIR;`hundredInstrs.txt]
+fivehundredInfreqInstrs: `$read0 .Q.dd[PARAMDIR;`fivehundredInfreqInstrs.txt]
 
 timeBuckets: ([preopen: 0D08:30; open: 0D09:05; morning: 0D12:30; afternoon: 0D16:30; close: 1D])
 

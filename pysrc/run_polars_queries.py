@@ -103,12 +103,12 @@ class BenchmarkRunner:
             return [line.strip() for line in content.splitlines() if line.strip()]
 
         self.params.update({
-            "aFreqSym": read_single("aFreqSym.txt"),
-            "mostFreqSym": read_single("mostFreqSym.txt"),
-            "anInfreqSym": read_single("anInfreqSym.txt"),
-            "twentySyms": read_list("twentySyms.txt"),
-            "hundredSyms": read_list("hundredSyms.txt"),
-            "infreqIdList": read_list("infreqIdList.txt"),
+            "aFreqInstr": read_single("aFreqInstr.txt"),
+            "mostFreqInstr": read_single("mostFreqInstr.txt"),
+            "anInfreqInstr": read_single("anInfreqInstr.txt"),
+            "twentyInstrs": read_list("twentyInstrs.txt"),
+            "hundredInstrs": read_list("hundredInstrs.txt"),
+            "fivehundredInfreqInstrs": read_list("fivehundredInfreqInstrs.txt"),
         })
 
     @staticmethod
