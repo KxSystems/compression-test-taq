@@ -12,9 +12,9 @@ idx|tags|query
 11||quote.filter(pl.col("sym") == anInfreqSym).select(((pl.col("bid") + pl.col("ask")) / 2).mean().alias("avgMidSize"))
 12||quote.filter(pl.col("sym") == aFreqSym).with_columns(pl.col("date").dt.combine(pl.col("time")).alias("datetime")).group_by_dynamic(index_column="datetime", every="10m", closed="left").agg((pl.col("ask") - pl.col("bid")).mean().alias("avgSpread"))
 13||quote.filter(pl.col("sym").is_in(someSyms2)).with_columns(pl.col("date").dt.combine(pl.col("time")).alias("datetime")).group_by_dynamic(index_column="datetime", every="10m", closed="left", group_by=["sym"]).agg((pl.col("ask") - pl.col("bid")).mean().alias("avgSpread"))
-14||
-15||
-16||
+14||quote.filter((pl.col("date") == pl.col("date").min()) & (pl.col("sym") == mostFreqSym)).with_columns((pl.col("asize") + pl.col("bsize")).alias("absize"), (pl.col("ask") - pl.col("bid")).alias("spread")).group_by(pl.col("ex").replace_strict(exnames, default="")).agg(((pl.col("spread") * pl.col("absize")).sum() / pl.col("absize").sum()).alias("avgWeightedSpread"), pl.col("spread").std().alias("devSpread"))
+15||quote.filter((pl.col("date") == pl.col("date").min()) & (pl.col("sym").is_in(someSyms2))).with_columns((pl.col("asize") + pl.col("bsize")).alias("absize"), (pl.col("ask") - pl.col("bid")).alias("spread")).group_by([pl.col("sym"), pl.col("ex").replace_strict(exnames, default="")]).agg(((pl.col("spread") * pl.col("absize")).sum() / pl.col("absize").sum()).alias("avgWeightedSpread"), pl.col("spread").std().alias("devSpread"))
+16||quote.filter((pl.col("date") == pl.col("date").min()) & (pl.col("shortSaleRestrictionIndicator") == "0")).with_columns((pl.col("asize") + pl.col("bsize")).alias("absize"), (pl.col("ask") - pl.col("bid")).alias("spread")).group_by(pl.col("ex").replace_strict(exnames, default="")).agg(((pl.col("spread") * pl.col("absize")).sum() / pl.col("absize").sum()).alias("avgWeightedSpread"), pl.col("spread").std().alias("devSpread"))
 17||
 18||trade.filter(pl.col("size") > 700000).select("sym", "ex").unique()
 19||quote.filter(pl.col("sym").is_in(someSyms1)).group_by("sym").agg(((pl.col("bid") * pl.col("bsize")).sum() / pl.col("bsize").sum()).alias("weightedBidPice"), ((pl.col("ask") * pl.col("asize")).sum() / pl.col("asize").sum()).alias("weightedOfferPice"))

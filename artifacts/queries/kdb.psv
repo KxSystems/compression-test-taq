@@ -14,7 +14,7 @@ idx|tags|query
 13||select avgSpread: avg ask - bid by sym, 0D00:10 xbar time from quote where sym in someSyms2
 14||select avgWeightedSpread: (asize + bsize) wavg ask - bid, devSpread: dev ask - bid by exnames ex from quote where date=min date, sym=mostFreqSym
 15||select avgWeightedSpread: (asize + bsize) wavg ask - bid, devSpread: dev ask - bid by sym, exnames ex from quote where date=min date, sym in someSyms2
-16||select avgWeightedSpread: (asize + bsize) wavg ask - bid, devSpread: dev ask - bid by exnames ex from quote where date=min date
+16||select avgWeightedSpread: (asize + bsize) wavg ask - bid, devSpread: dev ask - bid by exnames ex from quote where date=min date, shortSaleRestrictionIndicator="0"
 17|manualparallelization|raze {select first sym, avgSpread: avg ask - bid by 0D00:10 xbar time from quote where sym = x} peach someSyms2
 18||distinct select sym, ex from trade where size > 700000
 19||select weightedBidPice: bsize wavg bid, weightedOfferPice: asize wavg ask by sym from quote where sym in someSyms1

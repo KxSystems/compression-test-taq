@@ -12,9 +12,9 @@ idx|tags|query
 11||select avgMidSize: avg (bid + ask) % 2 from quote where mysym = anInfreqSym
 12||select avgSpread: avg ask - bid by 0D00:10 xbar time from quote where mysym = aFreqSym
 13||select avgSpread: avg ask - bid by mysym, 0D00:10 xbar time from quote where mysym in someSyms2
-14||
-15||
-16||
+14||select avgWeightedSpread: (asize + bsize) wavg ask - bid, devSpread: dev ask - bid by exnames ex from quote where date=min date, mysym=mostFreqSym
+15||select avgWeightedSpread: (asize + bsize) wavg ask - bid, devSpread: dev ask - bid by mysym, exnames ex from quote where date=min date, mysym in someSyms2
+16||select avgWeightedSpread: (asize + bsize) wavg ask - bid, devSpread: dev ask - bid by exnames ex from quote where date=min date, shortSaleRestrictionIndicator ~\: enlist "0"
 17|manualparallelization|raze {select first mysym, avgSpread: avg ask - bid by 0D00:10 xbar time from quote where mysym = x} peach someSyms2
 18||distinct select mysym, ex from trade where size > 700000
 19||select weightedBidPice: bsize wavg bid, weightedOfferPice: asize wavg ask by mysym from quote where mysym in someSyms1

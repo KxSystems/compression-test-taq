@@ -111,7 +111,7 @@ $[PARQUET; [
   mem: last system "ts loadHiveDataset[DB; PARQUETROWGROUP]";
   ts: .z.p-s;
   ioe: getKBRead[Device]`kB_read;
-  exnames: exec ex!name from exnames; / convert back to a map
+  exnames: exec ex!`$name from exnames; / convert back to a map
   compparm: "nyi_nyi_nyi";
   ];[
   .qlog.info "loading kdb DB ", DB;
