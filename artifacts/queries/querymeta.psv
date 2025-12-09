@@ -12,9 +12,9 @@ idx|tags|description|
 11|simple,singleinstrument||
 12|simple,singleinstrument||
 13|simple,fewinstruments||
-14|simple,singleinstrument|calculate weighted average spread and deviation of spread by exchange names
-15|simple,fewinstruments|calculate weighted average spread and deviation of spread by exchange names and instrument
-16|simple|calculate weighted average spread and deviation of spread by exchange names
+14|advanced,singleinstrument|calculate weighted average spread and deviation of spread by exchange names
+15|advanced,fewinstruments|calculate weighted average spread and deviation of spread by exchange names and instrument
+16|advanced|calculate weighted average spread and deviation of spread by exchange names for quotes without short sale restriction on UTP (Short Sale Restriction Indicator is "0")
 17|simple,fewinstruments||
 18|simple||
 19|simple,fewinstruments||
@@ -25,22 +25,22 @@ idx|tags|description|
 24|advanced,fewinstruments||
 25|advanced,singleinstrument|select cummulative trade sizes for a given instrument|
 26|advanced||
-27|complex||
+27|complex|calculate moving volume wighted average price by instrument within a time range|
 28|advanced||
 29|advanced|select largest trades on all exchanges|
 30|advanced,singleinstrument|select all rows from quote when a given instrument first reaches its daily maximal bid price or daily minimal ask price. Introduce a new `tag` column that can take either value `maxbid` or `minask`|
 31|advanced||
 32|advanced|select the indices of all rows in which the sequence number decreases for the instrument|
-33|complex||
-34|complex||
+33|complex|custom time bucket (e.g. before 8:30 is preopen)|
+34|complex|custom time bucket (e.g. before 8:30 is preopen)|
 35|simple,fewinstruments||
 36|simple,fewinstruments||
 37|simple,singleinstrument||
 38|advanced,fewinstruments||
 39|advanced,fewinstruments||
-40|advanced||
+40|advanced|trades with the smallest price for all instruments|
 41|complex|We want to calculate how much volume was transacted at each price. Whenever the price changes, we want to restart the count. We only want to consider prices for the same instrument|
-42|advanced,singleinstrument||
+42|simple,singleinstrument||
 43|advanced,fewinstruments||
 44|advanced,singleinstrument||
 45|advanced||
