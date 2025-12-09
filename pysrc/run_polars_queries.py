@@ -67,17 +67,19 @@ class BenchmarkRunner:
         self.trade: Optional[pl.LazyFrame] = None
         self.quote: Optional[pl.LazyFrame] = None
 
-        # Parameters
+        # Parameters available for queries
         self.params: Dict[str, Any] = {}
 
     def load_resources(self) -> None:
         """Loads database schemas and parameter files."""
         t0 = time_mod.perf_counter()
         logger.info("Initializing database connections...")
-
         # Load Polars Scans
         self.master = pl.scan_parquet(self.db_path / "master/date=*/*.parquet", hive_partitioning=True)
-        self.exnames = pl.scan_parquet(self.db_path / "exnames.parquet")
+
+        exnames = pl.scan_parquet(self.db_path / "exnames.parquet").collect()
+        self.params["exnames"] = dict(zip(exnames["ex"], exnames["name"]))
+
         self.trade = pl.scan_parquet(self.db_path / "trade/date=*/*.parquet", hive_partitioning=True)
         self.quote = pl.scan_parquet(self.db_path / "quote/date=*/*.parquet", hive_partitioning=True)
 
@@ -100,13 +102,14 @@ class BenchmarkRunner:
             content = (self.param_dir / filename).read_text(encoding='utf-8')
             return [line.strip() for line in content.splitlines() if line.strip()]
 
-        self.params = {
+        self.params.update({
             "aFreqSym": read_single("aFreqSym.txt"),
+            "mostFreqSym": read_single("mostFreqSym.txt"),
             "anInfreqSym": read_single("anInfreqSym.txt"),
             "someSyms1": read_list("someSyms1.txt"),
             "someSyms2": read_list("someSyms2.txt"),
             "infreqIdList": read_list("infreqIdList.txt"),
-        }
+        })
 
     @staticmethod
     def clear_system_cache() -> None:
