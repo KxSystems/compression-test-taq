@@ -1,10 +1,10 @@
 idx|tags|query
 1|hugedataread|select from quote where date=min date, time<0D9
 2|hugedataread|select from quote where seq=0
-3||select from quote where 0<seq, ex within "AZ", time within 0D 1D, asize < 0Wi-1, bsize < 0Wi-1, nationalBBOInd = "O"
+3|hugedataread|select from quote where 0<seq, ex within "AZ", time within 0D 1D, asize < 0Wi-1, bsize < 0Wi-1, nationalBBOInd = "O"
 4|hugedataread|select from trade where date=min date, time within 0D10:00:00 0D10:00:10
 5|smalldataread|select from quote where sym = anInfreqSym, time within 0D08:30 0D16:30
-6|largedataread|select date, sym, time, price, size, stop, cond, ex from trade where date=min date, source = "N"
+6|hugedataread|select date, sym, time, price, size, stop, cond, ex from trade where date=min date, source = "N"
 7|smalldataread|select sym, time, mid: (bid + ask) %2 from select from quote where sym = aFreqSym
 8|smalldataread|select date, sym, time, bid, ask, bsize, asize, cond, ex from quote where sym = aFreqSym
 9||select date, sym, time, bid, ask, bsize, asize, cond, ex from quote where sym in infreqIdList, 2000<bsize+asize
@@ -14,7 +14,7 @@ idx|tags|query
 13||select avgSpread: avg ask - bid by sym, 0D00:10 xbar time from quote where sym in someSyms2
 14||select avgWeightedSpread: (asize + bsize) wavg ask - bid, devSpread: dev ask - bid by exnames ex from quote where date=min date, sym=mostFreqSym
 15||select avgWeightedSpread: (asize + bsize) wavg ask - bid, devSpread: dev ask - bid by sym, exnames ex from quote where date=min date, sym in someSyms2
-16||select avgWeightedSpread: (asize + bsize) wavg ask - bid, devSpread: dev ask - bid by exnames ex from quote where date=min date, shortSaleRestrictionIndicator="0"
+16|hugedataread|select avgWeightedSpread: (asize + bsize) wavg ask - bid, devSpread: dev ask - bid by exnames ex from quote where date=min date, shortSaleRestrictionIndicator="0"
 17|manualparallelization|raze {select first sym, avgSpread: avg ask - bid by 0D00:10 xbar time from quote where sym = x} peach someSyms2
 18||distinct select sym, ex from trade where size > 700000
 19||select weightedBidPice: bsize wavg bid, weightedOfferPice: asize wavg ask by sym from quote where sym in someSyms1
