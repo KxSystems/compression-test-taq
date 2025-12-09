@@ -19,11 +19,11 @@ aFreqSym: @[; floor 0.80 * count symFreq] symFreq;
 anInfreqSym: @[; floor 0.2 * count symFreq] symFreq;
 .Q.dd[DST; `anInfreqSym.txt] 0: enlist string anInfreqSym
 
-someSyms1: -20?symFreq; / should be symbols of various quote counts to force different execution times
-.Q.dd[DST; `someSyms1.txt] 0: string someSyms1
+twentySyms: -20?symFreq; / should be symbols of various quote counts to force different execution times
+.Q.dd[DST; `twentySyms.txt] 0: string twentySyms
 
-someSyms2: -100?symFreq;
-.Q.dd[DST; `someSyms2.txt] 0: string someSyms2
+hundredSyms: -100?symFreq;
+.Q.dd[DST; `hundredSyms.txt] 0: string hundredSyms
 
 infreqIdList: @[; til[500] + count[symFreq] div 10] symFreq; / many, but small quote count symbols
 .Q.dd[DST; `infreqIdList.txt] 0: string infreqIdList

@@ -138,8 +138,8 @@ if["true" ~ lower getenv `QMAP;
 aFreqSym: first `$read0 .Q.dd[PARAMDIR;`aFreqSym.txt]
 mostFreqSym: first `$read0 .Q.dd[PARAMDIR;`mostFreqSym.txt]
 anInfreqSym: first `$read0 .Q.dd[PARAMDIR;`anInfreqSym.txt]
-someSyms1: `$read0 .Q.dd[PARAMDIR;`someSyms1.txt]
-someSyms2: `$read0 .Q.dd[PARAMDIR;`someSyms2.txt]
+twentySyms: `$read0 .Q.dd[PARAMDIR;`twentySyms.txt]
+hundredSyms: `$read0 .Q.dd[PARAMDIR;`hundredSyms.txt]
 infreqIdList: `$read0 .Q.dd[PARAMDIR;`infreqIdList.txt]
 
 timeBuckets: ([preopen: 0D08:30; open: 0D09:05; morning: 0D12:30; afternoon: 0D16:30; close: 1D])

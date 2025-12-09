@@ -106,8 +106,8 @@ class BenchmarkRunner:
             "aFreqSym": read_single("aFreqSym.txt"),
             "mostFreqSym": read_single("mostFreqSym.txt"),
             "anInfreqSym": read_single("anInfreqSym.txt"),
-            "someSyms1": read_list("someSyms1.txt"),
-            "someSyms2": read_list("someSyms2.txt"),
+            "twentySyms": read_list("twentySyms.txt"),
+            "hundredSyms": read_list("hundredSyms.txt"),
             "infreqIdList": read_list("infreqIdList.txt"),
         })
 

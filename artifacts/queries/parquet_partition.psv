@@ -11,18 +11,18 @@ idx|tags|query
 10|manualparallelization|raze {select date, sym, time, bid, ask, bsize, asize, cond, ex from quote where sym = x, 2000<bsize+asize} peach infreqIdList
 11||select avgMidSize: avg (bid + ask) % 2 from quote where sym = anInfreqSym
 12||select avgSpread: avg ask - bid by 0D00:10 xbar time from quote where sym = aFreqSym
-13||select avgSpread: avg ask - bid by sym, 0D00:10 xbar time from quote where sym in someSyms2
+13||select avgSpread: avg ask - bid by sym, 0D00:10 xbar time from quote where sym in hundredSyms
 14||select avgWeightedSpread: (asize + bsize) wavg ask - bid, devSpread: dev ask - bid by exnames ex from quote where date=min date, sym=mostFreqSym
-15||select avgWeightedSpread: (asize + bsize) wavg ask - bid, devSpread: dev ask - bid by sym, exnames ex from quote where date=min date, sym in someSyms2
+15||select avgWeightedSpread: (asize + bsize) wavg ask - bid, devSpread: dev ask - bid by sym, exnames ex from quote where date=min date, sym in hundredSyms
 16||select avgWeightedSpread: (asize + bsize) wavg ask - bid, devSpread: dev ask - bid by exnames ex from quote where date=min date, shortSaleRestrictionIndicator ~\: enlist "0"
-17|manualparallelization|raze {select first sym, avgSpread: avg ask - bid by 0D00:10 xbar time from quote where sym = x} peach someSyms2
+17|manualparallelization|raze {select first sym, avgSpread: avg ask - bid by 0D00:10 xbar time from quote where sym = x} peach hundredSyms
 18||distinct select sym, ex from trade where size > 700000
-19||select weightedBidPice: bsize wavg bid, weightedOfferPice: asize wavg ask by sym from quote where sym in someSyms1
-20|manualparallelization|raze {select sym, weightedBidPice: bsize wavg bid, weightedOfferPice: asize wavg ask from quote where sym = x} peach someSyms1
+19||select weightedBidPice: bsize wavg bid, weightedOfferPice: asize wavg ask by sym from quote where sym in twentySyms
+20|manualparallelization|raze {select sym, weightedBidPice: bsize wavg bid, weightedOfferPice: asize wavg ask from quote where sym = x} peach twentySyms
 21||select weightedSpread: (bsize + asize) wavg ask - bid from quote where sym = anInfreqSym
 22||select time, 20 mavg price from trade where sym = mostFreqSym
-23||ungroup select time, movingmid: 5 mavg (ask + bid) % 2, movingsize: 5 mavg asize + bsize by sym from quote where sym in someSyms1
-24|manualparallelization|raze {select sym, time, movingmid: 5 mavg (ask + bid) % 2, movingsize: 5 mavg asize + bsize from quote where sym = x} peach someSyms1
+23||ungroup select time, movingmid: 5 mavg (ask + bid) % 2, movingsize: 5 mavg asize + bsize by sym from quote where sym in twentySyms
+24|manualparallelization|raze {select sym, time, movingmid: 5 mavg (ask + bid) % 2, movingsize: 5 mavg asize + bsize from quote where sym = x} peach twentySyms
 25||select time, sums size from trade where sym = aFreqSym
 26||select time, sums size from trade where ex ~\: enlist "L"
 27||update movingvwap:(sums price * size) % sums size by sym from select sym, time, price, size from trade where time within 0D08:00 0D08:15
@@ -33,8 +33,8 @@ idx|tags|query
 32||ungroup select from (select seqDecr: seq where (<) prior seq by sym from trade) where 0 < count each seqDecr
 33||update key[timeBuckets] timeBucket from `ex`timeBucket xasc select cnt: count i, sum size by ex, timeBucket: value[timeBuckets] binr time from trade where date=min date
 34||select cnt: count i, sum size by sym, timeBucket: timeBuckets binr time from trade where date=min date, not corr=0
-35||select o: first price, h: max price, l: min price, c: last price, s: sum size by sym, 0D00:05 xbar time from trade where sym in someSyms2, 0 < count each stop
-36|manualparallelization|raze {select first sym, o: first price, h: max price, l: min price, c: last price, s: sum size by 0D00:05 xbar time from trade where sym = x, 0 < count each stop} peach someSyms2
+35||select o: first price, h: max price, l: min price, c: last price, s: sum size by sym, 0D00:05 xbar time from trade where sym in hundredSyms, 0 < count each stop
+36|manualparallelization|raze {select first sym, o: first price, h: max price, l: min price, c: last price, s: sum size by 0D00:05 xbar time from trade where sym = x, 0 < count each stop} peach hundredSyms
 37||update inbal: (bsize - asize) % bsize + asize from select first asize, first bsize by minute: `minute$0D00:01 xbar time from quote where sym = anInfreqSym
 38||select wsumAsk:asize wsum ask, wsumBid: bid wsum bsize, sdevasksize: sdev asize, sdevbid:sdev bid, corPrice:ask cor bid, corSize: asize cor bsize by sym from quote where sym in infreqIdList
 39|manualparallelization|raze {select first sym, wsumAsk:asize wsum ask, wsumBid: bid wsum bsize, sdevasksize: sdev asize, sdevbid:sdev bid, corPrice:ask cor bid, corSize: asize cor bsize from quote where sym = x} each infreqIdList
