@@ -6,7 +6,9 @@ and persist to a hive-partitioned Parquet dataset.
 
 Environment variables:
     SYMBOLSTOREDAS      PartitionColumn or RowGroup
-    MINROWGROUPSIZE     If SYMBOLSTOREDAS=RowGroup then only row groups of size at least MINROWGROUPSIZE will be created
+    MINROWGROUPSIZE     Only row groups of size at least MINROWGROUPSIZE will be created. For SYMBOLSTOREDAS=PartitionColumn this is just a hint.
+    MAXROWGROUPSIZE     Only row groups of size at most MAXROWGROUPSIZE will be created. For SYMBOLSTOREDAS=PartitionColumn this is just a hint.
+
     COMPRESSION         Compression algorithm to be used when persisting data, e.g. ZSTD
     COMPRESSION_LEVEL   Level of compression, e.g. 10
     PAGE_SIZE           Page size as power of 2 between 12 and 20. Value e.g. 17 means 128KB.
@@ -298,7 +300,8 @@ def parse_and_convert(file_path: Path, schema: pa.Schema, conv: List) -> pa.Tabl
     return pipe(table, *conv)
 
 def persist_rowgroup_per_symbol(table: pa.Table, table_output_path: Path,
-                              parquet_options: Dict[str, Union[str, int]]) -> None:
+                              parquet_options: Dict[str, Union[str, int]],
+                              minrowgroupsize: int, maxrowgroupsize: int) -> None:
     """Persists a Pyarrow table to a date-partitioned (following Hive format) Parquet dataset
     in which each row group belong to a Symbol
     Args:
@@ -312,7 +315,6 @@ def persist_rowgroup_per_symbol(table: pa.Table, table_output_path: Path,
 
     logging.info(f"  Saving {len(table)} rows")
 
-    minrowgroupsize=0 if os.getenv('MINROWGROUPSIZE') is None else int(os.getenv('MINROWGROUPSIZE'))
     symbols = table.column("sym")
     date = table.column("date")[0].as_py().strftime('%Y-%m-%d') # TODO: make it more robust
     table = table.drop(['date'])
@@ -325,19 +327,20 @@ def persist_rowgroup_per_symbol(table: pa.Table, table_output_path: Path,
         current_symbol = symbols[0]
 
         for i, symbol in enumerate(symbols):
-            if symbol != current_symbol and i - start_idx > minrowgroupsize:
+            if symbol != current_symbol and i - start_idx >= minrowgroupsize:
                 # Write row group for previous symbol
-                writer.write(table.slice(start_idx, i - start_idx), row_group_size=64 * 1024 * 1024)
+                writer.write(table.slice(start_idx, i - start_idx), row_group_size = maxrowgroupsize)
                 start_idx = i
                 current_symbol = symbol
 
         # Write the final row group
-        writer.write(table.slice(start_idx), row_group_size=64 * 1024 * 1024)
+        writer.write(table.slice(start_idx), row_group_size = maxrowgroupsize)
 
     logging.info(f"  Successfully wrote data to {table_output_path}")
 
 def persistHive(table: pa.Table, table_output_path: Path,
-            parquet_options: Dict[str, Union[str, int]]) -> None:
+            parquet_options: Dict[str, Union[str, int]],
+            minrowgroupsize: int, maxrowgroupsize: int) -> None:
     """Persists a Pyarrow table to a Hive-partitioned Parquet dataset.
     Args:
         table: The table to persist
@@ -359,6 +362,8 @@ def persistHive(table: pa.Table, table_output_path: Path,
         max_partitions=15000,
         existing_data_behavior='overwrite_or_ignore',
         file_options=ds.ParquetFileFormat().make_write_options(**parquet_options),
+        min_rows_per_group=minrowgroupsize,
+        max_rows_per_group=maxrowgroupsize,
         preserve_order=True # Assumes original data is sorted by Time
     )
 
@@ -437,6 +442,8 @@ def main(date: datetime, src: Path, dst: Path, letters: str, includetestsymbols:
     logging.info(f"  Successfully wrote data to {dst}/master")
     del master
 
+    minrowgroupsize=0 if os.getenv('MINROWGROUPSIZE') is None else int(os.getenv('MINROWGROUPSIZE'))
+    maxrowgroupsize=64 * 1024 * 1024 if os.getenv('MAXROWGROUPSIZE') is None else int(os.getenv('MAXROWGROUPSIZE'))
     # Process quote files
     logging.info("Processing quote tables")
     quote_files = list(src.glob(f"SPLITS_US_ALL_BBO_[{letters}]_{datestr}.psv")) # first letter filter happens here
@@ -449,12 +456,13 @@ def main(date: datetime, src: Path, dst: Path, letters: str, includetestsymbols:
     symbolstoredas = os.getenv('SYMBOLSTOREDAS')
     if symbolstoredas is None or symbolstoredas.upper() == "PARTITIONCOLUMN":
         for file_path in quote_files:
-            persistHive(parse_and_convert(file_path, QUOTE_SCHEMA, quote_conv), dst / 'quote', parquet_options_quote)
+            persistHive(parse_and_convert(file_path, QUOTE_SCHEMA, quote_conv), dst / 'quote',
+                        parquet_options_quote, minrowgroupsize, maxrowgroupsize)
     elif symbolstoredas.upper() == "ROWGROUP":
         quote_tables = [parse_and_convert(file_path, QUOTE_SCHEMA, quote_conv) for file_path in quote_files]
         quote = pa.concat_tables(quote_tables)
         del quote_tables
-        persist_rowgroup_per_symbol(quote, dst / 'quote', parquet_options_quote)
+        persist_rowgroup_per_symbol(quote, dst / 'quote', parquet_options_quote, minrowgroupsize, maxrowgroupsize)
         del quote
     else:
         logging.error("Unknown value for SYMBOLSTOREDAS environment variable: {symbolstoredas}") # TODO: Do this check earlier
@@ -470,9 +478,9 @@ def main(date: datetime, src: Path, dst: Path, letters: str, includetestsymbols:
     parquet_options_trade = get_write_options(TRADE_SCHEMA.get_field_index('time'))
     trade = parse_and_convert(trade_file, TRADE_SCHEMA, trade_conv)
     if symbolstoredas is None or symbolstoredas.upper() == "PARTITIONCOLUMN":
-        persistHive(trade, dst / 'trade', parquet_options_trade)
+        persistHive(trade, dst / 'trade', parquet_options_trade, minrowgroupsize, maxrowgroupsize)
     else:
-        persist_rowgroup_per_symbol(trade, dst / 'trade', parquet_options_trade)
+        persist_rowgroup_per_symbol(trade, dst / 'trade', parquet_options_trade, minrowgroupsize, maxrowgroupsize)
 
     elapsed = datetime.now() - start_time
     logging.info(f"\nAll processing completed in {elapsed}")
