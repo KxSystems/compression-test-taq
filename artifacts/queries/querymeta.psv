@@ -1,5 +1,5 @@
 idx|tags|description
-1|simple|select all data from quote before 10am
+1|simple|select all data from quote before 8am
 2|simple,emptyresult|query with a single filter that does not filter out anything
 3|simple,manydummyfilters|query contains many filters that do not filter out anything
 4|simple|

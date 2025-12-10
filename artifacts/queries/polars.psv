@@ -1,5 +1,5 @@
 idx|tags|query
-1||quote.filter(pl.col("date") == pl.col("date").min()).filter(pl.col("time") < time(9, 0))
+1||quote.filter(pl.col("date") == pl.col("date").min()).filter(pl.col("time") < time(8, 0))
 2||trade.filter(pl.col("seq") == 0)
 3||trade.filter((pl.col("seq") > 0) & (pl.col("ex") >= "A") & (pl.col("ex") <= "Z") & pl.col("time").is_between(time(0, 0), time(23, 59, 59, 999999), closed="both") & (pl.col("size") < 2147483647))
 4||trade.filter(pl.col("date") == pl.col("date").min()).filter(pl.col("time").is_between(time(10), time(10, 0, 10), closed="both"))

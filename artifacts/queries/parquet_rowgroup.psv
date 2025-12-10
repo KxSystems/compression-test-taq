@@ -1,5 +1,5 @@
 idx|tags|query
-1||select from quote where date=min date, time<0D9
+1||select from quote where date=min date, time<0D8
 2||select from trade where seq=0
 3||select from trade where 0<seq, (first each ex) within "AZ", time within 0D 1D, size < 0Wi-1
 4|hugedataread|select from trade where date=min date, time within 0D10:00:00 0D10:00:10
