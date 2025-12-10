@@ -1,4 +1,3 @@
-
 #!/usr/bin/env bash
 
 # Description: Identifies the underlying physical block device for a given file path.
