@@ -7,7 +7,7 @@ import argparse
 import csv
 import gc
 import logging
-import os
+import psutil
 import subprocess
 import sys
 from datetime import datetime,time # time is used in queries
@@ -34,11 +34,13 @@ class QueryResult:
     thread_count: int
     idx: str
     query_raw: str
-    run1_time_ms: float
-    run2_time_ms: float
-    run3_time_ms: float
-    # Placeholder for future memory/IO implementation
-    metrics: List[Optional[float]] = field(default_factory=lambda: [None] * 4)
+    run1_time_ms: int
+    run2_time_ms: int
+    run3_time_ms: int
+    run1_mem_KB: int   # Not Yet Implemented
+    run1_io_KB: int
+    run2_io_KB: int
+    run3_io_KB: int
 
     def to_csv_row(self) -> List[Any]:
         return [
@@ -48,7 +50,10 @@ class QueryResult:
             self.run1_time_ms,
             self.run2_time_ms,
             self.run3_time_ms,
-            *self.metrics
+            self.run1_mem_KB,
+            self.run1_io_KB,
+            self.run2_io_KB,
+            self.run3_io_KB
         ]
 
 
@@ -58,9 +63,10 @@ class BenchmarkRunner:
     on NYSE TAQ hive-partitioned parquet files.
     """
 
-    def __init__(self, db_path: Path, param_dir: Path):
+    def __init__(self, db_path: Path, device:str, param_dir: Path):
         self.db_path = db_path
         self.param_dir = param_dir
+        self.device = device
 
         # Dataframes (Lazy)
         self.master: Optional[pl.LazyFrame] = None
@@ -160,11 +166,14 @@ class BenchmarkRunner:
         """
         if idx.startswith("#"):
             return QueryResult(thread_count=pl.thread_pool_size(), idx=idx[1:], query_raw=query_str,
-                               run1_time_ms=None, run2_time_ms=None, run3_time_ms=None)
+                               run1_time_ms=None, run2_time_ms=None, run3_time_ms=None,
+                               run1_mem_KB=None, run1_io_KB=None, run2_io_KB=None, run3_io_KB=None)
         if query_str == '':
             return QueryResult(thread_count=pl.thread_pool_size(), idx=idx, query_raw=query_str,
-                               run1_time_ms=None, run2_time_ms=None, run3_time_ms=None)
+                               run1_time_ms=None, run2_time_ms=None, run3_time_ms=None,
+                               run1_mem_KB=None, run1_io_KB=None, run2_io_KB=None, run3_io_KB=None)
         times: List[float] = []
+        ios: List[float] = []
 
         for i in range(3):
             iteration_label = "Cold" if i == 0 else f"Warm-{i}"
@@ -177,6 +186,7 @@ class BenchmarkRunner:
             gc.collect()
 
             # Execute and Time
+            io_Start = psutil.disk_io_counters(perdisk=True)[self.device].read_bytes // 1000
             t_start = time_mod.perf_counter_ns()
             try:
                 if i == 0:
@@ -191,15 +201,15 @@ class BenchmarkRunner:
                 logger.error(f"Query {idx} failed: {e}")
                 # Return 0.0 or -1.0 to indicate failure in results
                 return QueryResult(pl.thread_pool_size(), idx, query_str, -1.0, -1.0, -1.0)
+            io_End = psutil.disk_io_counters(perdisk=True)[self.device].read_bytes // 1000
             times.append(t_elapsed)
+            ios.append(io_End-io_Start)
 
         return QueryResult(
             thread_count=pl.thread_pool_size(),
-            idx=idx,
-            query_raw=query_str,
-            run1_time_ms=times[0],
-            run2_time_ms=times[1],
-            run3_time_ms=times[2]
+            idx=idx, query_raw=query_str,
+            run1_time_ms=times[0], run2_time_ms=times[1], run3_time_ms=times[2],
+            run1_mem_KB=None, run1_io_KB=ios[0], run2_io_KB=ios[1], run3_io_KB=ios[2]
         )
 
 
@@ -222,13 +232,16 @@ def main():
     args.result.parent.mkdir(parents=True, exist_ok=True)
 
     # Initialize Runner
-    runner = BenchmarkRunner(args.db, args.paramdir)
+    device = subprocess.run(["./src/resolve_device.sh", args.db],
+                                     capture_output=True, text=True).stdout.split('\n')[0].strip()  # TODO: add error handling
+    runner = BenchmarkRunner(args.db, device, args.paramdir)
 
     # Load DB and Params (Time this operation for the first CSV row)
+    io_load_Start = psutil.disk_io_counters(perdisk=True)[device].read_bytes // 1000
     t_load_start = time_mod.perf_counter_ns()
     runner.load_resources()
     t_load_elapsed = time_mod.perf_counter_ns() - t_load_start
-    load_time_ns = t_load_elapsed
+    io_load_End = psutil.disk_io_counters(perdisk=True)[device].read_bytes // 1000
 
     # Initialize Result File
     headers = [
@@ -244,7 +257,8 @@ def main():
         writer.writerow(headers)
 
         # Log DB Load time as idx 0
-        writer.writerow([pl.thread_pool_size(), 0, "loaddb", load_time_ns] + [None] * 6)
+        writer.writerow([pl.thread_pool_size(), 0, "loaddb", t_load_elapsed, None, None,
+                         None, io_load_End - io_load_Start, None, None])
         f_out.flush() # Ensure header is written
 
         # Process Queries
