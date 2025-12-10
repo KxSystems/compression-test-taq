@@ -1,41 +1,41 @@
-idx|tags|description|
-1|simple|select all data from quote before 10am|
-2|simple,emptyresult||
-3|simple,manydummyfilters|query contains manny filters that do not filter anything
-4|simple||
-5|simple,singleinstrument||
-6|simple||
-7|simple,singleinstrument||
-8|simple,singleinstrument||
-9|simple,fewinstruments||
-10|simple,singleinstrument||
-11|simple,singleinstrument||
-12|simple,fewinstruments||
+idx|tags|description
+1|simple|select all data from quote before 10am
+2|simple,emptyresult|query with a single filter that does not filter out anything
+3|simple,manydummyfilters|query contains many filters that do not filter out anything
+4|simple|
+5|simple,singleinstrument|
+6|simple|
+7|simple,singleinstrument|
+8|simple,singleinstrument|
+9|simple,fewinstruments|
+10|simple,singleinstrument|
+11|simple,singleinstrument|
+12|simple,fewinstruments|
 13|advanced,singleinstrument|calculate weighted average spread and deviation of spread by exchange names
 14|advanced,fewinstruments|calculate weighted average spread and deviation of spread by exchange names and instrument
 15|advanced|calculate weighted average spread and deviation of spread by exchange names for quotes without short sale restriction on UTP (Short Sale Restriction Indicator is "0")
-16|simple||
-17|simple,fewinstruments||
-18|advanced,singleinstrument||
-19|advanced,singleinstrument||
-20|advanced,fewinstruments||
-21|advanced,singleinstrument|select cummulative trade sizes for a given instrument|
-22|advanced||
-23|complex|calculate moving volume wighted average price by instrument within a time range|
-24|advanced||
-25|advanced|select largest trades on all exchanges|
-26|advanced,singleinstrument|select all rows from quote when a given instrument first reaches its daily maximal bid price or daily minimal ask price. Introduce a new `tag` column that can take either value `maxbid` or `minask`|
-27|advanced||
-28|advanced|select the indices of all rows in which the sequence number decreases for the instrument|
-29|complex|custom time bucket (e.g. before 8:30 is preopen)|
-30|complex|custom time bucket (e.g. before 8:30 is preopen)|
-31|simple,fewinstruments||
-32|simple,singleinstrument||
-33|advanced,fewinstruments||
-34|advanced,fewinstruments||
-35|advanced|trades with the smallest price for all instruments|
-36|complex|We want to calculate how much volume was transacted at each price. Whenever the price changes, we want to restart the count. We only want to consider prices for the same instrument|
-37|simple,singleinstrument||
-38|advanced,fewinstruments||
-39|advanced,singleinstrument||
-40|advanced||
+16|simple|
+17|simple,fewinstruments|
+18|advanced,singleinstrument|
+19|advanced,singleinstrument|
+20|advanced,fewinstruments|
+21|advanced,singleinstrument|select cummulative trade sizes for a given instrument
+22|advanced|
+23|complex|calculate moving volume wighted average price by instrument within a time range
+24|advanced|
+25|advanced|select largest trades on all exchanges
+26|advanced,singleinstrument|select all rows from quote when a given instrument first reaches its daily maximal bid price or daily minimal ask price. Introduce a new `tag` column that can take either value `maxbid` or `minask`
+27|advanced|
+28|advanced|select the indices of all rows in which the sequence number decreases for the instrument
+29|complex|custom time bucket (e.g. before 8:30 is preopen)
+30|complex|custom time bucket (e.g. before 8:30 is preopen)
+31|simple,fewinstruments|
+32|simple,singleinstrument|
+33|advanced,fewinstruments|
+34|advanced,fewinstruments|
+35|advanced|trades with the smallest price for all instruments
+36|complex|We want to calculate how much volume was transacted at each price. Whenever the price changes, we want to restart the count. We only want to consider prices for the same instrument
+37|simple,singleinstrument|
+38|advanced,fewinstruments|
+39|advanced,singleinstrument|
+40|advanced|
