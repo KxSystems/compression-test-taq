@@ -88,6 +88,7 @@ runQuery: {[idx:`C; tags:`C; query:`C]
   resultH ,[;"\n"] SEP sv (compparm; string system "s"; idx; tags; query), string (`long$ts), (memusage div 1000), 1 _ deltas io;
   };
 
+start: .z.p
 Device: getDevice[DB]
 .qlog.info "Monitoring device ", Device
 
@@ -148,4 +149,5 @@ queryFile: o `queryfile;
 .qlog.info "Loading and executing queries from ", queryFile;
 {$["#" ~ first first x; ::; runQuery . value x]} each ("***";enlist "|") 0: `$queryFile; / skip comments
 
+.qlog.info "Query benchmark completed in ", string .z.p-start;
 if[not `debug in key o; exit 0];
