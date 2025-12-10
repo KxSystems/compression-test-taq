@@ -8,7 +8,7 @@ ko: key o: first each .Q.opt .z.x;
 
 DB: o `db
 PARAMDIR:  hsym `$o`paramdir
-getD: upper[o `format] like "PARQUET*"
+PARQUET: upper[o `format] like "PARQUET*"
 PARQUETROWGROUP: upper[o `format] ~ "PARQUET_ROWGROUP"
 
 iostatError: `kB_read`kB_wrtn`kB_sum!3#0Nj
