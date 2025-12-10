@@ -10,7 +10,7 @@ import logging
 import os
 import subprocess
 import sys
-from datetime import time # time is used in queries
+from datetime import datetime,time # time is used in queries
 import time as time_mod   # alias to avoid naming conflict
 from dataclasses import dataclass, field
 
@@ -204,6 +204,7 @@ class BenchmarkRunner:
 
 
 def main():
+    start_time = datetime.now()
     parser = argparse.ArgumentParser(
         description="Polars Query Runner & Benchmarker using NYSE TAQ data in parquet format",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter
@@ -266,7 +267,8 @@ def main():
                 writer.writerow(result.to_csv_row())
                 f_out.flush() # Write immediately to disk
 
-    logger.info(f"Benchmarking complete. Results saved to {args.result}")
+    elapsed = datetime.now() - start_time
+    logger.info(f"Benchmarking completed in {elapsed}. Results saved to {args.result}")
 
 
 if __name__ == '__main__':
