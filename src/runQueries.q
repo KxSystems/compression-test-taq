@@ -8,28 +8,8 @@ ko: key o: first each .Q.opt .z.x;
 
 DB: o `db
 PARAMDIR:  hsym `$o`paramdir
-PARQUET: upper[o `format] like "PARQUET*"
+getD: upper[o `format] like "PARQUET*"
 PARQUETROWGROUP: upper[o `format] ~ "PARQUET_ROWGROUP"
-
-getDeviceOSX:{[db:`C]
-  "disk0"  / TODO: Implement a proper solution
-  }
-
-getFilesystem: {[db:`C] first " " vs last system "df ", db}
-getDevice:{[db:`C]
-  if[.z.o=`m64;:getDeviceOSX[db]];
-
-  fs: getFilesystem[db];
-  if["overlay" ~ fs; :fs];   / Inside Docker, NYI
-  if["disk" ~ last system "lsblk -o type ", fs; :fs];
-  p: ssr[;"/dev/";""] fs;
-  // disk is looked up from partition by e.g. /sys/class/block/nvme0n1p1
-  if[not (`$p) in key `$":/sys/class/block";
-    .qlog.warn "Unable to map partition ", p, " to a device";
-    :""];
-  l:first system "readlink /sys/class/block/", p;
-  "/dev",deltas[-2#l ss "/"] sublist l
-  }
 
 iostatError: `kB_read`kB_wrtn`kB_sum!3#0Nj
 
@@ -88,8 +68,8 @@ runQuery: {[idx:`C; tags:`C; query:`C]
   resultH ,[;"\n"] SEP sv (compparm; string system "s"; idx; tags; query), string (`long$ts), (memusage div 1000), 1 _ deltas io;
   };
 
-start: .z.p
-Device: getDevice[DB]
+startTime: .z.p
+Device: first system "./src/resolve_device.sh ", DB
 .qlog.info "Monitoring device ", Device
 
 resFile: $[`result in key o; o `result; "result.psv"];
@@ -149,5 +129,5 @@ queryFile: o `queryfile;
 .qlog.info "Loading and executing queries from ", queryFile;
 {$["#" ~ first first x; ::; runQuery . value x]} each ("***";enlist "|") 0: `$queryFile; / skip comments
 
-.qlog.info "Query benchmark completed in ", string .z.p-start;
+.qlog.info "Query benchmark completed in ", 2_string .z.p - startTime;
 if[not `debug in key o; exit 0];
