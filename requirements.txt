@@ -1,2 +1,4 @@
 pyarrow>=21.0
 toolz>=1.1
+polars>=1.35
+psutil>=7.1
