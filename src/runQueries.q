@@ -11,6 +11,8 @@ PARAMDIR:  hsym `$o`paramdir
 PARQUET: upper[o `format] like "PARQUET*"
 PARQUETROWGROUP: upper[o `format] ~ "PARQUET_ROWGROUP"
 
+QMAP: "true" ~ lower getenv `QMAP
+
 iostatError: `kB_read`kB_wrtn`kB_sum!3#0Nj
 
 getKBReadMac: {[device:`C]
@@ -96,9 +98,11 @@ $[PARQUET; [
   compparm: "nyi_nyi_nyi";
   ];[
   .qlog.info "loading kdb DB ", DB;
+  loadcmd: "ts .Q.lo[`$DB;0;0]";
+  if[QMAP; loadcmd,:";.Q.MAP[]"];
   ios: getKBRead[Device]`kB_read;
   s: .z.p;
-  mem: last system "ts .Q.lo[`$DB;0;0]";
+  mem: last system loadcmd;
   ts: .z.p-s;
   ioe: getKBRead[Device]`kB_read;
 
@@ -110,10 +114,6 @@ $[PARQUET; [
     -36!@[; 0; hsym `$] ":" vs o`encr]]]
 
 resultH ,[;"\n"] SEP sv (compparm; string system "s"; string 0; "";"load/mmap DB"), string `long$ts, 0Nj, 0Nj, (mem div 1000), ioe - ios, 0Nj, 0Nj;
-
-if["true" ~ lower getenv `QMAP;
-  .qlog.info "Executing .Q.MAP[]";
-  .Q.MAP[]]
 
 .qlog.info "Loading parameters from ", 1_string PARAMDIR
 aFreqInstr: first `$read0 .Q.dd[PARAMDIR;`aFreqInstr.txt]
