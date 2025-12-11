@@ -35,7 +35,7 @@ idx|tags|description
 34|advanced|
 35|advanced|trades with the smallest price for all instruments
 36|complex,singleinstrument|We want to calculate how much volume was transacted at each price. Whenever the price changes, we want to restart the count. We only want to consider prices for the same instrument
-37|simple,singleinstrument|
+37|simple,fewinstruments|
 38|advanced,singleinstrument|
 39|advanced,singleinstrument|
 40|advanced|
