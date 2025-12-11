@@ -37,5 +37,5 @@ idx|tags|description
 36|complex,singleinstrument|We want to calculate how much volume was transacted at each price. Whenever the price changes, we want to restart the count. We only want to consider prices for the same instrument
 37|simple,fewinstruments|
 38|advanced,singleinstrument|
-39|advanced,singleinstrument|
+39|advanced|
 40|advanced|
