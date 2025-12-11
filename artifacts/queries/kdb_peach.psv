@@ -7,7 +7,7 @@ idx|tags|query
 6||
 7||
 8||
-9|manualparallelization|raze {select date, sym, time, bid, ask, bsize, asize, cond, ex from quote where sym = x, 2000<bsize+asize} peach fivehundredInfreqInstrs
+9||
 10||
 11||
 12|manualparallelization|raze {select first sym, avgSpread: avg ask - bid by 0D00:10 xbar time from quote where sym = x} peach hundredInstrs
@@ -35,6 +35,6 @@ idx|tags|query
 34||
 35||
 36||
-37||
+37|manualparallelization|raze {aj[`sym`time; select sym, time, price, size, stop, cond, ex from trade where date=min date, sym = x; select sym, time, bid, ask, bsize, asize, quotecond: cond, quoteex: ex from quote where date=min date]} peach twentyInstrs
 38||
-39|manualparallelization|raze {aj[`sym`time; select sym, time, price, size, stop, cond, ex from trade where date=min date, sym = x; select sym, time, bid, ask, bsize, asize, quotecond: cond, quoteex: ex from quote where date=min date]} peach twentyInstrs
+39||
