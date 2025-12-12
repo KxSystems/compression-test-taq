@@ -6,6 +6,7 @@ Environment variables:
 import argparse
 import csv
 import gc
+import os
 import logging
 import psutil
 import subprocess
@@ -45,30 +46,6 @@ def load_parameters(param_dir: Path) -> Dict[str, Any]:
     })
     return params
 
-def clear_system_cache() -> None:
-    """
-    Attempts to clear the OS page cache.
-    Requires sudo privileges on Linux. Fails gracefully otherwise.
-    """
-    if sys.platform != "linux":
-        logger.warning("Cache clearing is only supported on Linux. Skipping.")
-        return
-
-    try:
-        # Sync first to ensure data is written to disk
-        subprocess.run(['sync'], check=True)
-        # Drop caches
-        subprocess.run(
-            ['sudo', 'bash', '-c', "echo 3 > /proc/sys/vm/drop_caches"],
-            check=True,
-            capture_output=True
-        )
-    except subprocess.CalledProcessError as e:
-        logger.warning(f"Failed to clear page cache (needs sudo): {e}")
-    except Exception as e:
-        logger.warning(f"Unexpected error clearing cache: {e}")
-
-
 @dataclass
 class QueryResult:
     """Data class to hold the results of a query benchmark."""
@@ -97,6 +74,39 @@ class QueryResult:
             self.run3_io_KB
         ]
 
+def run_query(runner, db_path: Path, device: str, idx: str, query: str) -> QueryResult:
+    """
+    Runs a specific query 3 times (Cold, Warm, Warm) and records timing.
+    """
+    times: List[float] = []
+    ios: List[float] = []
+    for runidx in range(3):
+        iteration_label = "Cold" if runidx == 0 else f"Warm-{runidx}"
+        logger.info(f"[{idx}] Run {runidx+1}/3 ({iteration_label}): {query[:50]}...")
+        # Prepare environment
+        if runidx == 0:
+            subprocess.run([os.getenv('FLUSH'), db_path], check=True,capture_output=True)
+        gc.collect()
+        # Execute and Time
+        io_Start = psutil.disk_io_counters(perdisk=True)[device].read_bytes // 1000
+        t_start = time_mod.perf_counter_ns()
+        try:
+            t_end = runner.execute_query(query, idx, runidx)
+        except Exception as e:
+            logger.error(f"Query {idx} failed: {e}")
+            # Return 0.0 or -1.0 to indicate failure in results
+            return QueryResult(pl.thread_pool_size(), idx, query_str, -1.0, -1.0, -1.0)
+        io_End = psutil.disk_io_counters(perdisk=True)[device].read_bytes // 1000
+        times.append(t_end - t_start)
+        ios.append(io_End-io_Start)
+
+    return QueryResult(
+        thread_count=pl.thread_pool_size(),
+        idx=idx, query_raw=query,
+        run1_time_ms=times[0], run2_time_ms=times[1], run3_time_ms=times[2],
+        run1_mem_KB=None, run1_io_KB=ios[0], run2_io_KB=ios[1], run3_io_KB=ios[2]
+    )
+
 
 class BenchmarkRunnerPolars:
     """
@@ -104,9 +114,8 @@ class BenchmarkRunnerPolars:
     on NYSE TAQ hive-partitioned parquet files.
     """
 
-    def __init__(self, db_path: Path, device:str, param:Dict[str, Any]):
+    def __init__(self, db_path: Path, param:Dict[str, Any]):
         self.db_path = db_path
-        self.device = device
 
         # Dataframes (Lazy)
         self.master: Optional[pl.LazyFrame] = None
@@ -133,7 +142,7 @@ class BenchmarkRunnerPolars:
         logger.info(f"Resources loaded in {duration:.2f} ms")
 
 
-    def _execute_query(self, query_str: str) -> pl.DataFrame:
+    def execute_query(self, query_str: str, idx: int, runidx: int) -> int:
         """
         Safely executes the query string using the loaded data and parameters.
         """
@@ -146,67 +155,24 @@ class BenchmarkRunnerPolars:
             "quote": self.quote,
             **self.params
         }
-
-        # We use eval here because the requirement is to run arbitrary queries
-        # defined in a text file.
-        # .collect() triggers the actual computation for LazyFrames
-        return eval(query_str, {"__builtins__": None}, eval_context).collect()
-
-    def run_query(self, idx: str, query_str: str) -> QueryResult:
-        """
-        Runs a specific query 3 times (Cold, Warm, Warm) and records timing.
-        """
-        if idx.startswith("#"):
-            return QueryResult(thread_count=pl.thread_pool_size(), idx=idx[1:], query_raw=query_str,
-                               run1_time_ms=None, run2_time_ms=None, run3_time_ms=None,
-                               run1_mem_KB=None, run1_io_KB=None, run2_io_KB=None, run3_io_KB=None)
-        if query_str == '':
-            return QueryResult(thread_count=pl.thread_pool_size(), idx=idx, query_raw=query_str,
-                               run1_time_ms=None, run2_time_ms=None, run3_time_ms=None,
-                               run1_mem_KB=None, run1_io_KB=None, run2_io_KB=None, run3_io_KB=None)
-        times: List[float] = []
-        ios: List[float] = []
-
-        for i in range(3):
-            iteration_label = "Cold" if i == 0 else f"Warm-{i}"
-            logger.info(f"[{idx}] Run {i+1}/3 ({iteration_label}): {query_str[:50]}...")
-
-            # Prepare environment
-            if i == 0:
-                clear_system_cache()
-
-            gc.collect()
-
-            # Execute and Time
-            io_Start = psutil.disk_io_counters(perdisk=True)[self.device].read_bytes // 1000
-            t_start = time_mod.perf_counter_ns()
-            try:
-                if i == 0:
-                    res = self._execute_query(query_str)
-                    t_elapsed = time_mod.perf_counter_ns() - t_start
-                    logger.info(f"[{idx}]   Shape of the result: {res.shape[0]} x {res.shape[1]}")
-                    del res
-                else:
-                    self._execute_query(query_str)
-                    t_elapsed = time_mod.perf_counter_ns() - t_start
-            except Exception as e:
-                logger.error(f"Query {idx} failed: {e}")
-                # Return 0.0 or -1.0 to indicate failure in results
-                return QueryResult(pl.thread_pool_size(), idx, query_str, -1.0, -1.0, -1.0)
-            io_End = psutil.disk_io_counters(perdisk=True)[self.device].read_bytes // 1000
-            times.append(t_elapsed)
-            ios.append(io_End-io_Start)
-
-        return QueryResult(
-            thread_count=pl.thread_pool_size(),
-            idx=idx, query_raw=query_str,
-            run1_time_ms=times[0], run2_time_ms=times[1], run3_time_ms=times[2],
-            run1_mem_KB=None, run1_io_KB=ios[0], run2_io_KB=ios[1], run3_io_KB=ios[2]
-        )
-
+        if runidx == 0:
+            # We use eval here because the requirement is to run arbitrary queries
+            # defined in a text file.
+            # .collect() triggers the actual computation for LazyFrames
+            res = eval(query_str, {"__builtins__": None}, eval_context).collect()
+            t_end = time_mod.perf_counter_ns()
+            logger.info(f"[{idx}]   Shape of the result: {res.shape[0]} x {res.shape[1]}")
+        else:
+                eval(query_str, {"__builtins__": None}, eval_context).collect()
+                t_end = time_mod.perf_counter_ns()
+        return t_end
 
 def main():
     start_time = datetime.now()
+    if os.getenv('FLUSH') is None:
+        logger.error("Environment variable FLUSH is not set. Maybe config/env was not loaded.")
+        sys.exit(2)
+
     parser = argparse.ArgumentParser(
         description="Query Runner & Benchmarker using NYSE TAQ data",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter
@@ -234,7 +200,7 @@ def main():
     except FileNotFoundError as e:
         logger.error(f"Failed to load parameters: {e}")
         sys.exit(1)
-    runner = BenchmarkRunnerPolars(args.db, device, params)
+    runner = BenchmarkRunnerPolars(args.db, params)
 
     # Load DB and Params (Time this operation for the first CSV row)
     io_load_Start = psutil.disk_io_counters(perdisk=True)[device].read_bytes // 1000
@@ -273,11 +239,19 @@ def main():
             for row in reader:
                 idx = row.get('idx', '').strip()
                 query = row.get('query', '').strip()
-
-                if not idx or idx.startswith("#"):
+                if idx.startswith("#"):
+                    writer.writerow(QueryResult(thread_count=pl.thread_pool_size(), idx=idx[1:], query_raw=query,
+                               run1_time_ms=None, run2_time_ms=None, run3_time_ms=None,
+                               run1_mem_KB=None, run1_io_KB=None, run2_io_KB=None, run3_io_KB=None).to_csv_row())
                     continue
 
-                result = runner.run_query(idx, query)
+                if query == '':
+                    writer.writerow(QueryResult(thread_count=pl.thread_pool_size(), idx=idx, query_raw=query,
+                               run1_time_ms=None, run2_time_ms=None, run3_time_ms=None,
+                               run1_mem_KB=None, run1_io_KB=None, run2_io_KB=None, run3_io_KB=None).to_csv_row())
+                    continue
+
+                result = run_query(runner, args.db, device, idx, query)
                 writer.writerow(result.to_csv_row())
                 f_out.flush() # Write immediately to disk
 
