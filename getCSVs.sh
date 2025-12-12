@@ -63,7 +63,8 @@ function get_CSVs () {
 }
 
 echo "NYSE TAQ CSV capture started."
+readonly start=$(date +%s)
 get_CSVs
 readonly end=$(date +%s)
 readonly duration=$((end - start))
-echo "TAQ data capture completd in ${duration} seconds."
+echo "TAQ data capture completed in ${duration} seconds."
