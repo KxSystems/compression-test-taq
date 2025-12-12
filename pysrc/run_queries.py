@@ -27,6 +27,47 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+def load_parameters(param_dir: Path) -> Dict[str, Any]:
+    params: Dict[str, Any] = {}
+    """Reads parameter text files into the params dictionary."""
+    def read_single(filename: str) -> str:
+        return (param_dir / filename).read_text(encoding='utf-8').strip()
+    def read_list(filename: str) -> List[str]:
+        content = (param_dir / filename).read_text(encoding='utf-8')
+        return [line.strip() for line in content.splitlines() if line.strip()]
+    params.update({
+        "aFreqInstr": read_single("aFreqInstr.txt"),
+        "mostFreqInstr": read_single("mostFreqInstr.txt"),
+        "anInfreqInstr": read_single("anInfreqInstr.txt"),
+        "twentyInstrs": read_list("twentyInstrs.txt"),
+        "hundredInstrs": read_list("hundredInstrs.txt"),
+        "fivehundredInfreqInstrs": read_list("fivehundredInfreqInstrs.txt"),
+    })
+    return params
+
+def clear_system_cache() -> None:
+    """
+    Attempts to clear the OS page cache.
+    Requires sudo privileges on Linux. Fails gracefully otherwise.
+    """
+    if sys.platform != "linux":
+        logger.warning("Cache clearing is only supported on Linux. Skipping.")
+        return
+
+    try:
+        # Sync first to ensure data is written to disk
+        subprocess.run(['sync'], check=True)
+        # Drop caches
+        subprocess.run(
+            ['sudo', 'bash', '-c', "echo 3 > /proc/sys/vm/drop_caches"],
+            check=True,
+            capture_output=True
+        )
+    except subprocess.CalledProcessError as e:
+        logger.warning(f"Failed to clear page cache (needs sudo): {e}")
+    except Exception as e:
+        logger.warning(f"Unexpected error clearing cache: {e}")
+
 
 @dataclass
 class QueryResult:
@@ -57,15 +98,14 @@ class QueryResult:
         ]
 
 
-class BenchmarkRunner:
+class BenchmarkRunnerPolars:
     """
     Handles the setup, execution, and reporting of Polars queries
     on NYSE TAQ hive-partitioned parquet files.
     """
 
-    def __init__(self, db_path: Path, device:str, param_dir: Path):
+    def __init__(self, db_path: Path, device:str, param:Dict[str, Any]):
         self.db_path = db_path
-        self.param_dir = param_dir
         self.device = device
 
         # Dataframes (Lazy)
@@ -74,7 +114,7 @@ class BenchmarkRunner:
         self.quote: Optional[pl.LazyFrame] = None
 
         # Parameters available for queries
-        self.params: Dict[str, Any] = {}
+        self.params: Dict[str, Any] = param
 
     def load_resources(self) -> None:
         """Loads database schemas and parameter files."""
@@ -89,57 +129,9 @@ class BenchmarkRunner:
         self.trade = pl.scan_parquet(self.db_path / "trade/date=*/*.parquet", hive_partitioning=True)
         self.quote = pl.scan_parquet(self.db_path / "quote/date=*/*.parquet", hive_partitioning=True)
 
-        logger.info("Loading parameter files...")
-        try:
-            self._load_parameters()
-        except FileNotFoundError as e:
-            logger.error(f"Failed to load parameters: {e}")
-            sys.exit(1)
-
         duration = (time_mod.perf_counter() - t0) * 1000
         logger.info(f"Resources loaded in {duration:.2f} ms")
 
-    def _load_parameters(self) -> None:
-        """Reads parameter text files into the params dictionary."""
-        def read_single(filename: str) -> str:
-            return (self.param_dir / filename).read_text(encoding='utf-8').strip()
-
-        def read_list(filename: str) -> List[str]:
-            content = (self.param_dir / filename).read_text(encoding='utf-8')
-            return [line.strip() for line in content.splitlines() if line.strip()]
-
-        self.params.update({
-            "aFreqInstr": read_single("aFreqInstr.txt"),
-            "mostFreqInstr": read_single("mostFreqInstr.txt"),
-            "anInfreqInstr": read_single("anInfreqInstr.txt"),
-            "twentyInstrs": read_list("twentyInstrs.txt"),
-            "hundredInstrs": read_list("hundredInstrs.txt"),
-            "fivehundredInfreqInstrs": read_list("fivehundredInfreqInstrs.txt"),
-        })
-
-    @staticmethod
-    def clear_system_cache() -> None:
-        """
-        Attempts to clear the OS page cache.
-        Requires sudo privileges on Linux. Fails gracefully otherwise.
-        """
-        if sys.platform != "linux":
-            logger.warning("Cache clearing is only supported on Linux. Skipping.")
-            return
-
-        try:
-            # Sync first to ensure data is written to disk
-            subprocess.run(['sync'], check=True)
-            # Drop caches
-            subprocess.run(
-                ['sudo', 'bash', '-c', "echo 3 > /proc/sys/vm/drop_caches"],
-                check=True,
-                capture_output=True
-            )
-        except subprocess.CalledProcessError as e:
-            logger.warning(f"Failed to clear page cache (needs sudo): {e}")
-        except Exception as e:
-            logger.warning(f"Unexpected error clearing cache: {e}")
 
     def _execute_query(self, query_str: str) -> pl.DataFrame:
         """
@@ -181,7 +173,7 @@ class BenchmarkRunner:
 
             # Prepare environment
             if i == 0:
-                self.clear_system_cache()
+                clear_system_cache()
 
             gc.collect()
 
@@ -216,14 +208,15 @@ class BenchmarkRunner:
 def main():
     start_time = datetime.now()
     parser = argparse.ArgumentParser(
-        description="Polars Query Runner & Benchmarker using NYSE TAQ data in parquet format",
+        description="Query Runner & Benchmarker using NYSE TAQ data",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
     parser.add_argument('-db', type=Path, required=True, help="Path to hive-partitioned parquet DB root")
+    parser.add_argument('-engine', type=str, choices=["polars", "pykx"], required=True, help="Query engine. Currently supported polars and PyKX")
     parser.add_argument('-queryfile', type=Path, required=True, help="PSV file containing queries")
     parser.add_argument('-paramdir', type=Path, required=True, help="Directory containing parameter txt files")
 
-    default_result = Path(f"results/polars_{pl.thread_pool_size()}Threads.psv")
+    default_result = Path(f"results/nysetaq_query_results.psv")
     parser.add_argument('-result', type=Path, default=default_result, help="Output PSV file path")
 
     args = parser.parse_args()
@@ -234,7 +227,14 @@ def main():
     # Initialize Runner
     device = subprocess.run(["./src/resolve_device.sh", args.db],
                                      capture_output=True, text=True).stdout.split('\n')[0].strip()  # TODO: add error handling
-    runner = BenchmarkRunner(args.db, device, args.paramdir)
+
+    logger.info("Loading parameter files...")
+    try:
+        params = load_parameters(args.paramdir)
+    except FileNotFoundError as e:
+        logger.error(f"Failed to load parameters: {e}")
+        sys.exit(1)
+    runner = BenchmarkRunnerPolars(args.db, device, params)
 
     # Load DB and Params (Time this operation for the first CSV row)
     io_load_Start = psutil.disk_io_counters(perdisk=True)[device].read_bytes // 1000
