@@ -108,15 +108,13 @@ def run_query(runner, db_path: Path, device: str, idx: str, query: str) -> Query
     )
 
 
-class BenchmarkRunnerPolars:
+class QueryExecutorPolars:
     """
     Handles the setup, execution, and reporting of Polars queries
     on NYSE TAQ hive-partitioned parquet files.
     """
 
-    def __init__(self, db_path: Path, param:Dict[str, Any]):
-        self.db_path = db_path
-
+    def __init__(self, param:Dict[str, Any]):
         # Dataframes (Lazy)
         self.master: Optional[pl.LazyFrame] = None
         self.trade: Optional[pl.LazyFrame] = None
@@ -125,18 +123,18 @@ class BenchmarkRunnerPolars:
         # Parameters available for queries
         self.params: Dict[str, Any] = param
 
-    def load_resources(self) -> None:
+    def load_resources(self, db_path: Path) -> None:
         """Loads database schemas and parameter files."""
         t0 = time_mod.perf_counter()
         logger.info("Initializing database connections...")
         # Load Polars Scans
-        self.master = pl.scan_parquet(self.db_path / "master/date=*/*.parquet", hive_partitioning=True)
+        self.master = pl.scan_parquet(db_path / "master/date=*/*.parquet", hive_partitioning=True)
 
-        exnames = pl.scan_parquet(self.db_path / "exnames.parquet").collect()
+        exnames = pl.scan_parquet(db_path / "exnames.parquet").collect()
         self.params["exnames"] = dict(zip(exnames["ex"], exnames["name"]))
 
-        self.trade = pl.scan_parquet(self.db_path / "trade/date=*/*.parquet", hive_partitioning=True)
-        self.quote = pl.scan_parquet(self.db_path / "quote/date=*/*.parquet", hive_partitioning=True)
+        self.trade = pl.scan_parquet(db_path / "trade/date=*/*.parquet", hive_partitioning=True)
+        self.quote = pl.scan_parquet(db_path / "quote/date=*/*.parquet", hive_partitioning=True)
 
         duration = (time_mod.perf_counter() - t0) * 1000
         logger.info(f"Resources loaded in {duration:.2f} ms")
@@ -200,12 +198,12 @@ def main():
     except FileNotFoundError as e:
         logger.error(f"Failed to load parameters: {e}")
         sys.exit(1)
-    runner = BenchmarkRunnerPolars(args.db, params)
+    runner = QueryExecutorPolars(params)
 
     # Load DB and Params (Time this operation for the first CSV row)
     io_load_Start = psutil.disk_io_counters(perdisk=True)[device].read_bytes // 1000
     t_load_start = time_mod.perf_counter_ns()
-    runner.load_resources()
+    runner.load_resources(args.db)
     t_load_elapsed = time_mod.perf_counter_ns() - t_load_start
     io_load_End = psutil.disk_io_counters(perdisk=True)[device].read_bytes // 1000
 
