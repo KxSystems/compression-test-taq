@@ -19,6 +19,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 import polars as pl
+import pykx as kx
 
 # Configure Logging
 logging.basicConfig(
@@ -95,7 +96,7 @@ def run_query(runner, db_path: Path, device: str, idx: str, query: str) -> Query
         except Exception as e:
             logger.error(f"Query {idx} failed: {e}")
             # Return 0.0 or -1.0 to indicate failure in results
-            return QueryResult(pl.thread_pool_size(), idx, query_str, -1.0, -1.0, -1.0)
+            return QueryResult(pl.thread_pool_size(), idx, query, -1.0, -1.0, -1.0)
         io_End = psutil.disk_io_counters(perdisk=True)[device].read_bytes // 1000
         times.append(t_end - t_start)
         ios.append(io_End-io_Start)
@@ -107,10 +108,48 @@ def run_query(runner, db_path: Path, device: str, idx: str, query: str) -> Query
         run1_mem_KB=None, run1_io_KB=ios[0], run2_io_KB=ios[1], run3_io_KB=ios[2]
     )
 
+class QueryExecutorPyKX:
+    """
+    Handles the setup, execution of Polars queries
+    on NYSE TAQ kdb+ database.
+    """
+    def __init__(self, param:Dict[str, Any]):
+        self.db: kx.DB = None
+        # Parameters available for queries
+        self.params: Dict[str, Any] = param
+
+    def load_resources(self, db_path: Path) -> None:
+        """Loads kdb+ database"""
+        logger.info(f"loading kdb DB {db_path}")
+        os.environ['PYKX_4_1_ENABLED'] = 'True' # needed for change_dir parameter below
+        self.db = kx.DB(path=db_path, change_dir=False)
+
+    def execute_query(self, query_str: str, idx: int, runidx: int) -> int:
+        """
+        Safely executes the query string using the loaded data and parameters.
+        """
+        # Create a restricted execution context
+        eval_context = {
+            "kx":kx,
+            "time": time,
+            "db": self.db,
+            **self.params
+        }
+        if runidx == 0:
+            # We use eval here because the requirement is to run arbitrary queries
+            # defined in a text file.
+            # .collect() triggers the actual computation for LazyFrames
+            res = eval(query_str, {"__builtins__": None}, eval_context)
+            t_end = time_mod.perf_counter_ns()
+            logger.info(f"[{idx}]   Shape of the result: {res.shape[0]} x {res.shape[1]}")
+        else:
+                eval(query_str, {"__builtins__": None}, eval_context)
+                t_end = time_mod.perf_counter_ns()
+        return t_end
 
 class QueryExecutorPolars:
     """
-    Handles the setup, execution, and reporting of Polars queries
+    Handles the setup, execution of Polars queries
     on NYSE TAQ hive-partitioned parquet files.
     """
 
@@ -124,9 +163,8 @@ class QueryExecutorPolars:
         self.params: Dict[str, Any] = param
 
     def load_resources(self, db_path: Path) -> None:
-        """Loads database schemas and parameter files."""
-        t0 = time_mod.perf_counter()
-        logger.info("Initializing database connections...")
+        """Loads database schemas."""
+        logger.info(f"loading hive-partitioned tables at {db_path}")
         # Load Polars Scans
         self.master = pl.scan_parquet(db_path / "master/date=*/*.parquet", hive_partitioning=True)
 
@@ -135,10 +173,6 @@ class QueryExecutorPolars:
 
         self.trade = pl.scan_parquet(db_path / "trade/date=*/*.parquet", hive_partitioning=True)
         self.quote = pl.scan_parquet(db_path / "quote/date=*/*.parquet", hive_partitioning=True)
-
-        duration = (time_mod.perf_counter() - t0) * 1000
-        logger.info(f"Resources loaded in {duration:.2f} ms")
-
 
     def execute_query(self, query_str: str, idx: int, runidx: int) -> int:
         """
@@ -198,7 +232,13 @@ def main():
     except FileNotFoundError as e:
         logger.error(f"Failed to load parameters: {e}")
         sys.exit(1)
-    runner = QueryExecutorPolars(params)
+
+    if args.engine.lower() == "polars":
+        runner = QueryExecutorPolars(params)
+    elif args.engine.lower() == "pykx":
+        runner = QueryExecutorPyKX(params)
+    else:
+        raise ValueError(f"Invalid engine parameter: {args.engine}")
 
     # Load DB and Params (Time this operation for the first CSV row)
     io_load_Start = psutil.disk_io_counters(perdisk=True)[device].read_bytes // 1000
