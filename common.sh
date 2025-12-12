@@ -12,6 +12,14 @@ function die () {
   return "$code" 2>/dev/null || exit "$code"
 }
 
+function get_date () {
+  local date="${1:-$(date +"%Y%m%d")}"
+  if ! [[ "$date" =~ ^[0-9]{8}$ ]]; then
+    die "Error: DATE must be in YYYYMMDD format. Got: '$date'" 1
+  fi
+  echo $date
+}
+
 if [[ $# -lt 1 ]]; then
   die "ERROR: Missing required argument - data directory" 1
 fi
@@ -31,3 +39,19 @@ else
     THREADPERCORE=1
 fi
 COMPUTECOUNT=$((COREPERSOCKET * SOCKETNR * THREADPERCORE))
+
+
+readonly VALID_SIZES=("full" "large" "medium" "small")
+
+: "${SIZE:?Error: SIZE must be set to 'full', 'large', 'medium', or 'small'}"
+
+if [[ ! " ${VALID_SIZES[*]} " =~ " ${SIZE} " ]]; then
+    die "Error: Unknown SIZE: $SIZE. Valid options are: ${VALID_SIZES[*]}" 1
+fi
+
+case "$SIZE" in
+  "full")   LETTERS='A-Z' ;;
+  "large")  LETTERS='A-H' ;;
+  "medium") LETTERS='I-I' ;;
+  "small")  LETTERS='Z-Z' ;;
+esac

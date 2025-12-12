@@ -43,12 +43,14 @@ Only a few days of data is available at the NYSE TAQ site. These data are replac
 
    1. Downloads compressed CSVs using `wget -c`. Flag `-c` is used to resume downloading if internet connection breaks.
    1. Extracts files
+   1. Removes the last lines of the CSVs
    1. Generates HDB using modified KX TAQ scripts `src/taqtoKDB.q`
 
 The compression benefit depends on the disk speed. Build the HDB on a storage that you would like to test. The path of the HDB directory can be passed as the first parameter of `generateDB.sh`.
 
 ```bash
 $ export DATE=$(curl -s https://ftp.nyse.com/Historical%20Data%20Samples/DAILY%20TAQ/| grep -oE 'EQY_US_ALL_TRADE_2[0-9]{7}' | grep -oE '2[0-9]{7}'|head -1)
+$ ./getCSVs.sh /tmp/compressiontest $DATE
 $ ./generateDB.sh /tmp/compressiontest $DATE
 ```
 
