@@ -19,6 +19,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 import polars as pl
+os.environ['PYKX_4_1_ENABLED'] = 'True'  # needed for change_dir parameter below
 import pykx as kx
 
 # Configure Logging
@@ -121,7 +122,6 @@ class QueryExecutorPyKX:
     def load_resources(self, db_path: Path) -> None:
         """Loads kdb+ database"""
         logger.info(f"loading kdb DB {db_path}")
-        os.environ['PYKX_4_1_ENABLED'] = 'True' # needed for change_dir parameter below
         self.db = kx.DB(path=db_path, change_dir=False)
 
     def execute_query(self, query_str: str, idx: int, runidx: int) -> int:
@@ -278,18 +278,16 @@ def main():
                 idx = row.get('idx', '').strip()
                 query = row.get('query', '').strip()
                 if idx.startswith("#"):
-                    writer.writerow(QueryResult(thread_count=pl.thread_pool_size(), idx=idx[1:], query_raw=query,
+                    result = QueryResult(thread_count=pl.thread_pool_size(), idx=idx[1:], query_raw=query,
                                run1_time_ms=None, run2_time_ms=None, run3_time_ms=None,
-                               run1_mem_KB=None, run1_io_KB=None, run2_io_KB=None, run3_io_KB=None).to_csv_row())
-                    continue
-
-                if query == '':
-                    writer.writerow(QueryResult(thread_count=pl.thread_pool_size(), idx=idx, query_raw=query,
+                               run1_mem_KB=None, run1_io_KB=None, run2_io_KB=None, run3_io_KB=None)
+                elif query == '':
+                    result = QueryResult(thread_count=pl.thread_pool_size(), idx=idx, query_raw=query,
                                run1_time_ms=None, run2_time_ms=None, run3_time_ms=None,
-                               run1_mem_KB=None, run1_io_KB=None, run2_io_KB=None, run3_io_KB=None).to_csv_row())
-                    continue
+                               run1_mem_KB=None, run1_io_KB=None, run2_io_KB=None, run3_io_KB=None)
+                else:
+                    result = run_query(runner, args.db, device, idx, query)
 
-                result = run_query(runner, args.db, device, idx, query)
                 writer.writerow(result.to_csv_row())
                 f_out.flush() # Write immediately to disk
 
