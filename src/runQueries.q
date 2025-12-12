@@ -122,8 +122,7 @@ anInfreqInstr: first `$read0 .Q.dd[PARAMDIR;`anInfreqInstr.txt]
 twentyInstrs: `$read0 .Q.dd[PARAMDIR;`twentyInstrs.txt]
 hundredInstrs: `$read0 .Q.dd[PARAMDIR;`hundredInstrs.txt]
 fivehundredInfreqInstrs: `$read0 .Q.dd[PARAMDIR;`fivehundredInfreqInstrs.txt]
-
-timeBuckets: ([preopen: 0D08:30; open: 0D09:05; morning: 0D12:30; afternoon: 0D16:30; close: 1D])
+timeBuckets: (`$; "N"$) @' flip  "=" vs/: read0Q.dd[PARAMDIR; `timeBuckets.txt]
 
 queryFile: o `queryfile;
 .qlog.info "Loading and executing queries from ", queryFile;

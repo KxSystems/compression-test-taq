@@ -28,4 +28,7 @@ hundredInstrs: -100?symFreq;
 fivehundredInfreqInstrs: @[; til[500] + count[symFreq] div 10] symFreq; / many, but small quote count symbols
 .Q.dd[DST; `fivehundredInfreqInstrs.txt] 0: string fivehundredInfreqInstrs
 
+timeBuckets: ([preopen: 0D08:30; open: 0D09:05; morning: 0D12:30; afternoon: 0D16:30; close: 1D])
+.Q.dd[DST; `timeBuckets.txt] 0: "=" sv' flip (string[key timeBuckets]; string value timeBuckets)
+
 exit 0
