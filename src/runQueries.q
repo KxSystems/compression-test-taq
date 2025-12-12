@@ -34,21 +34,21 @@ getKBReadLinux: {[device:`C]
 
 getKBRead: $[.z.o ~ `m64; getKBReadMac; getKBReadLinux]
 
-runQuery: {[idx:`C; tags:`C; query:`C]
+runQuery: {[db: `C; device: `C; idx:`C; tags:`C; query:`C]
   if[not count query;
     resultH ,[;"\n"] SEP sv (compparm; string system "s"; idx; query), 9#enlist"";
     :();
   ]
   ts: io: ();
-  .qlog.info raze system getenv[`FLUSH], " ", DB;
+  .qlog.info raze system getenv[`FLUSH], " ", db;
   .qlog.info "Collecting garbage";
   .Q.gc[];
   .qlog.info "[", idx, "] Running query: ", query;
-  io,: getKBRead[Device]`kB_read;
+  io,: getKBRead[device]`kB_read;
   s: .z.p;
   memusage: last system "ts res:", query; / \ts does not collect memory usage of the secondary threads
   ts,: .z.p-s;
-  io,: getKBRead[Device]`kB_read;
+  io,: getKBRead[device]`kB_read;
   .qlog.info "[", idx, "]   Shape of the result: ", string[count res], " x ", string count cols res;
   delete res from `.;
 
@@ -58,14 +58,14 @@ runQuery: {[idx:`C; tags:`C; query:`C]
   s: .z.p;
   eval parse query;
   ts,: .z.p-s;
-  io,: getKBRead[Device]`kB_read;
+  io,: getKBRead[device]`kB_read;
 
   .Q.gc[];
   .qlog.info "[", idx, "] Running query third time";
   s: .z.p;
   eval parse query;
   ts,: .z.p-s;
-  io,: getKBRead[Device]`kB_read;
+  io,: getKBRead[device]`kB_read;
 
   resultH ,[;"\n"] SEP sv (compparm; string system "s"; idx; tags; query), string (`long$ts), (memusage div 1000), 1 _ deltas io;
   };
@@ -127,7 +127,7 @@ timeBuckets: ([preopen: 0D08:30; open: 0D09:05; morning: 0D12:30; afternoon: 0D1
 
 queryFile: o `queryfile;
 .qlog.info "Loading and executing queries from ", queryFile;
-{$["#" ~ first first x; ::; runQuery . value x]} each ("***";enlist "|") 0: `$queryFile; / skip comments
+{$["#" ~ first first x; ::; runQuery[DB; Device] . value x]} each ("***";enlist "|") 0: `$queryFile; / skip comments
 
 .qlog.info "Query benchmark completed in ", 2_string .z.p - startTime;
 if[not `debug in key o; exit 0];
