@@ -87,7 +87,7 @@ The scripts generate pipe-separated values (PSV) files in a sudirectory `results
    * `writetimes.psv`: Contains the execution time of `set` and `sync` for all `trade` columns
    * `query_summary.psv`: Stores the execution time, memory need and the disk read of all queries
 
-Furthermore, `columnStatUncompressed.psv` stores basic statistical information (e.g. [entrophy](https://en.wikipedia.org/wiki/Entropy_(information_theory))) of all columns.
+Furthermore, `columnStatUncompressed.psv` stores basic statistical information (e.g. [entropy](https://en.wikipedia.org/wiki/Entropy_(information_theory))) of all columns.
 
 ## Cleanup
 
