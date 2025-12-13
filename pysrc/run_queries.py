@@ -111,7 +111,7 @@ def run_query(runner, db_path: Path, device: str, idx: str, query: str) -> Query
 
 class QueryExecutorPyKX:
     """
-    Handles the setup, execution of Polars queries
+    Handles the setup, execution of PyKX Python queries
     on NYSE TAQ kdb+ database.
     """
     def __init__(self, param:Dict[str, Any]):
@@ -146,6 +146,40 @@ class QueryExecutorPyKX:
                 eval(query_str, {"__builtins__": None}, eval_context)
                 t_end = time_mod.perf_counter_ns()
         return t_end
+
+class QueryExecutorPyKXQ:
+    """
+    Handles the setup, execution of PyKX q queries
+    on NYSE TAQ kdb+ database.
+    """
+    def __init__(self, paramdir: Path):
+        self.db: kx.DB = None
+        self.paramdir: Path = paramdir
+
+
+    def load_resources(self, db_path: Path) -> None:
+        """Loads kdb+ database"""
+        logger.info(f"loading kdb DB {db_path}")
+        self.db = kx.DB(path=db_path, change_dir=False)
+        kx.q('system "l src/getQueryParameters.q"')
+        kx.q(f'getQueryParameters hsym `$"{self.paramdir}"')
+
+    def execute_query(self, query_str: str, idx: int, runidx: int) -> int:
+        """
+        Safely executes the query string using the loaded data and parameters.
+        """
+        if runidx == 0:
+            # We use eval here because the requirement is to run arbitrary queries
+            # defined in a text file.
+            # .collect() triggers the actual computation for LazyFrames
+            res = kx.q(query_str)
+            t_end = time_mod.perf_counter_ns()
+            logger.info(f"[{idx}]   Shape of the result: {res.shape[0]} x {res.shape[1]}")
+        else:
+                kx.q(query_str)
+                t_end = time_mod.perf_counter_ns()
+        return t_end
+
 
 class QueryExecutorPolars:
     """
@@ -199,25 +233,8 @@ class QueryExecutorPolars:
                 t_end = time_mod.perf_counter_ns()
         return t_end
 
-def main():
+def main(args):
     start_time = datetime.now()
-    if os.getenv('FLUSH') is None:
-        logger.error("Environment variable FLUSH is not set. Maybe config/env was not loaded.")
-        sys.exit(2)
-
-    parser = argparse.ArgumentParser(
-        description="Query Runner & Benchmarker using NYSE TAQ data",
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter
-    )
-    parser.add_argument('-db', type=Path, required=True, help="Path to hive-partitioned parquet DB root")
-    parser.add_argument('-engine', type=str, choices=["polars", "pykx"], required=True, help="Query engine. Currently supported polars and PyKX")
-    parser.add_argument('-queryfile', type=Path, required=True, help="PSV file containing queries")
-    parser.add_argument('-paramdir', type=Path, required=True, help="Directory containing parameter txt files")
-
-    default_result = Path(f"results/nysetaq_query_results.psv")
-    parser.add_argument('-result', type=Path, default=default_result, help="Output PSV file path")
-
-    args = parser.parse_args()
 
     # Ensure output directory exists
     args.result.parent.mkdir(parents=True, exist_ok=True)
@@ -227,16 +244,15 @@ def main():
                                      capture_output=True, text=True).stdout.split('\n')[0].strip()  # TODO: add error handling
 
     logger.info("Loading parameter files...")
-    try:
-        params = load_parameters(args.paramdir)
-    except FileNotFoundError as e:
-        logger.error(f"Failed to load parameters: {e}")
-        sys.exit(1)
 
     if args.engine.lower() == "polars":
+        params = load_parameters(args.paramdir)
         runner = QueryExecutorPolars(params)
     elif args.engine.lower() == "pykx":
+        params = load_parameters(args.paramdir)
         runner = QueryExecutorPyKX(params)
+    elif args.engine.lower() == "pykxq":
+        runner = QueryExecutorPyKXQ(args.paramdir)
     else:
         raise ValueError(f"Invalid engine parameter: {args.engine}")
 
@@ -295,5 +311,25 @@ def main():
     logger.info(f"Benchmarking completed in {elapsed}. Results saved to {args.result}")
 
 
+if os.getenv('FLUSH') is None:
+    logger.error("Environment variable FLUSH is not set. Maybe config/env was not loaded.")
+    sys.exit(2)
+
+parser = argparse.ArgumentParser(
+        description="Query Runner & Benchmarker using NYSE TAQ data",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter
+    )
+
+
+parser.add_argument('-db', type=Path, required=True, help="Path to hive-partitioned parquet DB root")
+parser.add_argument('-engine', type=str, choices=["polars", "pykx", "pykxq"], required=True, help="Query engine. Currently supported polars and PyKX")
+parser.add_argument('-queryfile', type=Path, required=True, help="PSV file containing queries")
+parser.add_argument('-paramdir', type=Path, required=True, help="Directory containing parameter txt files")
+
+default_result = Path(f"results/nysetaq_query_results.psv")
+parser.add_argument('-result', type=Path, default=default_result, help="Output PSV file path")
+
+args = parser.parse_args()
+
 if __name__ == '__main__':
-    main()
+    main(args)
