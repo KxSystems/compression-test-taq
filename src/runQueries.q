@@ -1,4 +1,4 @@
-\l src/log.q
+system "l src/log.q"
 
 if["" ~ getenv `FLUSH;
   .qlog.info "Environment variable FLUSH is not set. Maybe config/env was not loaded.";
@@ -116,13 +116,8 @@ $[PARQUET; [
 resultH ,[;"\n"] SEP sv (compparm; string system "s"; string 0; "";"load/mmap DB"), string `long$ts, 0Nj, 0Nj, (mem div 1000), ioe - ios, 0Nj, 0Nj;
 
 .qlog.info "Loading parameters from ", 1_string PARAMDIR
-aFreqInstr: first `$read0 .Q.dd[PARAMDIR;`aFreqInstr.txt]
-mostFreqInstr: first `$read0 .Q.dd[PARAMDIR;`mostFreqInstr.txt]
-anInfreqInstr: first `$read0 .Q.dd[PARAMDIR;`anInfreqInstr.txt]
-twentyInstrs: `$read0 .Q.dd[PARAMDIR;`twentyInstrs.txt]
-hundredInstrs: `$read0 .Q.dd[PARAMDIR;`hundredInstrs.txt]
-fivehundredInfreqInstrs: `$read0 .Q.dd[PARAMDIR;`fivehundredInfreqInstrs.txt]
-timeBuckets: (`$; "N"$) @' flip  "=" vs/: read0Q.dd[PARAMDIR; `timeBuckets.txt]
+system "l src/getQueryParameters.q"
+getQueryParameters PARAMDIR
 
 queryFile: o `queryfile;
 .qlog.info "Loading and executing queries from ", queryFile;
