@@ -6,5 +6,5 @@ getQueryParameters: {[paramdir]
     `hundredInstrs set `$read0 .Q.dd[paramdir;`hundredInstrs.txt];
     `fivehundredInfreqInstrs set `$read0 .Q.dd[paramdir;`fivehundredInfreqInstrs.txt];
 
-    `timeBuckets set (`$; "N"$) @' flip  "=" vs/: read0 .Q.dd[paramdir; `timeBuckets.txt];
+    `timeBuckets set (!/) (`$; "N"$) @' flip  "=" vs/: read0 .Q.dd[paramdir; `timeBuckets.txt];
   }
