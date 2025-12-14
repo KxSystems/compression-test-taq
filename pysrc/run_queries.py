@@ -162,7 +162,7 @@ class QueryExecutorPyKXQ:
         logger.info(f"loading kdb DB {db_path}")
         self.db = kx.DB(path=db_path, change_dir=False)
         kx.q.system.load("src/getQueryParameters.q")
-        kx.q(f'getQueryParameters hsym `$"{self.paramdir}"')
+        kx.q('getQueryParameters', kx.q.hsym(kx.SymbolAtom(self.paramdir)))
 
     def execute_query(self, query_str: str, idx: int, runidx: int) -> int:
         """
