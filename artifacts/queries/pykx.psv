@@ -7,10 +7,10 @@ idx|tags|query
 6|hugedataread|db.trade.select(columns=kx.Column('date') & kx.Column('sym') & kx.Column('time') & kx.Column('price') & kx.Column('size') & kx.Column('cond') & kx.Column('ex'), where=(kx.Column('date') == kx.Column('date').min()) & (kx.Column('source') == b'N'))
 7||db.quote.select(columns=kx.Column('date') & kx.Column('sym') & kx.Column('time') & ((kx.Column('bid') + kx.Column('ask')) / 2).name('mid'), where=kx.Column('sym') == mostFreqInstr)
 8||db.quote.select(columns=kx.Column('date') & kx.Column('sym') & kx.Column('time') & kx.Column('bid') & kx.Column('ask') & kx.Column('bsize') & kx.Column('asize') & kx.Column('cond') & kx.Column('ex'), where=kx.Column('sym') == aFreqInstr)
-9||
-10||
-11||
-12||
+9||db.quote.select(columns=kx.Column('date') & kx.Column('sym') & kx.Column('time') & kx.Column('bid') & kx.Column('ask') & kx.Column('bsize') & kx.Column('asize') & kx.Column('cond') & kx.Column('ex'), where=kx.Column('sym').isin(fivehundredInfreqInstrs) & ((kx.Column('bsize') + kx.Column('asize')) > 2000))
+10||db.quote.select(columns=((kx.Column('bid') + kx.Column('ask')) / 2).avg().name('avgMidSize'), where=kx.Column('sym') == anInfreqInstr)
+11||db.quote.select(columns=(kx.Column('ask') + kx.Column('bid')).avg().name('avgSpread'), where=kx.Column('sym') == anInfreqInstr, by=kx.Column('time').minute.xbar(10))
+12||db.quote.select(columns=(kx.Column('ask') + kx.Column('bid')).avg().name('avgSpread'), where=kx.Column('sym').isin(hundredInstrs), by= kx.Column('sym') & kx.Column('time').minute.xbar(10))
 13||
 14||
 15||
