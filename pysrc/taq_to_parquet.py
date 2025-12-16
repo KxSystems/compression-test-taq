@@ -454,16 +454,16 @@ def main(date: datetime, src: Path, dst: Path, letters: str, includetestsymbols:
     parquet_options_quote = get_write_options(QUOTE_SCHEMA.get_field_index('time'))
 
     symbolstoredas = os.getenv('SYMBOLSTOREDAS')
-    if symbolstoredas is None or symbolstoredas.upper() == "PARTITIONCOLUMN":
-        for file_path in quote_files:
-            persistHive(parse_and_convert(file_path, QUOTE_SCHEMA, quote_conv), dst / 'quote',
-                        parquet_options_quote, minrowgroupsize, maxrowgroupsize)
-    elif symbolstoredas.upper() == "ROWGROUP":
+    if symbolstoredas is None or symbolstoredas.upper() == "ROWGROUP":
         quote_tables = [parse_and_convert(file_path, QUOTE_SCHEMA, quote_conv) for file_path in quote_files]
         quote = pa.concat_tables(quote_tables)
         del quote_tables
         persist_rowgroup_per_symbol(quote, dst / 'quote', parquet_options_quote, minrowgroupsize, maxrowgroupsize)
         del quote
+    elif symbolstoredas.upper() == "PARTITIONCOLUMN":
+        for file_path in quote_files:
+            persistHive(parse_and_convert(file_path, QUOTE_SCHEMA, quote_conv), dst / 'quote',
+                        parquet_options_quote, minrowgroupsize, maxrowgroupsize)
     else:
         logging.error("Unknown value for SYMBOLSTOREDAS environment variable: {symbolstoredas}") # TODO: Do this check earlier
         sys.exit(2)
