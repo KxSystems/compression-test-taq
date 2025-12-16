@@ -6,7 +6,7 @@ source "${script_dir}/common.sh"
 readonly DATE=$(get_date $2)
 
 function generate_HDB () {
-  if [[ ${FORMAT} == "parquet" ]]; then
+  if [[ ${DATAFORMAT} == "parquet" ]]; then
     echo "Generating parquet dataset..."
     python3 ./pysrc/taq_to_parquet.py -date $DATE -src $CSVDIR -dst $DSTPARQUET/uncompressed -letters $LETTERS
   else
