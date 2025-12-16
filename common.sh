@@ -24,11 +24,6 @@ if [[ $# -lt 1 ]]; then
   die "ERROR: Missing required argument - data directory" 1
 fi
 
-readonly DATADIR="$1"
-readonly CSVDIR=$DATADIR/raw
-readonly DSTKDB=$DATADIR/tq
-readonly DSTPARQUET=$DATADIR/parquet
-
 if [[ $(uname) == "Linux" ]]; then
     SOCKETNR=$(lscpu | grep "Socket(s)" | cut -d":" -f 2 |xargs)
     COREPERSOCKET=$(lscpu | grep "Core(s) per socket" | cut -d":" -f 2 |xargs)

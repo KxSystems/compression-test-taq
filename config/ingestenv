@@ -1,2 +1,15 @@
-export SIZE=full        # options: full/large/medium/small
-export DATAFORMAT="kdb" # or "parquet"
+export SIZE=full        # options: full, large, medium, small
+export DATAFORMAT="kdb" # options: kdb, parquet. If not set
+
+# Optional parameters:
+#export COMPRESSION=zstd
+#export COMPRESSION_LEVEL=6
+
+
+# Optional parameters if DATAFORMAT=parquet
+#export SYMBOLSTOREDAS=ROWGROUP  # options: Rowgroup, PartitionColumn. If not set then ROWGROUP is assumed
+
+# If a variable below is not set then the pyarrows default is used
+#export MINROWGROUPSIZE=0        # minimum size of row groups.
+#export MAXROWGROUPSIZE=16000000 # maximum size of row groups
+#export PAGE_SIZE

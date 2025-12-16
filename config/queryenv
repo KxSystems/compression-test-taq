@@ -1,5 +1,4 @@
 ### QUERY Parameters ###
-export COMPPARAMS="17_0_0 17_2_5 17_3_0 17_4_5 17_5_1"
 export FLUSH=./flush/directmount.sh
 export SUDO="sudo"  # "" or "sudo" if sudo is required for some commands e.g. to flush page cache
 export QMAP=false   # set to true is .Q.MAP should be called after DB load

@@ -3,6 +3,8 @@
 script_dir=$(dirname "${BASH_SOURCE[0]}")
 source "${script_dir}/common.sh"
 
+CSVDIR="$1"
+
 readonly URLPREFIX="https://ftp.nyse.com/Historical%20Data%20Samples/DAILY%20TAQ/"
 
 function getFilename() {

@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
-source ./common.sh
+script_dir=$(dirname "${BASH_SOURCE[0]}")
+source "${script_dir}/common.sh"
 
 ## Think twice before you delete the DB, it takes long to regenerate
 echo "Cleaning up"

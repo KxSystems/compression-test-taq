@@ -1,65 +1,43 @@
-# NYSE TAQ kdb+ compression tester
+# NYSE TAQ KX Benchmark
 
 ## Background
 
-This suite of scripts evaluates kdb+ compression algorithms using public [NYSE TAQ data](https://ftp.nyse.com/Historical%20Data%20Samples/DAILY%20TAQ/). The benchmark measures:
+This benchmark uses public [NYSE TAQ data](https://ftp.nyse.com/Historical%20Data%20Samples/DAILY%20TAQ/) to compare:
+* **Query performance** of engines including KDB-X, Polars, and KDB-X Python (PyKX).
+* **kdb+ compression algorithms** (see [KX FSI case study](https://code.kx.com/q/kb/compression/fsicasestudy/) for background), specifically measuring:
+    1.  **Compression ratio** (storage efficiency)
+    2.  **Write performance** (`set` and `sync` operations)
+    3.  **Query execution times**
 
-   1. **Compression ratio** (storage efficiency)
-   1. **Write performance** (`set` and `sync` operations)
-   1. **Query execution times**
+The data can be persisted to kdb+ or Parquet formats using various parameters.
 
+## Prerequisites
 
-It is recommended to read KX [FSI case study](https://code.kx.com/q/kb/compression/fsicasestudy/) for more background.
-
-
-## Prerequisite
-
-We assume that kdb+ is installed.
-
-The bash and q script use
-   * `wget` to download zipped CSV files from the NYSE TAQ server
-   * `iostat` (frome `sysstat` package) for disk I/O metrics
-   * Optional: [GNU parallel](https://www.gnu.org/software/parallel/) to unzip NYSE TAQ zipped CSV files in parallel
-
-### Hardware Notes
-
-Compression benefits vary by disk speed and available CPU capacity. For meaningful results, test on storage matching your production environment.
-
-## Configuration
-If the kdb+ home is not `$HOME/q` then set environment variable `QHOME` properly in `config/kdbenv`.
-
-File `config/env` stores environment variables the scripts need. You can set these manually or load them
+We assume that **KDB-X** is installed. Set the `QHOME` environment variable in `./config/kdbenv` and then run:
 
 ```bash
 $ source ./config/kdbenv
-$ source ./config/ingestenv
-$ source ./config/env
 ```
 
-Some other parameters (e.g. database location) are passed to the bash scripts as command-line parameters.
+The bash and q scripts require
+   * `wget`: To download zipped CSV files from the NYSE TAQ server.
+   * `iostat` (from the `sysstat` package): For disk I/O metrics during query tests.
 
-## Data Generation
-
-Only a few days of data is available at the NYSE TAQ site. These data are replaced by newer data on a regular basis. The `generateDB.sh` script:
-
-   1. Downloads compressed CSVs using `wget -c`. Flag `-c` is used to resume downloading if internet connection breaks.
-   1. Extracts files
-   1. Removes the last lines of the CSVs
-   1. Generates HDB using modified KX TAQ scripts `src/taqtoKDB.q`
-
-The compression benefit depends on the disk speed. Build the HDB on a storage that you would like to test. The path of the HDB directory can be passed as the first parameter of `generateDB.sh`.
+You need Python to generate Parquet data and test the Polars and KDB-X Python query engines. Install the required libraries via:
 
 ```bash
-$ export DATE=$(curl -s https://ftp.nyse.com/Historical%20Data%20Samples/DAILY%20TAQ/| grep -oE 'EQY_US_ALL_TRADE_2[0-9]{7}' | grep -oE '2[0-9]{7}'|head -1)
-$ ./getCSVs.sh /tmp/compressiontest $DATE
-$ ./generateDB.sh /tmp/compressiontest $DATE
+$ pip3 install -r ./requirements.txt
 ```
 
-### Data size
+## Data size
 
-A single day of NYSE TAQ files contain large amount of data. You can speed up the test if only a part of the BBO split CSV files (source of table `quote`) are considered. Set the `SIZE` environment variable in `config/env` (or pass it to `./generateDB.sh`) to balance between test execution time and test accuracy. Except for the `full` mode only a subset of the BBO split CSV files are downloaded and only the corresponding trades will be converted into HDB (e.g. only symbols with Z as the first letter).
+A single day of NYSE TAQ files contain a large amount of data. You can speed up the test if only a part of the BBO split CSV files (source of table `quote`) are considered.
 
-Some statistics of various DB sizes with data from 2025.01.02 are below
+Set the `SIZE` environment variable in `config/ingestenv` (or pass it to `./generateDB.sh`) to balance test execution time and accuracy.
+   * In all modes except `full`, only a subset of the BBO split CSV files are downloaded.
+   * Only the corresponding trades will be converted into the HDB (e.g., only symbols starting with 'Z').
+
+Statistics based on data from 2025.01.02:
 
 | `SIZE` | Symbol first letters | HDB size (GB) | Nr of quote Symbols | Nr of quotes |
 | --- | --- | ---: | ---: | ---: |
@@ -68,19 +46,62 @@ Some statistics of various DB sizes with data from 2025.01.02 are below
 | `large` | A-H| 52 | 4849 | 707 738 295 |
 | `full` | A-Z | 233 | 11155 | 2 313 872 956 |
 
-## Running Compression Tests
 
-Execute compression tests after HDB generation:
+## Getting the CSV files
+
+Set database size in `.config/ingestenv`, then
 
 ```bash
-$ ./testCompression.sh /tmp/compressiontest
+# Fetch the latest available date from the NYSE FTP
+$ export DATE=$(curl -s https://ftp.nyse.com/Historical%20Data%20Samples/DAILY%20TAQ/| grep -oE 'EQY_US_ALL_TRADE_2[0-9]{7}' | grep -oE '2[0-9]{7}'|head -1)
+$ export NYSEBENCHMARKDIR=/tmp/nysetaqkxbenchmark
+$ source ./config/ingestenv
+$ ./getCSVs.sh $NYSEBENCHMARKDIR/csv $DATE
 ```
 
-`COMPPARAMS` is a set in `config/env`. It is a list of [compression parameters](https://code.kx.com/q/kb/file-compression/#compression-parameters). A compression parameter is an underscore separated triple of logical block size, compression algorithm and level. For example `17_2_5` means 128KB blocks (17), gzip (2) compression with level 5.
+The script `getCSVs.sh`:
 
-The script flushes page cache before executing the first query. The flush method is storage specific and you may need to implement it. The `flush` directory
+   1. Downloads compressed CSVs using `wget -c` (allows resuming if the connection breaks).
+   1. Decompresses the CSV files
+   1. Removes the trailing lines of the CSVs.
 
-## Results
+## Query Engine Benchmark
+Set environment variables in `config/queryenv`.
+
+```bash
+$ source config/queryenv
+$ testQueryEngines.sh $NYSEBENCHMARKDIR/csv $NYSEBENCHMARKDIR $DATE
+```
+
+TODO: add more details
+
+## Kdb+ compression benchmark
+
+First, generate uncompressed kdb+ data:
+
+```bash
+$ DATAFORMAT=kdb ./generateDB.sh $NYSEBENCHMARKDIR/csv $NYSEBENCHMARKDIR/${DATAFORMAT} $DATE
+```
+
+You might want to delete the CSV files to save some space.
+
+```bash
+$ rm -rf $NYSEBENCHMARKDIR/csv
+```
+
+Set environment variables in `config/queryenv`. Execute compression tests after HDB generation:
+
+```bash
+$ export COMPPARAMS="17_0_0 17_2_5 17_3_0 17_4_5 17_5_1"
+$ source config/queryenv
+$ ./testCompression.sh ${NYSEBENCHMARKDIR}
+```
+
+`COMPPARAMS` is a list of [compression parameters](https://code.kx.com/q/kb/file-compression/#compression-parameters). A compression parameter is an underscore separated triple of logical block size, compression algorithm and level. For example `17_2_5` means 128KB blocks (17), gzip (2) compression with level 5.
+
+**Note:** The script flushes the page cache before executing the first query. As the flush method is storage-specific, you may need to implement the appropriate command for your system in the script.
+
+### Results
 
 The scripts generate pipe-separated values (PSV) files in a sudirectory `results`. For all compression parameters
 
@@ -90,10 +111,20 @@ The scripts generate pipe-separated values (PSV) files in a sudirectory `results
 
 Furthermore, `columnStatUncompressed.psv` stores basic statistical information (e.g. [entropy](https://en.wikipedia.org/wiki/Entropy_(information_theory))) of all columns.
 
+
 ## Cleanup
 
-Be careful with the cleanup. Generating HDB might take long. Run the cleanup script if you no longer need the data.
+Be careful with the cleanup. Downloading CSV files or generating DB might take long. Run the cleanup script if you no longer need the data.
 
 ```bash
-$ ./cleanup.sh /tmp/compressiontest $DATE
+$ rm -rf $NYSEBENCHMARKDIR/csv
+$ ./cleanup.sh ${NYSEBENCHMARKDIR} $DATE
 ```
+
+### Hardware Notes
+
+Compression benefits and query engine performance vary significantly by disk speed and available CPU capacity. For meaningful results, perform tests on storage hardware that matches your production environment.
+
+## Limitations
+
+Only a few days of data are available on the NYSE TAQ site at any given time. This data is replaced by newer datasets on a regular basis.
