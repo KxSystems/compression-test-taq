@@ -1,0 +1,2 @@
+export SIZE=full        # options: full/large/medium/small
+export DATAFORMAT="kdb" # or "parquet"

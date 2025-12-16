@@ -32,6 +32,7 @@ File `config/env` stores environment variables the scripts need. You can set the
 
 ```bash
 $ source ./config/kdbenv
+$ source ./config/ingestenv
 $ source ./config/env
 ```
 
