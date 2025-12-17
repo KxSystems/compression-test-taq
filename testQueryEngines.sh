@@ -4,6 +4,7 @@
 set -euo pipefail
 
 script_dir=$(dirname "${BASH_SOURCE[0]}")
+source "${script_dir}/common.sh"
 
 readonly CSVDIR=$1
 readonly DSTDIR=$2
@@ -11,7 +12,7 @@ readonly DATE=$(get_date $3)
 
 # Step 1: We assume that the CSV files are already downloaded
 # Step 2: generate data from CSV files
-DATAFORMAT=kdb ./generateDB.sh ${NYSEBENCHMARKDIR} ${DSTDIR}/tq/zd0_0_0 ${DATE}
+DATAFORMAT=kdb ./generateDB.sh ${CSVDIR} ${DSTDIR}/tq/zd0_0_0 ${DATE}
 SYMBOLSTOREDAS=PartitionColumn DATAFORMAT=parquet ./generateDB.sh ${CSVDIR} ${DSTDIR}/parquet_partition_nounsigned ${DATE}
 SYMBOLSTOREDAS=ROWGROUP DATAFORMAT=parquet ./generateDB.sh ${CSVDIR} ${DSTDIR}/parquet_rowgroup_nounsigned ${DATE}
 SYMBOLSTOREDAS=ROWGROUP DATAFORMAT=parquet MINROWGROUPSIZE=100000 ./generateDB.sh ${CSVDIR} ${DSTDIR}/parquet_rowgroup_minrowgroup_100000_nounsigned ${DATE}
