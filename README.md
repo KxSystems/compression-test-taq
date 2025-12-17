@@ -56,7 +56,7 @@ Set database size in `.config/ingestenv`, then
 $ export DATE=$(curl -s https://ftp.nyse.com/Historical%20Data%20Samples/DAILY%20TAQ/| grep -oE 'EQY_US_ALL_TRADE_2[0-9]{7}' | grep -oE '2[0-9]{7}'|head -1)
 $ export NYSEBENCHMARKDIR=/tmp/nysetaqkxbenchmark
 $ source ./config/ingestenv
-$ ./getCSVs.sh $NYSEBENCHMARKDIR/csv $DATE
+$ ./getCSVs.sh ${NYSEBENCHMARKDIR}/csv ${DATE}
 ```
 
 The script `getCSVs.sh`:
@@ -70,7 +70,7 @@ Set environment variables in `config/queryenv`.
 
 ```bash
 $ source config/queryenv
-$ testQueryEngines.sh $NYSEBENCHMARKDIR/csv $NYSEBENCHMARKDIR $DATE
+$ testQueryEngines.sh ${NYSEBENCHMARKDIR}/csv ${NYSEBENCHMARKDIR} ${DATE}
 ```
 
 TODO: add more details
@@ -81,13 +81,13 @@ First, generate uncompressed kdb+ data:
 
 ```bash
 $ export DATAFORMAT=kdb
-$ ./generateDB.sh $NYSEBENCHMARKDIR/csv $NYSEBENCHMARKDIR/${DATAFORMAT} $DATE
+$ ./generateDB.sh ${NYSEBENCHMARKDIR}/csv ${NYSEBENCHMARKDIR}/${DATAFORMAT} ${DATE}
 ```
 
 You no longer need the CSV files, so you might want to delete them to save some space.
 
 ```bash
-$ rm -rf $NYSEBENCHMARKDIR/csv
+$ rm -rf ${NYSEBENCHMARKDIR}/csv
 ```
 
 Set environment variables in `config/queryenv`. Execute compression tests after HDB generation:
@@ -119,7 +119,7 @@ Be careful with the cleanup. Downloading CSV files or generating DB might take l
 
 ```bash
 $ rm -rf $NYSEBENCHMARKDIR/csv
-$ ./cleanup.sh ${NYSEBENCHMARKDIR} $DATE
+$ ./cleanup.sh ${NYSEBENCHMARKDIR} ${DATE}
 ```
 
 ### Hardware Notes
