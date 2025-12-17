@@ -38,7 +38,7 @@ runQuery: {[db: `C; device: `C; idx:`C; tags:`C; query:`C]
   if[not count query;
     resultH ,[;"\n"] SEP sv (compparm; string system "s"; idx; query), 9#enlist"";
     :();
-  ]
+  ];
   ts: io: ();
   .qlog.info raze system getenv[`FLUSH], " ", db;
   .qlog.info "Collecting garbage";
@@ -56,14 +56,14 @@ runQuery: {[db: `C; device: `C; idx:`C; tags:`C; query:`C]
   .Q.gc[];
   .qlog.info "[", idx, "] Running query again";
   s: .z.p;
-  eval parse query;
+  value query;
   ts,: .z.p-s;
   io,: getKBRead[device]`kB_read;
 
   .Q.gc[];
   .qlog.info "[", idx, "] Running query third time";
   s: .z.p;
-  eval parse query;
+  value query;
   ts,: .z.p-s;
   io,: getKBRead[device]`kB_read;
 

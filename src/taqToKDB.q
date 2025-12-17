@@ -146,7 +146,7 @@ parseAndConvert: {[schema; conv; fileName:`C]
   raw: flip key[schema]!value flip(value schema; enlist"|") 0:hsym `$fileName;
   .qlog.info "  Converting";
   conv raw
- }
+  }
 
 genericUpsert:{[iter; path:`s; tab]
 	iter[{[path;tab;c] .Q.dd[path;c] upsert tab c}[path;tab]; cols tab];
@@ -156,7 +156,7 @@ enumAndSave: {[t; dst:`s; tableName:`s; saveDotD:`b; date:`C]
   path: .Q.par[dst;"D"$date;tableName];
   if[saveDotD; .Q.dd[path;`.d] set cols t];
   genericUpsert[peach; path; .Q.en[dst] t];
- }
+  }
 
 psym: {[c:`s; x:`s]
   if[null @[@[;c;`p#];x;`];
@@ -165,10 +165,10 @@ psym: {[c:`s; x:`s]
   }
 
 batchProcess: {[schema; conv; dst:`s; tableName:`s; date:`C; rows]
-  $[firstRow; [
+  $[FirstRow; [
     t: conv flip key[schema]!(value schema; "|") 0:1_rows; / drop header
     enumAndSave[t; dst; tableName; 1b; date];
-    `firstRow set 0b;
+    FirstRow:: 0b;
   ]; [
     t: conv flip key[schema]!(value schema; "|") 0:rows;
     if[count t; enumAndSave[t; dst; tableName; 0b; date]];
@@ -182,7 +182,7 @@ process: {[date:`C; dst:`s; tableName:`s; schema; conv; batchsize: `i; saveDotD:
     .qlog.info "  Enumerating and saving ", string[count t], " rows";
     enumAndSave[t; dst; tableName; saveDotD; date]];[
     .qlog.info "  Starting batch processing file ", fileName;
-    `firstRow set 1b;
+    FirstRow:: 1b;
     .Q.fsn[batchProcess[schema; conv; dst; tableName; date]; hsym `$fileName; batchsize];
     ]]
   .qlog.info "  Data successfully persisted";
@@ -224,7 +224,7 @@ main: {[date:`C; src:`C; dst; letters:`C; includetestsymbols:`b; batchsize: `i]
     .qlog.info "Processing quote tables...";
     @[count[Q]#0b;0;:;1b] process[date; dst; `quote; QUOTESCHEMA; extraConv symbolConv@; batchsize]' Q;
     .qlog.info "  Adding parted attribute...";
-    psym[`sym; .Q.par[dst; "D"$date; `quote]]]
+    psym[`sym; .Q.par[dst; "D"$date; `quote]]];
 
   .qlog.info "Processing trade table...";
   T: src, "/EQY_US_ALL_TRADE_", date, ".psv";
