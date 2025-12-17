@@ -31,8 +31,8 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 def load_parameters(param_dir: Path) -> Dict[str, Any]:
-    params: Dict[str, Any] = {}
     """Reads parameter text files into the params dictionary."""
+    params: Dict[str, Any] = {}
     def read_single(filename: str) -> str:
         return (param_dir / filename).read_text(encoding='utf-8').strip()
     def read_list(filename: str) -> List[str]:
@@ -84,7 +84,7 @@ def run_query(runner, db_path: Path, device: str, idx: str, query: str) -> Query
     ios: List[float] = []
     for runidx in range(3):
         iteration_label = "Cold" if runidx == 0 else f"Warm-{runidx}"
-        logger.info(f"[{idx}] Run {runidx+1}/3 ({iteration_label}): {query[:50]}...")
+        logger.info("[%s] Run %s/3 (%s): %s ...", idx, runidx+1, iteration_label, query[:50])
         # Prepare environment
         if runidx == 0:
             subprocess.run([os.getenv('FLUSH'), db_path], check=True,capture_output=True)
@@ -95,9 +95,9 @@ def run_query(runner, db_path: Path, device: str, idx: str, query: str) -> Query
         try:
             t_end = runner.execute_query(query, idx, runidx)
         except Exception as e:
-            logger.error(f"Query {idx} failed: {e}")
+            logger.error("Query %s failed: %s", idx, e)
             # Return 0.0 or -1.0 to indicate failure in results
-            return QueryResult(pl.thread_pool_size(), idx, query, -1.0, -1.0, -1.0)
+            return QueryResult(pl.thread_pool_size(), idx, query, None, None, None, None, None, None, None)
         io_End = psutil.disk_io_counters(perdisk=True)[device].read_bytes // 1000
         times.append(t_end - t_start)
         ios.append(io_End-io_Start)
@@ -121,7 +121,7 @@ class QueryExecutorPyKX:
 
     def load_resources(self, db_path: Path) -> None:
         """Loads kdb+ database"""
-        logger.info(f"loading kdb DB {db_path}")
+        logger.info("loading kdb DB %s", db_path)
         self.db = kx.DB(path=db_path, change_dir=False)
 
     def execute_query(self, query_str: str, idx: int, runidx: int) -> int:
@@ -141,7 +141,7 @@ class QueryExecutorPyKX:
             # .collect() triggers the actual computation for LazyFrames
             res = eval(query_str, {"__builtins__": None}, eval_context)
             t_end = time_mod.perf_counter_ns()
-            logger.info(f"[{idx}]   Shape of the result: {res.shape[0]} x {res.shape[1]}")
+            logger.info("[%s]   Shape of the result: %s x %s", idx, res.shape[0], res.shape[1])
         else:
                 eval(query_str, {"__builtins__": None}, eval_context)
                 t_end = time_mod.perf_counter_ns()
@@ -159,7 +159,7 @@ class QueryExecutorPyKXQ:
 
     def load_resources(self, db_path: Path) -> None:
         """Loads kdb+ database"""
-        logger.info(f"loading kdb DB {db_path}")
+        logger.info("loading kdb DB %s", db_path)
         self.db = kx.DB(path=db_path, change_dir=False)
         kx.q.system.load("src/getQueryParameters.q")
         kx.q('getQueryParameters', kx.q.hsym(kx.SymbolAtom(self.paramdir)))
@@ -174,10 +174,10 @@ class QueryExecutorPyKXQ:
             # .collect() triggers the actual computation for LazyFrames
             res = kx.q(query_str)
             t_end = time_mod.perf_counter_ns()
-            logger.info(f"[{idx}]   Shape of the result: {res.shape[0]} x {res.shape[1]}")
+            logger.info("[%s]   Shape of the result: %s x %s", idx, res.shape[0], res.shape[1])
         else:
-                kx.q(query_str)
-                t_end = time_mod.perf_counter_ns()
+            kx.q(query_str)
+            t_end = time_mod.perf_counter_ns()
         return t_end
 
 
@@ -198,7 +198,7 @@ class QueryExecutorPolars:
 
     def load_resources(self, db_path: Path) -> None:
         """Loads database schemas."""
-        logger.info(f"loading hive-partitioned tables at {db_path}")
+        logger.info("loading hive-partitioned tables at %s", db_path)
         # Load Polars Scans
         self.master = pl.scan_parquet(db_path / "master/date=*/*.parquet", hive_partitioning=True)
 
@@ -227,10 +227,10 @@ class QueryExecutorPolars:
             # .collect() triggers the actual computation for LazyFrames
             res = eval(query_str, {"__builtins__": None}, eval_context).collect()
             t_end = time_mod.perf_counter_ns()
-            logger.info(f"[{idx}]   Shape of the result: {res.shape[0]} x {res.shape[1]}")
+            logger.info("[%s]   Shape of the result: %s x %s", idx, res.shape[0], res.shape[1])
         else:
-                eval(query_str, {"__builtins__": None}, eval_context).collect()
-                t_end = time_mod.perf_counter_ns()
+            eval(query_str, {"__builtins__": None}, eval_context).collect()
+            t_end = time_mod.perf_counter_ns()
         return t_end
 
 def main(args):
@@ -241,7 +241,7 @@ def main(args):
 
     # Initialize Runner
     device = subprocess.run(["./src/resolve_device.sh", args.db],
-                                     capture_output=True, text=True).stdout.split('\n')[0].strip()  # TODO: add error handling
+                            capture_output=True, text=True).stdout.split('\n')[0].strip()  # TODO: add error handling
 
     logger.info("Loading parameter files...")
 

@@ -252,12 +252,12 @@ def get_write_options(sort_idx: int) -> Dict[str, Union[str, int]]:
     compression = os.getenv('COMPRESSION')
     write_kwargs = {}
     if compression:
-        logging.info(f"Setting parquet compression to {compression}")
+        logging.info("Setting parquet compression to %s", compression)
         write_kwargs['compression'] = compression
 
         compression_level = os.getenv('COMPRESSION_LEVEL')
         if compression_level:
-            logging.info(f"Setting parquet compression level to {compression_level}")
+            logging.info("Setting parquet compression level to %s", compression_level)
             write_kwargs['compression_level'] = int(compression_level)
     else:
         write_kwargs['compression'] = 'NONE'
@@ -268,13 +268,13 @@ def get_write_options(sort_idx: int) -> Dict[str, Union[str, int]]:
     if page_size:
         ps =  2 ** int(page_size)
         if ps > 1024*1024:
-            logging.warning(f"Page size value larger than 1 MB: {ps}")
-        logging.info(f"Setting parquet page size to {ps}")
+            logging.warning("Page size value larger than 1 MB: %s", ps)
+        logging.info("Setting parquet page size to %s", ps)
         write_kwargs['data_page_size'] = ps
 
     return write_kwargs
 
-def parse_and_convert(file_path: Path, schema: pa.Schema, conv: List) -> pa.Table:
+def parse_and_convert(file_path: Path, schema: pa.Schema, convs: List) -> pa.Table:
     """Parses a PSV file into a Pyarrow table and applies a list of transformation function on the table.
 
     Args:
@@ -286,7 +286,7 @@ def parse_and_convert(file_path: Path, schema: pa.Schema, conv: List) -> pa.Tabl
         The parsed and transformed table.
     """
     convert_options = get_convert_options(schema)
-    logging.info(f"  Parsing file {file_path}")
+    logging.info("  Parsing file %s", file_path)
 
     table = csv.read_csv(
         file_path,
@@ -297,7 +297,7 @@ def parse_and_convert(file_path: Path, schema: pa.Schema, conv: List) -> pa.Tabl
         read_options=csv.ReadOptions(encoding='latin1')
     )
     logging.info("  Renaming and converting")
-    return pipe(table, *conv)
+    return pipe(table, *convs)
 
 def persist_rowgroup_per_symbol(table: pa.Table, table_output_path: Path,
                               parquet_options: Dict[str, Union[str, int]],
@@ -313,7 +313,7 @@ def persist_rowgroup_per_symbol(table: pa.Table, table_output_path: Path,
         logging.info("  No rows after converting. Nothing to save.")
         return
 
-    logging.info(f"  Saving {len(table)} rows")
+    logging.info("  Saving %s rows", len(table))
 
     symbols = table.column("sym")
     date = table.column("date")[0].as_py().strftime('%Y-%m-%d') # TODO: make it more robust
@@ -336,7 +336,7 @@ def persist_rowgroup_per_symbol(table: pa.Table, table_output_path: Path,
         # Write the final row group
         writer.write(table.slice(start_idx), row_group_size = maxrowgroupsize)
 
-    logging.info(f"  Successfully wrote data to {table_output_path}")
+    logging.info("  Successfully wrote data to %s", table_output_path)
 
 def persistHive(table: pa.Table, table_output_path: Path,
             parquet_options: Dict[str, Union[str, int]],
@@ -351,7 +351,7 @@ def persistHive(table: pa.Table, table_output_path: Path,
         logging.info("  No rows after converting. Nothing to save.")
         return
 
-    logging.info(f"  Saving {len(table)} rows")
+    logging.info("  Saving %s rows", len(table))
 
     partition_schema=pa.schema([('date', pa.date32()), ('sym', pa.string())])
     ds.write_dataset(
@@ -367,7 +367,7 @@ def persistHive(table: pa.Table, table_output_path: Path,
         preserve_order=True # Assumes original data is sorted by Time
     )
 
-    logging.info(f"  Successfully wrote data to {table_output_path}")
+    logging.info("  Successfully wrote data to %s", table_output_path)
 
 def main(date: datetime, src: Path, dst: Path, letters: str, includetestsymbols: bool) -> None:
     """Main entry point to find, process, and persist all data files.
@@ -430,7 +430,7 @@ def main(date: datetime, src: Path, dst: Path, letters: str, includetestsymbols:
     if len(master) == 0:
         logging.info("  No rows after converting. Nothing to save. exiting")
         sys.exit()
-    logging.info(f"  Saving {len(master)} rows")
+    logging.info("  Saving %s rows", len(master))
     ds.write_dataset(
                 master,
                 base_dir=dst / 'master',
@@ -439,7 +439,7 @@ def main(date: datetime, src: Path, dst: Path, letters: str, includetestsymbols:
                 existing_data_behavior='overwrite_or_ignore',
                 file_options=ds.ParquetFileFormat().make_write_options(**parquet_options_master),
             )
-    logging.info(f"  Successfully wrote data to {dst}/master")
+    logging.info("  Successfully wrote data to %s",  {dst}/master)
     del master
 
     minrowgroupsize=0 if os.getenv('MINROWGROUPSIZE') is None else int(os.getenv('MINROWGROUPSIZE'))
@@ -465,7 +465,7 @@ def main(date: datetime, src: Path, dst: Path, letters: str, includetestsymbols:
             persistHive(parse_and_convert(file_path, QUOTE_SCHEMA, quote_conv), dst / 'quote',
                         parquet_options_quote, minrowgroupsize, maxrowgroupsize)
     else:
-        logging.error("Unknown value for SYMBOLSTOREDAS environment variable: {symbolstoredas}") # TODO: Do this check earlier
+        logging.error("Unknown value for SYMBOLSTOREDAS environment variable: %s", symbolstoredas) # TODO: Do this check earlier
         sys.exit(2)
 
     # Process trade files
@@ -483,7 +483,7 @@ def main(date: datetime, src: Path, dst: Path, letters: str, includetestsymbols:
         persist_rowgroup_per_symbol(trade, dst / 'trade', parquet_options_trade, minrowgroupsize, maxrowgroupsize)
 
     elapsed = datetime.now() - start_time
-    logging.info(f"\nAll processing completed in {elapsed}")
+    logging.info("\nAll processing completed in %s", elapsed)
 
 def parse_yyyymmdd(date_str: str):
     """
@@ -544,4 +544,4 @@ if __name__ == '__main__':
         ]
     )
 
-main(args.date, args.src, args.dst, args.letters.upper(), args.includetestsymbols)
+    main(args.date, args.src, args.dst, args.letters.upper(), args.includetestsymbols)
