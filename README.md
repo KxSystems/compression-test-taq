@@ -80,10 +80,11 @@ TODO: add more details
 First, generate uncompressed kdb+ data:
 
 ```bash
-$ DATAFORMAT=kdb ./generateDB.sh $NYSEBENCHMARKDIR/csv $NYSEBENCHMARKDIR/${DATAFORMAT} $DATE
+$ export DATAFORMAT=kdb
+$ ./generateDB.sh $NYSEBENCHMARKDIR/csv $NYSEBENCHMARKDIR/${DATAFORMAT} $DATE
 ```
 
-You might want to delete the CSV files to save some space.
+You no longer need the CSV files, so you might want to delete them to save some space.
 
 ```bash
 $ rm -rf $NYSEBENCHMARKDIR/csv
