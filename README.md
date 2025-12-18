@@ -78,9 +78,10 @@ TODO: add more details
 
 ## Kdb+ compression benchmark
 
-First, generate uncompressed kdb+ data:
+First, generate uncompressed kdb+ data.
 
 ```bash
+source ./config/ingestenv # To get SIZE environment variable
 export DATAFORMAT=kdb
 ./generateDB.sh ${NYSEBENCHMARKDIR}/csv ${NYSEBENCHMARKDIR}/${DATAFORMAT} ${DATE}
 ```
