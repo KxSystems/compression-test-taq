@@ -16,17 +16,18 @@ The data can be persisted to kdb+ or Parquet formats using various parameters.
 We assume that **KDB-X** is installed. Set the `QHOME` environment variable in `./config/kdbenv` and then run:
 
 ```bash
-$ source ./config/kdbenv
+source ./config/kdbenv
 ```
 
 The bash and q scripts require
-   * `wget`: To download zipped CSV files from the NYSE TAQ server.
+   * `wget`: To download zipped CSV files from the NYSE TAQ server. TODO: remove this dependency
+   * `curl`:
    * `iostat` (from the `sysstat` package): For disk I/O metrics during query tests.
 
 You need Python to generate Parquet data and test the Polars and KDB-X Python query engines. Install the required libraries via:
 
 ```bash
-$ pip3 install -r ./requirements.txt
+pip3 install -r ./requirements.txt
 ```
 
 ## Data size
@@ -53,10 +54,10 @@ Set database size in `.config/ingestenv`, then
 
 ```bash
 # Fetch the latest available date from the NYSE FTP
-$ export DATE=$(curl -s https://ftp.nyse.com/Historical%20Data%20Samples/DAILY%20TAQ/| grep -oE 'EQY_US_ALL_TRADE_2[0-9]{7}' | grep -oE '2[0-9]{7}'|head -1)
-$ export NYSEBENCHMARKDIR=/tmp/nysetaqkxbenchmark
-$ source ./config/ingestenv
-$ ./getCSVs.sh ${NYSEBENCHMARKDIR}/csv ${DATE}
+export DATE=$(curl -s https://ftp.nyse.com/Historical%20Data%20Samples/DAILY%20TAQ/| grep -oE 'EQY_US_ALL_TRADE_2[0-9]{7}' | grep -oE '2[0-9]{7}'|head -1)
+export NYSEBENCHMARKDIR=/tmp/nysetaqkxbenchmark
+source ./config/ingestenv
+./getCSVs.sh ${NYSEBENCHMARKDIR}/csv ${DATE}
 ```
 
 The script `getCSVs.sh`:
@@ -69,8 +70,8 @@ The script `getCSVs.sh`:
 Set environment variables in `config/queryenv`.
 
 ```bash
-$ source config/queryenv
-$ testQueryEngines.sh ${NYSEBENCHMARKDIR}/csv ${NYSEBENCHMARKDIR} ${DATE}
+source config/queryenv
+testQueryEngines.sh ${NYSEBENCHMARKDIR}/csv ${NYSEBENCHMARKDIR} ${DATE}
 ```
 
 TODO: add more details
@@ -80,22 +81,22 @@ TODO: add more details
 First, generate uncompressed kdb+ data:
 
 ```bash
-$ export DATAFORMAT=kdb
-$ ./generateDB.sh ${NYSEBENCHMARKDIR}/csv ${NYSEBENCHMARKDIR}/${DATAFORMAT} ${DATE}
+export DATAFORMAT=kdb
+./generateDB.sh ${NYSEBENCHMARKDIR}/csv ${NYSEBENCHMARKDIR}/${DATAFORMAT} ${DATE}
 ```
 
 You no longer need the CSV files, so you might want to delete them to save some space.
 
 ```bash
-$ rm -rf ${NYSEBENCHMARKDIR}/csv
+rm -rf ${NYSEBENCHMARKDIR}/csv
 ```
 
 Set environment variables in `config/queryenv`. Execute compression tests after HDB generation:
 
 ```bash
-$ export COMPPARAMS="17_0_0 17_2_5 17_3_0 17_4_5 17_5_1"
-$ source config/queryenv
-$ ./testCompression.sh ${NYSEBENCHMARKDIR}
+export COMPPARAMS="17_0_0 17_2_5 17_3_0 17_4_5 17_5_1"
+source config/queryenv
+./testCompression.sh ${NYSEBENCHMARKDIR}
 ```
 
 `COMPPARAMS` is a list of [compression parameters](https://code.kx.com/q/kb/file-compression/#compression-parameters). A compression parameter is an underscore separated triple of logical block size, compression algorithm and level. For example `17_2_5` means 128KB blocks (17), gzip (2) compression with level 5.
@@ -118,8 +119,8 @@ Furthermore, `columnStatUncompressed.psv` stores basic statistical information (
 Be careful with the cleanup. Downloading CSV files or generating DB might take long. Run the cleanup script if you no longer need the data.
 
 ```bash
-$ rm -rf $NYSEBENCHMARKDIR/csv
-$ ./cleanup.sh ${NYSEBENCHMARKDIR} ${DATE}
+rm -rf $NYSEBENCHMARKDIR/csv
+./cleanup.sh ${NYSEBENCHMARKDIR} ${DATE}
 ```
 
 ### Hardware Notes
