@@ -439,7 +439,7 @@ def main(date: datetime, src: Path, dst: Path, letters: str, includetestsymbols:
                 existing_data_behavior='overwrite_or_ignore',
                 file_options=ds.ParquetFileFormat().make_write_options(**parquet_options_master),
             )
-    logging.info("  Successfully wrote data to %s",  {dst}/master)
+    logging.info("  Successfully wrote data to %s",  dst / master)
     del master
 
     minrowgroupsize=0 if os.getenv('MINROWGROUPSIZE') is None else int(os.getenv('MINROWGROUPSIZE'))
