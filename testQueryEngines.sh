@@ -8,7 +8,9 @@ source "${script_dir}/util.sh"
 readonly CSVDIR=$1
 readonly DBDIR=$2
 readonly DATE=$(get_date $3)
-readonly RESULTDIR=$4
+THREADNRS=()
+IFS=' ' read -ra THREADNRS <<< "$4"
+readonly RESULTDIR=$5
 
 # Step 1: We assume that the CSV files are already downloaded
 # Step 2: generate data from CSV files
@@ -24,7 +26,7 @@ $QEXEC ./artifacts/parameters/genParameters.q -db ${DBDIR}/kdb/${SIZE}/ -dst ./a
 
 # Step 4: Run queries
 mkdir -p ${RESULTDIR}
-for s in 1 4 16 48; do
+for s in "${THREADNRS[@]}"; do
     numactl -N 0 -m 0 $QEXEC ./src/runQueries.q -db ${DBDIR}/kdb/${SIZE} -format kdb -queryfile ./artifacts/queries/kdb.psv -paramdir ./artifacts/parameters/${SIZE} -result ${RESULTDIR}/kdb_${s}Threads.psv -s ${s}
     QMAP=TRUE numactl -N 0 -m 0 $QEXEC ./src/runQueries.q -db ${DBDIR}/kdb/${SIZE} -format kdb -queryfile ./artifacts/queries/kdb_peach.psv -paramdir ./artifacts/parameters/${SIZE} -result ${RESULTDIR}/kdbPeachQMAP_${s}Threads.psv -s ${s}
     numactl -N 0 -m 0 $QEXEC ./src/runQueries.q -db ${DBDIR}/parquet/${SIZE}/hivepartitioned -format parquet -queryfile ./artifacts/queries/parquet_partition.psv -paramdir ./artifacts/parameters/${SIZE} -result ${RESULTDIR}/parquetHivePartitioned_${s}Threads.psv -s ${s}

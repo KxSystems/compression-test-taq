@@ -70,7 +70,7 @@ Set environment variables in `config/queryenv`.
 
 ```bash
 source config/queryenv
-testQueryEngines.sh ${NYSEBENCHMARKDIR}/csv ${NYSEBENCHMARKDIR} ${DATE}
+testQueryEngines.sh ${NYSEBENCHMARKDIR}/csv ${NYSEBENCHMARKDIR} ${DATE} "1 4" ./results/engines
 ```
 
 TODO: add more details
