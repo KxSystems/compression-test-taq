@@ -3,7 +3,7 @@
 set -euo pipefail
 
 script_dir=$(dirname "${BASH_SOURCE[0]}")
-source "${script_dir}/common.sh"
+source "${script_dir}/util.sh"
 
 readonly CSVDIR=$1
 readonly DSTDIR=$2
