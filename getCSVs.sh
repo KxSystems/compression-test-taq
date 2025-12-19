@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 
+set -euo pipefail
+
 script_dir=$(dirname "${BASH_SOURCE[0]}")
-source "${script_dir}/common.sh"
+source "${script_dir}/util.sh"
 
 CSVDIR="$1"
 
@@ -17,13 +19,14 @@ function get_CSVs () {
   mkdir -p ${CSVDIR}
   pushd ${CSVDIR}
 
+  LETTERS=$(get_letters $SIZE)
   LETTERARRAY=($(eval echo {${LETTERS:0:1}..${LETTERS:2:1}}))
   for letter in ${LETTERARRAY[@]}; do
     qfname=$(getFilename "SPLITS" "BBO_${letter}")
     if [[ -f ${qfname%.*} ]]; then
       echo "${qfname} was already downloaded and unzipped. Skipping download."
     else
-      wget -c "${URLPREFIX}${qfname}"
+      curl -C - -O "${URLPREFIX}${qfname}"
       echo "Unzipping downloaded file in the background"
       gunzip "${qfname}" &
     fi
@@ -33,7 +36,7 @@ function get_CSVs () {
   if [[ -f ${tfname%.*} ]]; then
     echo "${tfname} was already downloaded and unzipped. Skipping download."
   else
-    wget -c "${URLPREFIX}${tfname}"
+    curl -C - -O "${URLPREFIX}${tfname}"
     echo "Unzipping downloaded file"
     gunzip "${tfname}"
   fi
@@ -42,7 +45,7 @@ function get_CSVs () {
   if [[ -f ${mfname%.*} ]]; then
     echo "${mfname} was already downloaded and unzipped. Skipping download."
   else
-    wget -c "${URLPREFIX}${mfname}"
+    curl -C - -O "${URLPREFIX}${mfname}"
     echo "Unzipping downloaded file"
     gunzip "${mfname}"
   fi

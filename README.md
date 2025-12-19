@@ -20,8 +20,7 @@ source ./config/kdbenv
 ```
 
 The bash and q scripts require
-   * `wget`: To download zipped CSV files from the NYSE TAQ server. TODO: remove this dependency
-   * `curl`:
+   * `curl`: To download zipped CSV files from the NYSE TAQ server.
    * `iostat` (from the `sysstat` package): For disk I/O metrics during query tests.
 
 You need Python to generate Parquet data and test the Polars and KDB-X Python query engines. Install the required libraries via:
@@ -62,7 +61,7 @@ source ./config/ingestenv
 
 The script `getCSVs.sh`:
 
-   1. Downloads compressed CSVs using `wget -c` (allows resuming if the connection breaks).
+   1. Downloads compressed CSVs using `curl -C` (allows resuming if the connection breaks).
    1. Decompresses the CSV files
    1. Removes the trailing lines of the CSVs.
 
@@ -78,10 +77,10 @@ TODO: add more details
 
 ## Kdb+ compression benchmark
 
-First, generate uncompressed kdb+ data.
+First, generate uncompressed kdb+ data. Review and set variables in `./config/ingestenv` then
 
 ```bash
-source ./config/ingestenv # To get SIZE environment variable
+source ./config/ingestenv
 export DATAFORMAT=kdb
 ./generateDB.sh ${NYSEBENCHMARKDIR}/csv ${NYSEBENCHMARKDIR}/${DATAFORMAT} ${DATE}
 ```

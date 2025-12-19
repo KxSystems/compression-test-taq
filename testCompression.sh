@@ -18,6 +18,17 @@ if [[ $# -eq 2 ]]; then
   fi
 fi
 
+if [[ $(uname) == "Linux" ]]; then
+    readonly SOCKETNR=$(lscpu | grep "Socket(s)" | cut -d":" -f 2 |xargs)
+    readonly COREPERSOCKET=$(lscpu | grep "Core(s) per socket" | cut -d":" -f 2 |xargs)
+    readonly THREADPERCORE=$(lscpu | grep "Thread(s) per core" | cut -d":" -f 2 |xargs)
+else
+    readonly SOCKETNR=1
+    readonly COREPERSOCKET=$(sysctl -n hw.ncpu)
+    readonly THREADPERCORE=1
+fi
+readonly COMPUTECOUNT=$((COREPERSOCKET * SOCKETNR * THREADPERCORE))
+
 readonly TIMESTAMP=$(date +%m%d_%H%M)
 readonly RESULTDIR="results/${TIMESTAMP}"
 mkdir -p $RESULTDIR
