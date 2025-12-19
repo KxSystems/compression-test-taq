@@ -72,7 +72,7 @@ Set environment variables in `config/queryenv`.
 source config/queryenv
 testQueryEngines.sh --csv-dir ${NYSEBENCHMARKDIR}/csv --db-dir ${NYSEBENCHMARKDIR}/${SIZE} \
    --param-dir ./artifacts/parameters/${SIZE} --date ${DATE} \
-   --threads "1 4" --result-dir /results/engines
+   --threads "1 4" --result-dir ./results/engines
 ```
 
 TODO: add more details
