@@ -5,36 +5,70 @@ set -euo pipefail
 script_dir=$(dirname "${BASH_SOURCE[0]}")
 source "${script_dir}/util.sh"
 
-readonly CSVDIR=$1
-readonly DBDIR=$2
-readonly DATE=$(get_date $3)
-THREADNRS=()
-IFS=' ' read -ra THREADNRS <<< "$4"
-readonly RESULTDIR=$5
+THREAD_NRS=()
+RESULT_DIR="./results"
 
-# Step 1: We assume that the CSV files are already downloaded
-# Step 2: generate data from CSV files
-DATAFORMAT=kdb ./generateDB.sh ${CSVDIR} ${DBDIR}/kdb/${SIZE} ${DATE}
-SYMBOLSTOREDAS=PartitionColumn DATAFORMAT=parquet ./generateDB.sh ${CSVDIR} ${DBDIR}/parquet/${SIZE}/hivepartitioned ${DATE}
-SYMBOLSTOREDAS=ROWGROUP DATAFORMAT=parquet ./generateDB.sh ${CSVDIR} ${DBDIR}/parquet/${SIZE}/rowgroup ${DATE}
-SYMBOLSTOREDAS=ROWGROUP DATAFORMAT=parquet MINROWGROUPSIZE=100000 ./generateDB.sh ${CSVDIR} ${DBDIR}/parquet/${SIZE}/rowgroup_minrowgroup_100000 ${DATE}
-SYMBOLSTOREDAS=ROWGROUP DATAFORMAT=parquet MAXROWGROUPSIZE=250000 ./generateDB.sh ${CSVDIR} ${DBDIR}/parquet/${SIZE}/rowgroup_maxrowgroupsize250000 ${DATE}
+usage() {
+    cat <<EOF
+Usage: $(basename "$0") [OPTIONS]
 
+Options:
+  -c, --csv-dir      Directory containing source CSV files
+  --db-dir           Directory where databases will be generated
+  -p, --param-dir    Directory of the query parameters
+  -d, --date         Target date
+  -t, --threads      Space-separated list of thread counts (e.g., "1 2 4")
+  -r, --result-dir   Directory for query results
+  -h, --help         Show this help message
+EOF
+    exit 1
+}
 
-# Step 3: Generate query parameters
-$QEXEC ./artifacts/parameters/genParameters.q -db ${DBDIR}/kdb/${SIZE}/ -dst ./artifacts/parameters/${SIZE}
-
-# Step 4: Run queries
-mkdir -p ${RESULTDIR}
-for s in "${THREADNRS[@]}"; do
-    numactl -N 0 -m 0 $QEXEC ./src/runQueries.q -db ${DBDIR}/kdb/${SIZE} -format kdb -queryfile ./artifacts/queries/kdb.psv -paramdir ./artifacts/parameters/${SIZE} -result ${RESULTDIR}/kdb_${s}Threads.psv -s ${s}
-    QMAP=TRUE numactl -N 0 -m 0 $QEXEC ./src/runQueries.q -db ${DBDIR}/kdb/${SIZE} -format kdb -queryfile ./artifacts/queries/kdb_peach.psv -paramdir ./artifacts/parameters/${SIZE} -result ${RESULTDIR}/kdbPeachQMAP_${s}Threads.psv -s ${s}
-    numactl -N 0 -m 0 $QEXEC ./src/runQueries.q -db ${DBDIR}/parquet/${SIZE}/hivepartitioned -format parquet -queryfile ./artifacts/queries/parquet_partition.psv -paramdir ./artifacts/parameters/${SIZE} -result ${RESULTDIR}/parquetHivePartitioned_${s}Threads.psv -s ${s}
-    numactl -N 0 -m 0 $QEXEC ./src/runQueries.q -db ${DBDIR}/parquet/${SIZE}/rowgroup -format parquet_rowgroup -queryfile ./artifacts/queries/parquet_rowgroup.psv -paramdir ./artifacts/parameters/${SIZE} -result ${RESULTDIR}/parquetRowgroup_${s}Threads.psv -s ${s}
-    numactl -N 0 -m 0 $QEXEC ./src/runQueries.q -db ${DBDIR}/parquet/${SIZE}/rowgroup_minrowgroup_100000 -format parquet_rowgroup -queryfile ./artifacts/queries/parquet_rowgroup.psv -paramdir ./artifacts/parameters/${SIZE} -result ${RESULTDIR}/parquetRowgroupMinSize_${s}Threads.psv -s ${s}
-    numactl -N 0 -m 0 $QEXEC ./src/runQueries.q -db ${DBDIR}/parquet/${SIZE}/rowgroup_maxrowgroupsize250000 -format parquet_rowgroup -queryfile ./artifacts/queries/parquet_rowgroup.psv -paramdir ./artifacts/parameters/${SIZE} -result ${RESULTDIR}/parquetRowgroupMaxSize_${s}Threads.psv -s ${s}
-
-    POLARS_MAX_THREADS=$s numactl -N 0 -m 0 python3 pysrc/run_queries.py -engine polars -db ${DBDIR}/parquet/${SIZE}/rowgroup -queryfile ./artifacts/queries/polars.psv -paramdir ./artifacts/parameters/${SIZE} -result ${RESULTDIR}/polars_${s}Threads.psv
-    QARGS="-s ${s}" numactl -N 0 -m 0 python3 pysrc/run_queries.py -engine pykx -db ${DBDIR}/kdb/${SIZE} -queryfile ./artifacts/queries/pykx.psv -paramdir ./artifacts/parameters/${SIZE} -result ${RESULTDIR}/pykx_${s}Threads.psv
-    QARGS="-s ${s}" numactl -N 0 -m 0 python3 pysrc/run_queries.py -engine pykxq -db ${DBDIR}/kdb/${SIZE} -queryfile ./artifacts/queries/kdb.psv -paramdir ./artifacts/parameters/${SIZE} -result ${RESULTDIR}/pykxq_${s}Threads.psv
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        -c|--csv-dir)    CSV_DIR="$2"; shift 2 ;;
+        --db-dir)        DB_DIR="$2"; shift 2 ;;
+        -p|--param-dir)  PARAM_DIR="$2"; shift 2 ;;
+        -d|--date)       RAW_DATE="$2"; shift 2 ;;
+        -t|--threads)    read -ra THREAD_NRS <<< "$2"; shift 2 ;;
+        -r|--result-dir) RESULT_DIR="$2"; shift 2 ;;
+        -h|--help)    usage ;;
+        *) echo "Unknown option: $1"; usage ;;
+    esac
 done
+
+readonly DATE=$(get_date "$RAW_DATE")
+
+function generate_data () {
+    echo "Generating Databases..."
+    # Step 1: We assume that the CSV files are already downloaded
+    # Step 2: generate data from CSV files
+    DATAFORMAT=kdb ./generateDB.sh ${CSV_DIR} ${DB_DIR}/kdb/${PARAM_DIR} ${DATE}
+    SYMBOLSTOREDAS=PartitionColumn DATAFORMAT=parquet ./generateDB.sh ${CSV_DIR} ${DB_DIR}/parquet/${PARAM_DIR}/hivepartitioned ${DATE}
+    SYMBOLSTOREDAS=ROWGROUP DATAFORMAT=parquet ./generateDB.sh ${CSV_DIR} ${DB_DIR}/parquet/${PARAM_DIR}/rowgroup ${DATE}
+    SYMBOLSTOREDAS=ROWGROUP DATAFORMAT=parquet MINROWGROUPSIZE=100000 ./generateDB.sh ${CSV_DIR} ${DB_DIR}/parquet/${PARAM_DIR}/rowgroup_minrowgroup_100000 ${DATE}
+    SYMBOLSTOREDAS=ROWGROUP DATAFORMAT=parquet MAXROWGROUPSIZE=250000 ./generateDB.sh ${CSV_DIR} ${DB_DIR}/parquet/${PARAM_DIR}/rowgroup_maxrowgroupsize250000 ${DATE}
+}
+
+function execute_queries () {
+    mkdir -p ${RESULT_DIR}
+    echo "Running Queries..."
+    for s in "${THREADNRS[@]}"; do
+        echo "--> Running with $s threads"
+        numactl -N 0 -m 0 $QEXEC ./src/runQueries.q -db ${DB_DIR}/kdb/${PARAM_DIR} -format kdb -queryfile ./artifacts/queries/kdb.psv -paramdir ${PARAM_DIR} -result ${RESULT_DIR}/kdb_${s}Threads.psv -s ${s}
+        QMAP=TRUE numactl -N 0 -m 0 $QEXEC ./src/runQueries.q -db ${DB_DIR}/kdb/${PARAM_DIR} -format kdb -queryfile ./artifacts/queries/kdb_peach.psv -paramdir ${PARAM_DIR} -result ${RESULT_DIR}/kdbPeachQMAP_${s}Threads.psv -s ${s}
+        numactl -N 0 -m 0 $QEXEC ./src/runQueries.q -db ${DB_DIR}/parquet/${PARAM_DIR}/hivepartitioned -format parquet -queryfile ./artifacts/queries/parquet_partition.psv -paramdir ${PARAM_DIR} -result ${RESULT_DIR}/parquetHivePartitioned_${s}Threads.psv -s ${s}
+        numactl -N 0 -m 0 $QEXEC ./src/runQueries.q -db ${DB_DIR}/parquet/${PARAM_DIR}/rowgroup -format parquet_rowgroup -queryfile ./artifacts/queries/parquet_rowgroup.psv -paramdir ${PARAM_DIR} -result ${RESULT_DIR}/parquetRowgroup_${s}Threads.psv -s ${s}
+        numactl -N 0 -m 0 $QEXEC ./src/runQueries.q -db ${DB_DIR}/parquet/${PARAM_DIR}/rowgroup_minrowgroup_100000 -format parquet_rowgroup -queryfile ./artifacts/queries/parquet_rowgroup.psv -paramdir ${PARAM_DIR} -result ${RESULT_DIR}/parquetRowgroupMinSize_${s}Threads.psv -s ${s}
+        numactl -N 0 -m 0 $QEXEC ./src/runQueries.q -db ${DB_DIR}/parquet/${PARAM_DIR}/rowgroup_maxrowgroupsize250000 -format parquet_rowgroup -queryfile ./artifacts/queries/parquet_rowgroup.psv -paramdir ${PARAM_DIR} -result ${RESULT_DIR}/parquetRowgroupMaxSize_${s}Threads.psv -s ${s}
+
+        POLARS_MAX_THREADS=$s numactl -N 0 -m 0 python3 pysrc/run_queries.py -engine polars -db ${DB_DIR}/parquet/${PARAM_DIR}/rowgroup -queryfile ./artifacts/queries/polars.psv -paramdir ${PARAM_DIR} -result ${RESULT_DIR}/polars_${s}Threads.psv
+        QARGS="-s ${s}" numactl -N 0 -m 0 python3 pysrc/run_queries.py -engine pykx -db ${DB_DIR}/kdb/${PARAM_DIR} -queryfile ./artifacts/queries/pykx.psv -paramdir ${PARAM_DIR} -result ${RESULT_DIR}/pykx_${s}Threads.psv
+        QARGS="-s ${s}" numactl -N 0 -m 0 python3 pysrc/run_queries.py -engine pykxq -db ${DB_DIR}/kdb/${PARAM_DIR} -queryfile ./artifacts/queries/kdb.psv -paramdir ${PARAM_DIR} -result ${RESULT_DIR}/pykxq_${s}Threads.psv
+    done
+}
+
+generate_data
+execute_queries
+
+echo "Benchmark suite complete."

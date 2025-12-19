@@ -70,7 +70,9 @@ Set environment variables in `config/queryenv`.
 
 ```bash
 source config/queryenv
-testQueryEngines.sh ${NYSEBENCHMARKDIR}/csv ${NYSEBENCHMARKDIR} ${DATE} "1 4" ./results/engines
+testQueryEngines.sh --csv-dir ${NYSEBENCHMARKDIR}/csv --db-dir ${NYSEBENCHMARKDIR}/${SIZE} \
+   --param-dir ./artifacts/parameters/${SIZE} --date ${DATE} \
+   --threads "1 4" --result-dir /results/engines
 ```
 
 TODO: add more details
@@ -113,6 +115,11 @@ The scripts generate pipe-separated values (PSV) files in a sudirectory `results
 
 Furthermore, `columnStatUncompressed.psv` stores basic statistical information (e.g. [entropy](https://en.wikipedia.org/wiki/Entropy_(information_theory))) of all columns.
 
+## Regenerating query parameters
+
+```bash
+$QEXEC ./artifacts/parameters/genParameters.q -db ${NYSEBENCHMARKDIR}/${SIZE}/kdb -dst ./artifacts/parameters/${SIZE}
+```
 
 ## Cleanup
 
