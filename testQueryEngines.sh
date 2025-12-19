@@ -50,21 +50,29 @@ function generate_data () {
     SYMBOLSTOREDAS=ROWGROUP DATAFORMAT=parquet MAXROWGROUPSIZE=250000 ./generateDB.sh ${CSV_DIR} ${DB_DIR}/parquet/${PARAM_DIR}/rowgroup_maxrowgroupsize250000 ${DATE}
 }
 
+function get_numa_config () {
+    if [[ -z "${NUMANODE:-}" ]]; then
+        echo ""
+        return
+    fi
+
+    echo "numactl -N ${NUMANODE} -m ${NUMANODE}"
+}
 function execute_queries () {
     mkdir -p ${RESULT_DIR}
     echo "Running Queries..."
-    for s in "${THREADNRS[@]}"; do
+    for s in "${THREAD_NRS[@]}"; do
         echo "--> Running with $s threads"
-        numactl -N 0 -m 0 $QEXEC ./src/runQueries.q -db ${DB_DIR}/kdb/${PARAM_DIR} -format kdb -queryfile ./artifacts/queries/kdb.psv -paramdir ${PARAM_DIR} -result ${RESULT_DIR}/kdb_${s}Threads.psv -s ${s}
-        QMAP=TRUE numactl -N 0 -m 0 $QEXEC ./src/runQueries.q -db ${DB_DIR}/kdb/${PARAM_DIR} -format kdb -queryfile ./artifacts/queries/kdb_peach.psv -paramdir ${PARAM_DIR} -result ${RESULT_DIR}/kdbPeachQMAP_${s}Threads.psv -s ${s}
-        numactl -N 0 -m 0 $QEXEC ./src/runQueries.q -db ${DB_DIR}/parquet/${PARAM_DIR}/hivepartitioned -format parquet -queryfile ./artifacts/queries/parquet_partition.psv -paramdir ${PARAM_DIR} -result ${RESULT_DIR}/parquetHivePartitioned_${s}Threads.psv -s ${s}
-        numactl -N 0 -m 0 $QEXEC ./src/runQueries.q -db ${DB_DIR}/parquet/${PARAM_DIR}/rowgroup -format parquet_rowgroup -queryfile ./artifacts/queries/parquet_rowgroup.psv -paramdir ${PARAM_DIR} -result ${RESULT_DIR}/parquetRowgroup_${s}Threads.psv -s ${s}
-        numactl -N 0 -m 0 $QEXEC ./src/runQueries.q -db ${DB_DIR}/parquet/${PARAM_DIR}/rowgroup_minrowgroup_100000 -format parquet_rowgroup -queryfile ./artifacts/queries/parquet_rowgroup.psv -paramdir ${PARAM_DIR} -result ${RESULT_DIR}/parquetRowgroupMinSize_${s}Threads.psv -s ${s}
-        numactl -N 0 -m 0 $QEXEC ./src/runQueries.q -db ${DB_DIR}/parquet/${PARAM_DIR}/rowgroup_maxrowgroupsize250000 -format parquet_rowgroup -queryfile ./artifacts/queries/parquet_rowgroup.psv -paramdir ${PARAM_DIR} -result ${RESULT_DIR}/parquetRowgroupMaxSize_${s}Threads.psv -s ${s}
+        $(get_numa_config) $QEXEC ./src/runQueries.q -db ${DB_DIR}/kdb/${PARAM_DIR} -format kdb -queryfile ./artifacts/queries/kdb.psv -paramdir ${PARAM_DIR} -result ${RESULT_DIR}/kdb_${s}Threads.psv -s ${s}
+        QMAP=TRUE $(get_numa_config) $QEXEC ./src/runQueries.q -db ${DB_DIR}/kdb/${PARAM_DIR} -format kdb -queryfile ./artifacts/queries/kdb_peach.psv -paramdir ${PARAM_DIR} -result ${RESULT_DIR}/kdbPeachQMAP_${s}Threads.psv -s ${s}
+        $(get_numa_config) $QEXEC ./src/runQueries.q -db ${DB_DIR}/parquet/${PARAM_DIR}/hivepartitioned -format parquet -queryfile ./artifacts/queries/parquet_partition.psv -paramdir ${PARAM_DIR} -result ${RESULT_DIR}/parquetHivePartitioned_${s}Threads.psv -s ${s}
+        $(get_numa_config) $QEXEC ./src/runQueries.q -db ${DB_DIR}/parquet/${PARAM_DIR}/rowgroup -format parquet_rowgroup -queryfile ./artifacts/queries/parquet_rowgroup.psv -paramdir ${PARAM_DIR} -result ${RESULT_DIR}/parquetRowgroup_${s}Threads.psv -s ${s}
+        $(get_numa_config) $QEXEC ./src/runQueries.q -db ${DB_DIR}/parquet/${PARAM_DIR}/rowgroup_minrowgroup_100000 -format parquet_rowgroup -queryfile ./artifacts/queries/parquet_rowgroup.psv -paramdir ${PARAM_DIR} -result ${RESULT_DIR}/parquetRowgroupMinSize_${s}Threads.psv -s ${s}
+        $(get_numa_config) $QEXEC ./src/runQueries.q -db ${DB_DIR}/parquet/${PARAM_DIR}/rowgroup_maxrowgroupsize250000 -format parquet_rowgroup -queryfile ./artifacts/queries/parquet_rowgroup.psv -paramdir ${PARAM_DIR} -result ${RESULT_DIR}/parquetRowgroupMaxSize_${s}Threads.psv -s ${s}
 
-        POLARS_MAX_THREADS=$s numactl -N 0 -m 0 python3 pysrc/run_queries.py -engine polars -db ${DB_DIR}/parquet/${PARAM_DIR}/rowgroup -queryfile ./artifacts/queries/polars.psv -paramdir ${PARAM_DIR} -result ${RESULT_DIR}/polars_${s}Threads.psv
-        QARGS="-s ${s}" numactl -N 0 -m 0 python3 pysrc/run_queries.py -engine pykx -db ${DB_DIR}/kdb/${PARAM_DIR} -queryfile ./artifacts/queries/pykx.psv -paramdir ${PARAM_DIR} -result ${RESULT_DIR}/pykx_${s}Threads.psv
-        QARGS="-s ${s}" numactl -N 0 -m 0 python3 pysrc/run_queries.py -engine pykxq -db ${DB_DIR}/kdb/${PARAM_DIR} -queryfile ./artifacts/queries/kdb.psv -paramdir ${PARAM_DIR} -result ${RESULT_DIR}/pykxq_${s}Threads.psv
+        POLARS_MAX_THREADS=$s $(get_numa_config) python3 pysrc/run_queries.py -engine polars -db ${DB_DIR}/parquet/${PARAM_DIR}/rowgroup -queryfile ./artifacts/queries/polars.psv -paramdir ${PARAM_DIR} -result ${RESULT_DIR}/polars_${s}Threads.psv
+        QARGS="-s ${s}" $(get_numa_config) python3 pysrc/run_queries.py -engine pykx -db ${DB_DIR}/kdb/${PARAM_DIR} -queryfile ./artifacts/queries/pykx.psv -paramdir ${PARAM_DIR} -result ${RESULT_DIR}/pykx_${s}Threads.psv
+        QARGS="-s ${s}" $(get_numa_config) python3 pysrc/run_queries.py -engine pykxq -db ${DB_DIR}/kdb/${PARAM_DIR} -queryfile ./artifacts/queries/kdb.psv -paramdir ${PARAM_DIR} -result ${RESULT_DIR}/pykxq_${s}Threads.psv
     done
 }
 
