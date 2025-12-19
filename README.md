@@ -3,13 +3,14 @@
 ## Background
 
 This benchmark uses public [NYSE TAQ data](https://ftp.nyse.com/Historical%20Data%20Samples/DAILY%20TAQ/) to compare:
-* **Query performance** of engines including KDB-X, Polars, and KDB-X Python (PyKX).
+* **Query performance** of engines including KDB-X, Polars, and KDB-X Python (PyKX) using kdb+ and parquet data formats.
+* **Query performance** of KDB-X using kdb+ and various parquet data formats.
 * **kdb+ compression algorithms** (see [KX FSI case study](https://code.kx.com/q/kb/compression/fsicasestudy/) for background), specifically measuring:
     1.  **Compression ratio** (storage efficiency)
     2.  **Write performance** (`set` and `sync` operations)
     3.  **Query execution times**
 
-The data can be persisted to kdb+ or Parquet formats using various parameters.
+The benchmark uses Pyarrow to persist data into parquet format.
 
 ## Prerequisites
 
@@ -71,6 +72,18 @@ Set environment variables in `config/queryenv`.
 ```bash
 source config/queryenv
 testQueryEngines.sh --csv-dir ${NYSEBENCHMARKDIR}/csv --db-dir ${NYSEBENCHMARKDIR}/${SIZE} \
+   --param-dir ./artifacts/parameters/${SIZE} --date ${DATE} \
+   --threads "1 4" --result-dir ./results/engines
+```
+
+TODO: add more details
+
+## KDB-X Data Format Benchmark
+Set environment variables in `config/queryenv`.
+
+```bash
+source config/queryenv
+testKDBXDataFormats.sh --csv-dir ${NYSEBENCHMARKDIR}/csv --db-dir ${NYSEBENCHMARKDIR}/${SIZE} \
    --param-dir ./artifacts/parameters/${SIZE} --date ${DATE} \
    --threads "1 4" --result-dir ./results/engines
 ```
