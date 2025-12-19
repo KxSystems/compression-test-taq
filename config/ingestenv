@@ -1,15 +1,26 @@
-export SIZE=full        # options: full, large, medium, small
-export DATAFORMAT="kdb" # options: kdb, parquet. If not set
+export SIZE=full         # options: full, large, medium, small
+export DATAFORMAT="kdb"  # options: kdb, parquet. If not set
 
-# Optional parameters:
+# number of threads used by the kdb+/KDB-X feed (csv to kdb+ converter).
+# License restrictions may apply (community edition allows 4 threads).
+export KDBTHREADNR=4
+
+# You can speed up ingestion by disabling stream processing or increasing batch size, both solutions need extra memory.
+# License restrictions may apply to memory usage.
+export KDBBATCHSIZE=1000000  # 0 disables stream processing.
+
+
+#### Optional parameters ###
 #export COMPRESSION=zstd
 #export COMPRESSION_LEVEL=6
 
+# Optional parameters if DATAFORMAT=kdb
+#export LOGICAL_BLOCK_SIZE=17
 
 # Optional parameters if DATAFORMAT=parquet
 #export SYMBOLSTOREDAS=ROWGROUP  # options: Rowgroup, PartitionColumn. If not set then ROWGROUP is assumed
 
 # If a variable below is not set then the pyarrows default is used
-#export MINROWGROUPSIZE=0        # minimum size of row groups.
+#export MINROWGROUPSIZE=0        # minimum size of row groups
 #export MAXROWGROUPSIZE=16000000 # maximum size of row groups
 #export PAGE_SIZE

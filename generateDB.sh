@@ -13,7 +13,7 @@ function generate_HDB () {
     python3 ./pysrc/taq_to_parquet.py -date $DATE -src $CSVDIR -dst $DST -letters $LETTERS
   else
     echo "Generating kdb+ data (aka. HDB)..."
-    $QEXEC ./src/taqToKDB.q -date $DATE -src $CSVDIR -dst $DST -letters $LETTERS -s $COMPUTECOUNT -q
+    $QEXEC ./src/taqToKDB.q -date $DATE -src $CSVDIR -dst $DST -batchsize ${KDBBATCHSIZE} -letters $LETTERS -s ${KDBTHREADNR} -q
   fi
 }
 

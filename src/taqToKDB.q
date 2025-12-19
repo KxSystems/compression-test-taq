@@ -251,7 +251,7 @@ if[(`letters in ko) and not o[`letters] like "?-?";
   exit 4]
 
 
-batchsize: $[not `batchsize in ko; 0Ni; () ~ o`batchsize; 10000000i; "I"$ o`batchsize]
+batchsize: $[not `batchsize in ko; 0Ni; 0 = "I"$o`batchsize; 0Ni; () ~ o`batchsize; 10000000i; "I"$ o`batchsize]
 
 main[o`date; o`src; hsym `kdbDB^`$o`dst; o `letters; `includetestsymbols in ko; batchsize]
 
