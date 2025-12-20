@@ -37,7 +37,7 @@ getKBRead: $[.z.o ~ `m64; getKBReadMac; getKBReadLinux]
 runQuery: {[db: `C; device: `C; idx:`C; tags:`C; query:`C]
   query: trim query;
   if[(not count query) or "#" ~ first idx;
-    resultH ,[;"\n"] SEP sv (compparm; string system "s"; idx except "#"; query; "skip"), 9#enlist"";
+    resultH ,[;"\n"] SEP sv (compparm; string system "s"; idx except "#"; tags; query; "skip"), 7#enlist"";
     :()];
   ts: io: ();
   .qlog.info raze system getenv[`FLUSH], " ", db;
@@ -48,7 +48,7 @@ runQuery: {[db: `C; device: `C; idx:`C; tags:`C; query:`C]
   s: .z.p; / \ts does not collect memory usage of the secondary threads
   memusage: @[system; "ts res:", query; ::];
   if[10h ~ type memusage;
-    resultH ,[;"\n"] SEP sv (compparm; string system "s"; idx; tags; query; memusage), string 7#0N;
+    resultH ,[;"\n"] SEP sv (compparm; string system "s"; idx; tags; query; memusage), 7#enlist"";
     :()];
   ts,: .z.p-s;
   io,: getKBRead[device]`kB_read;
