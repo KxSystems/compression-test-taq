@@ -43,11 +43,11 @@ function generate_data () {
     echo "Generating Databases..."
     # Step 1: We assume that the CSV files are already downloaded
     # Step 2: generate data from CSV files
-    DATAFORMAT=kdb ./generateDB.sh ${CSV_DIR} ${DB_DIR}/kdb/${PARAM_DIR} ${DATE}
-    SYMBOLSTOREDAS=PartitionColumn DATAFORMAT=parquet ./generateDB.sh ${CSV_DIR} ${DB_DIR}/parquet/${PARAM_DIR}/hivepartitioned ${DATE}
-    SYMBOLSTOREDAS=ROWGROUP DATAFORMAT=parquet ./generateDB.sh ${CSV_DIR} ${DB_DIR}/parquet/${PARAM_DIR}/rowgroup ${DATE}
-    SYMBOLSTOREDAS=ROWGROUP DATAFORMAT=parquet MINROWGROUPSIZE=100000 ./generateDB.sh ${CSV_DIR} ${DB_DIR}/parquet/${PARAM_DIR}/rowgroup_minrowgroup_100000 ${DATE}
-    SYMBOLSTOREDAS=ROWGROUP DATAFORMAT=parquet MAXROWGROUPSIZE=250000 ./generateDB.sh ${CSV_DIR} ${DB_DIR}/parquet/${PARAM_DIR}/rowgroup_maxrowgroupsize250000 ${DATE}
+    DATAFORMAT=kdb ./generateDB.sh ${CSV_DIR} ${DB_DIR}/kdb ${DATE}
+    SYMBOLSTOREDAS=PartitionColumn DATAFORMAT=parquet ./generateDB.sh ${CSV_DIR} ${DB_DIR}/parquet/hivepartitioned ${DATE}
+    SYMBOLSTOREDAS=ROWGROUP DATAFORMAT=parquet ./generateDB.sh ${CSV_DIR} ${DB_DIR}/parquet/rowgroup ${DATE}
+    SYMBOLSTOREDAS=ROWGROUP DATAFORMAT=parquet MINROWGROUPSIZE=100000 ./generateDB.sh ${CSV_DIR} ${DB_DIR}/parquet/rowgroup_minrowgroup_100000 ${DATE}
+    SYMBOLSTOREDAS=ROWGROUP DATAFORMAT=parquet MAXROWGROUPSIZE=250000 ./generateDB.sh ${CSV_DIR} ${DB_DIR}/parquet/rowgroup_maxrowgroupsize250000 ${DATE}
 }
 
 function get_numa_config () {
@@ -64,13 +64,13 @@ function execute_queries () {
     local query_runner=./src/runQueries.q
     for s in "${THREAD_NRS[@]}"; do
         echo "--> Running with $s threads"
-        $(get_numa_config) $QEXEC ${query_runner} -db ${DB_DIR}/kdb/${PARAM_DIR} -format kdb -queryfile ./artifacts/queries/kdb.psv -paramdir ${PARAM_DIR} -result ${RESULT_DIR}/kdb_${s}Threads.psv -s ${s}
-        QMAP=TRUE $(get_numa_config) $QEXEC ${query_runner} -db ${DB_DIR}/kdb/${PARAM_DIR} -format kdb -queryfile ./artifacts/queries/kdb_peach.psv -paramdir ${PARAM_DIR} -result ${RESULT_DIR}/kdbPeachQMAP_${s}Threads.psv -s ${s}
+        $(get_numa_config) $QEXEC ${query_runner} -db ${DB_DIR}/kdb -format kdb -queryfile ./artifacts/queries/kdb.psv -paramdir ${PARAM_DIR} -result ${RESULT_DIR}/kdb_${s}Threads.psv -s ${s}
+        QMAP=TRUE $(get_numa_config) $QEXEC ${query_runner} -db ${DB_DIR}/kdb -format kdb -queryfile ./artifacts/queries/kdb_peach.psv -paramdir ${PARAM_DIR} -result ${RESULT_DIR}/kdbPeachQMAP_${s}Threads.psv -s ${s}
 
-        $(get_numa_config) $QEXEC ${query_runner} -db ${DB_DIR}/parquet/${PARAM_DIR}/hivepartitioned -format parquet -queryfile ./artifacts/queries/parquet_partition.psv -paramdir ${PARAM_DIR} -result ${RESULT_DIR}/parquetHivePartitioned_${s}Threads.psv -s ${s}
-        $(get_numa_config) $QEXEC ${query_runner} -db ${DB_DIR}/parquet/${PARAM_DIR}/rowgroup -format parquet_rowgroup -queryfile ./artifacts/queries/parquet_rowgroup.psv -paramdir ${PARAM_DIR} -result ${RESULT_DIR}/parquetRowgroup_${s}Threads.psv -s ${s}
-        $(get_numa_config) $QEXEC ${query_runner} -db ${DB_DIR}/parquet/${PARAM_DIR}/rowgroup_minrowgroup_100000 -format parquet_rowgroup -queryfile ./artifacts/queries/parquet_rowgroup.psv -paramdir ${PARAM_DIR} -result ${RESULT_DIR}/parquetRowgroupMinSize_${s}Threads.psv -s ${s}
-        $(get_numa_config) $QEXEC ${query_runner} -db ${DB_DIR}/parquet/${PARAM_DIR}/rowgroup_maxrowgroupsize250000 -format parquet_rowgroup -queryfile ./artifacts/queries/parquet_rowgroup.psv -paramdir ${PARAM_DIR} -result ${RESULT_DIR}/parquetRowgroupMaxSize_${s}Threads.psv -s ${s}
+        $(get_numa_config) $QEXEC ${query_runner} -db ${DB_DIR}/parquet/hivepartitioned -format parquet -queryfile ./artifacts/queries/parquet_partition.psv -paramdir ${PARAM_DIR} -result ${RESULT_DIR}/parquetHivePartitioned_${s}Threads.psv -s ${s}
+        $(get_numa_config) $QEXEC ${query_runner} -db ${DB_DIR}/parquet/rowgroup -format parquet_rowgroup -queryfile ./artifacts/queries/parquet_rowgroup.psv -paramdir ${PARAM_DIR} -result ${RESULT_DIR}/parquetRowgroup_${s}Threads.psv -s ${s}
+        $(get_numa_config) $QEXEC ${query_runner} -db ${DB_DIR}/parquet/rowgroup_minrowgroup_100000 -format parquet_rowgroup -queryfile ./artifacts/queries/parquet_rowgroup.psv -paramdir ${PARAM_DIR} -result ${RESULT_DIR}/parquetRowgroupMinSize_${s}Threads.psv -s ${s}
+        $(get_numa_config) $QEXEC ${query_runner} -db ${DB_DIR}/parquet/rowgroup_maxrowgroupsize250000 -format parquet_rowgroup -queryfile ./artifacts/queries/parquet_rowgroup.psv -paramdir ${PARAM_DIR} -result ${RESULT_DIR}/parquetRowgroupMaxSize_${s}Threads.psv -s ${s}
     done
 }
 
