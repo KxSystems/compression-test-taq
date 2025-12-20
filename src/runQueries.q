@@ -1,7 +1,7 @@
 system "l src/log.q"
 
 if["" ~ getenv `FLUSH;
-  .qlog.info "Environment variable FLUSH is not set. Maybe config/env was not loaded.";
+  .qlog.info "Environment variable FLUSH is not set. Maybe config/queryenv was not loaded.";
   exit 2]
 
 ko: key o: first each .Q.opt .z.x;
@@ -35,18 +35,21 @@ getKBReadLinux: {[device:`C]
 getKBRead: $[.z.o ~ `m64; getKBReadMac; getKBReadLinux]
 
 runQuery: {[db: `C; device: `C; idx:`C; tags:`C; query:`C]
-  if[not count query;
-    resultH ,[;"\n"] SEP sv (compparm; string system "s"; idx; query), 9#enlist"";
-    :();
-  ];
+  query: trim query;
+  if[(not count query) or "#" ~ first query;
+    resultH ,[;"\n"] SEP sv (compparm; string system "s"; idx; query, "skip"), 9#enlist"";
+    :()];
   ts: io: ();
   .qlog.info raze system getenv[`FLUSH], " ", db;
   .qlog.info "Collecting garbage";
   .Q.gc[];
   .qlog.info "[", idx, "] Running query: ", query;
   io,: getKBRead[device]`kB_read;
-  s: .z.p;
-  memusage: last system "ts res:", query; / \ts does not collect memory usage of the secondary threads
+  s: .z.p; / \ts does not collect memory usage of the secondary threads
+  memusage: @[system; "ts res:", query; ::];
+  if[10h ~ type memusage;
+    resultH ,[;"\n"] SEP sv (compparm; string system "s"; idx; tags; query, memusage) , string 7#0N;
+    :()];
   ts,: .z.p-s;
   io,: getKBRead[device]`kB_read;
   .qlog.info "[", idx, "]   Shape of the result: ", string[count res], " x ", string count cols res;
@@ -67,7 +70,7 @@ runQuery: {[db: `C; device: `C; idx:`C; tags:`C; query:`C]
   ts,: .z.p-s;
   io,: getKBRead[device]`kB_read;
 
-  resultH ,[;"\n"] SEP sv (compparm; string system "s"; idx; tags; query), string (`long$ts), (memusage div 1000), 1 _ deltas io;
+  resultH ,[;"\n"] SEP sv (compparm; string system "s"; idx; tags; query; "success"), string (`long$ts), (last[memusage] div 1000), 1 _ deltas io;
   };
 
 startTime: .z.p
@@ -79,7 +82,7 @@ resFile: $[`result in key o; o `result; "result.psv"];
 if[not ()~key `$resFile: ":", resFile; hdel `$resFile];
 resultH: hopen resFile;
 SEP: "|"
-resultH "compparam|threadcount|idx|tags|query|run1timeNS|run2timeNS|run3timeNS|run1memKB|run1ioKB|run2ioKB|run3ioKB\n"
+resultH "compparam|threadcount|idx|tags|query|status|run1timeNS|run2timeNS|run3timeNS|run1memKB|run1ioKB|run2ioKB|run3ioKB\n"
 
 $[PARQUET; [
   system "l src/loadHiveDataset.q";
@@ -113,7 +116,7 @@ $[PARQUET; [
     .qlog.info "Loading encryption file ", o`encr;
     -36!@[; 0; hsym `$] ":" vs o`encr]]]
 
-resultH ,[;"\n"] SEP sv (compparm; string system "s"; string 0; "";"load/mmap DB"), string `long$ts, 0Nj, 0Nj, (mem div 1000), ioe - ios, 0Nj, 0Nj;
+resultH ,[;"\n"] SEP sv (compparm; string system "s"; string 0; "";"load/mmap DB"; "success"), string `long$ts, 0Nj, 0Nj, (mem div 1000), ioe - ios, 0Nj, 0Nj;
 
 .qlog.info "Loading parameters from ", 1_string PARAMDIR
 system "l src/getQueryParameters.q"
@@ -121,7 +124,7 @@ getQueryParameters PARAMDIR
 
 queryFile: o `queryfile;
 .qlog.info "Loading and executing queries from ", queryFile;
-{$["#" ~ first first x; ::; runQuery[DB; Device] . value x]} each ("***";enlist "|") 0: `$queryFile; / skip comments
+{$[runQuery[DB; Device] . value x]} each ("***";enlist "|") 0: `$queryFile; / skip comments
 
 .qlog.info "Query benchmark completed in ", 2_string .z.p - startTime;
 if[not `debug in key o; exit 0];
