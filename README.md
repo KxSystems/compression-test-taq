@@ -47,6 +47,7 @@ Statistics based on data from 2025.01.02:
 | `large` | A-H| 52 | 4849 | 707 738 295 |
 | `full` | A-Z | 233 | 11155 | 2 313 872 956 |
 
+Select `medium` SIZE if you run the benchmark with KDB-X community edition (which limits memory usage).
 
 ## Getting the CSV files
 
