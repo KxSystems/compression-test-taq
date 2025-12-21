@@ -34,43 +34,62 @@ getKBReadLinux: {[device:`C]
 
 getKBRead: $[.z.o ~ `m64; getKBReadMac; getKBReadLinux]
 
+writeRes: {[h; compparm:`C; (idx:`C; tags:`C; query:`C); status:`C; ts:`N; memusage:`j; io:`J]
+  if[not 3 = count ts;
+    .qlog.error "Three elapsed times are expected";
+    ts: 3#ts];
+  if[not 4 = count io;
+    .qlog.error "Four IO numbers are expected";
+    io: 4#io];
+  h ,[;"\n"] SEP sv (compparm; string system "s"; idx except "#"; tags; query; status), string (`long$ts), (memusage div 1000), 1 _ deltas io;
+  }
+
 runQuery: {[db: `C; device: `C; idx:`C; tags:`C; query:`C]
   query: trim query;
-  if[(not count query) or "#" ~ first idx;
-    resultH ,[;"\n"] SEP sv (compparm; string system "s"; idx except "#"; tags; query; "skip"), 7#enlist"";
-    :()];
   ts: io: ();
+  if[(not count query) or "#" ~ first idx;
+    writeRes[resultH; compparm; (idx except "#"; tags; query); "skip"; 3#0Nn; 0Nj; 4#0Nj];
+    :()];
   .qlog.info raze system getenv[`FLUSH], " ", db;
   .qlog.info "Collecting garbage";
   .Q.gc[];
   .qlog.info "[", idx, "] Running query: ", query;
   io,: getKBRead[device]`kB_read;
   s: .z.p; / \ts does not collect memory usage of the secondary threads
-  memusage: @[system; "ts res:", query; ::];
-  if[10h ~ type memusage;
-    resultH ,[;"\n"] SEP sv (compparm; string system "s"; idx; tags; query; memusage), 7#enlist"";
+  errormsg: @[system; "ts res:", query; ::];
+  if[10h ~ type errormsg;
+    writeRes[resultH; compparm; (idx; tags; query); errormsg; 3#0Nn; 0Nj; 4#0Nj];
     :()];
   ts,: .z.p-s;
   io,: getKBRead[device]`kB_read;
   .qlog.info "[", idx, "]   Shape of the result: ", string[count res], " x ", string count cols res;
   delete res from `.;
+  memusage: last errormsg;
 
   .qlog.info "[", idx, "]   Collecting garbage";
   .Q.gc[];
   .qlog.info "[", idx, "] Running query again";
   s: .z.p;
-  value query;
+  errormsg: @[value; "res:", query;::];
+  if[10h ~ type errormsg;
+    writeRes[resultH; compparm; (idx; tags; query); errormsg; ts[0], 2#0Nn; memusage; io, 2#0Nj];
+    :()];
   ts,: .z.p-s;
   io,: getKBRead[device]`kB_read;
+  delete res from `.;
 
   .Q.gc[];
   .qlog.info "[", idx, "] Running query third time";
   s: .z.p;
-  value query;
+  errormsg: @[value; "res:", query;::];
+  if[10h ~ type errormsg;
+    writeRes[resultH; compparm; (idx; tags; query); errormsg; ts, 0Nn; memusage; io, 0Nj];
+    :()];
   ts,: .z.p-s;
   io,: getKBRead[device]`kB_read;
+  delete res from `.;
 
-  resultH ,[;"\n"] SEP sv (compparm; string system "s"; idx; tags; query; "success"), string (`long$ts), (last[memusage] div 1000), 1 _ deltas io;
+  writeRes[resultH; compparm; (idx; tags; query); "success"; ts; memusage; io];
   };
 
 startTime: .z.p
