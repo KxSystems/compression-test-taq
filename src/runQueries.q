@@ -11,8 +11,6 @@ PARAMDIR:  hsym `$o`paramdir
 PARQUET: upper[o `format] like "PARQUET*"
 PARQUETROWGROUP: upper[o `format] ~ "PARQUET_ROWGROUP"
 
-QMAP: "true" ~ lower getenv `QMAP
-
 iostatError: `kB_read`kB_wrtn`kB_sum!3#0Nj
 
 getKBReadMac: {[device:`C]
@@ -44,11 +42,48 @@ writeRes: {[h; compparm:`C; (idx:`C; tags:`C; query:`C); status:`C; ts:`N; memus
   h ,[;"\n"] SEP sv (compparm; string system "s"; idx except "#"; tags; query; status), string (`long$ts), (memusage div 1000), 1 _ deltas io;
   }
 
-runQuery: {[db: `C; device: `C; idx:`C; tags:`C; query:`C]
+loadParquetDB: {[db: `C; device: `C; writerFN]
+  system "l src/loadHiveDataset.q";
+
+  .qlog.info raze system getenv[`FLUSH], " ", db;
+  .qlog.info "Collecting garbage";
+  .Q.gc[];
+
+  io: ();
+  .qlog.info "loading parquet dataset at ", db;
+  io,: getKBRead[device]`kB_read;
+  s: .z.p;
+  memusage: last system "ts loadHiveDataset[DB; PARQUETROWGROUP]";
+  ts: .z.p-s;
+  io,: getKBRead[device]`kB_read;
+  writerFN[(string 0; ""; "load/mmap DB"); "success"; ts, 2#0Nn; memusage; io, 2#0Nj];
+
+  exnames:: exec ex!`$name from exnames; / convert back to a map
+  }
+
+loadKDBDB: {[db: `C; device: `C; writerFN]
+  io: ();
+  .qlog.info "loading kdb DB ", db;
+  loadcmd: "ts .Q.lo[`$\"", db, "\";0;0]";
+  if["true" ~ lower getenv `QMAP; loadcmd,:";.Q.MAP[]"];
+  io,: getKBRead[device]`kB_read;
+  s: .z.p;
+  memusage: last system loadcmd;
+  ts: .z.p-s;
+  io,: getKBRead[device]`kB_read;
+
+  if[`encr in ko;
+    .qlog.info "Loading encryption file ", o`encr;
+    -36!@[; 0; hsym `$] ":" vs o`encr]
+
+  writerFN[(string 0; ""; "load/mmap DB"); "success"; ts, 2#0Nn; memusage; io, 2#0Nj];
+  }
+
+runQuery: {[db: `C; device: `C; writerFN; idx:`C; tags:`C; query:`C]
   query: trim query;
   ts: io: ();
   if[(not count query) or "#" ~ first idx;
-    writeRes[resultH; compparm; (idx except "#"; tags; query); "skip"; 3#0Nn; 0Nj; 4#0Nj];
+    writerFN[(idx except "#"; tags; query); "skip"; 3#0Nn; 0Nj; 4#0Nj];
     :()];
   .qlog.info raze system getenv[`FLUSH], " ", db;
   .qlog.info "Collecting garbage";
@@ -58,7 +93,7 @@ runQuery: {[db: `C; device: `C; idx:`C; tags:`C; query:`C]
   s: .z.p; / \ts does not collect memory usage of the secondary threads
   errormsg: @[system; "ts res:", query; ::];
   if[10h ~ type errormsg;
-    writeRes[resultH; compparm; (idx; tags; query); errormsg; 3#0Nn; 0Nj; 4#0Nj];
+    writerFN[(idx; tags; query); errormsg; 3#0Nn; 0Nj; 4#0Nj];
     :()];
   ts,: .z.p-s;
   io,: getKBRead[device]`kB_read;
@@ -72,7 +107,7 @@ runQuery: {[db: `C; device: `C; idx:`C; tags:`C; query:`C]
   s: .z.p;
   errormsg: @[value; "res:", query;::];
   if[10h ~ type errormsg;
-    writeRes[resultH; compparm; (idx; tags; query); errormsg; ts[0], 2#0Nn; memusage; io, 2#0Nj];
+    writerFN[(idx; tags; query); errormsg; ts[0], 2#0Nn; memusage; io, 2#0Nj];
     :()];
   ts,: .z.p-s;
   io,: getKBRead[device]`kB_read;
@@ -83,13 +118,13 @@ runQuery: {[db: `C; device: `C; idx:`C; tags:`C; query:`C]
   s: .z.p;
   errormsg: @[value; "res:", query;::];
   if[10h ~ type errormsg;
-    writeRes[resultH; compparm; (idx; tags; query); errormsg; ts, 0Nn; memusage; io, 0Nj];
+    writerFN[(idx; tags; query); errormsg; ts, 0Nn; memusage; io, 0Nj];
     :()];
   ts,: .z.p-s;
   io,: getKBRead[device]`kB_read;
   delete res from `.;
 
-  writeRes[resultH; compparm; (idx; tags; query); "success"; ts; memusage; io];
+  writerFN[(idx; tags; query); "success"; ts; memusage; io];
   };
 
 startTime: .z.p
@@ -104,38 +139,15 @@ SEP: "|"
 resultH "compparam|threadcount|idx|tags|query|status|run1timeNS|run2timeNS|run3timeNS|run1memKB|run1ioKB|run2ioKB|run3ioKB\n"
 
 $[PARQUET; [
-  system "l src/loadHiveDataset.q";
-
-  .qlog.info raze system getenv[`FLUSH], " ", DB;
-  .qlog.info "Collecting garbage";
-  .Q.gc[];
-
-  .qlog.info "loading parquet dataset at ", DB;
-  ios: getKBRead[Device]`kB_read;
-  s: .z.p;
-  mem: last system "ts loadHiveDataset[DB; PARQUETROWGROUP]";
-  ts: .z.p-s;
-  ioe: getKBRead[Device]`kB_read;
-  exnames: exec ex!`$name from exnames; / convert back to a map
   compparm: "nyi_nyi_nyi";
+  WriterFN:: writeRes[resultH; compparm];
+  loadParquetDB[DB; Device; WriterFN]
   ];[
-  .qlog.info "loading kdb DB ", DB;
-  loadcmd: "ts .Q.lo[`$DB;0;0]";
-  if[QMAP; loadcmd,:";.Q.MAP[]"];
-  ios: getKBRead[Device]`kB_read;
-  s: .z.p;
-  mem: last system loadcmd;
-  ts: .z.p-s;
-  ioe: getKBRead[Device]`kB_read;
-
   compparmall: -21!hsym `$DB,"/",string[first key hsym `$DB],"/quote/sym";   // or assume that db dir name reflects compression
   compparm: $[count compparmall; "_" sv string @[;`logicalBlockSize`algorithm`zipLevel] compparmall; "0_0_0"];
-
-  if[`encr in ko;
-    .qlog.info "Loading encryption file ", o`encr;
-    -36!@[; 0; hsym `$] ":" vs o`encr]]]
-
-resultH ,[;"\n"] SEP sv (compparm; string system "s"; string 0; "";"load/mmap DB"; "success"), string `long$ts, 0Nj, 0Nj, (mem div 1000), ioe - ios, 0Nj, 0Nj;
+  WriterFN:: writeRes[resultH; compparm];
+  loadKDBDB[DB; Device; WriterFN]
+  ]]
 
 .qlog.info "Loading parameters from ", 1_string PARAMDIR
 system "l src/getQueryParameters.q"
@@ -143,7 +155,7 @@ getQueryParameters PARAMDIR
 
 queryFile: o `queryfile;
 .qlog.info "Loading and executing queries from ", queryFile;
-{$[runQuery[DB; Device] . value x]} each ("***";enlist "|") 0: `$queryFile; / skip comments
+{$[runQuery[DB; Device; WriterFN] . value x]} each ("***";enlist "|") 0: `$queryFile; / skip comments
 
 .qlog.info "Query benchmark completed in ", 2_string .z.p - startTime;
 if[not `debug in key o; exit 0];
