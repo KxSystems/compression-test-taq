@@ -8,12 +8,13 @@ import csv
 import gc
 import os
 import logging
+from dataclasses import dataclass
+
 import psutil
 import subprocess
 import sys
 from datetime import datetime,time # time is used in queries
 import time as time_mod   # alias to avoid naming conflict
-from dataclasses import dataclass, field
 
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -51,29 +52,23 @@ def load_parameters(param_dir: Path) -> Dict[str, Any]:
 @dataclass
 class QueryResult:
     """Data class to hold the results of a query benchmark."""
-    thread_count: int
     idx: str
-    query_raw: str
-    run1_time_ms: int
-    run2_time_ms: int
-    run3_time_ms: int
-    run1_mem_KB: int   # Not Yet Implemented
-    run1_io_KB: int
-    run2_io_KB: int
-    run3_io_KB: int
+    query: str
+    status: str
+    run1_time_ns: int = None
+    run2_time_ns: int = None
+    run3_time_ns: int = None
+    run1_io_KB: int = None
+    run2_io_KB: int = None
+    run3_io_KB: int = None
 
     def to_csv_row(self) -> List[Any]:
         return [
-            self.thread_count,
-            self.idx,
-            self.query_raw,
-            self.run1_time_ms,
-            self.run2_time_ms,
-            self.run3_time_ms,
-            self.run1_mem_KB,
-            self.run1_io_KB,
-            self.run2_io_KB,
-            self.run3_io_KB
+            "nyi", pl.thread_pool_size(), self.idx, "nyi",
+            self.query, self.status,
+            self.run1_time_ns, self.run2_time_ns, self.run3_time_ns,
+            None, # Not Yet Implemented
+            self.run1_io_KB, self.run2_io_KB, self.run3_io_KB
         ]
 
 def run_query(runner, db_path: Path, device: str, idx: str, query: str) -> QueryResult:
@@ -97,17 +92,12 @@ def run_query(runner, db_path: Path, device: str, idx: str, query: str) -> Query
         except Exception as e:
             logger.error("Query %s failed: %s", idx, e)
             # Return 0.0 or -1.0 to indicate failure in results
-            return QueryResult(pl.thread_pool_size(), idx, query, None, None, None, None, None, None, None)
+            return QueryResult(idx, query, "error")
         io_End = psutil.disk_io_counters(perdisk=True)[device].read_bytes // 1000
         times.append(t_end - t_start)
         ios.append(io_End-io_Start)
 
-    return QueryResult(
-        thread_count=pl.thread_pool_size(),
-        idx=idx, query_raw=query,
-        run1_time_ms=times[0], run2_time_ms=times[1], run3_time_ms=times[2],
-        run1_mem_KB=None, run1_io_KB=ios[0], run2_io_KB=ios[1], run3_io_KB=ios[2]
-    )
+    return QueryResult(idx, query, "success", *times, *ios)
 
 class QueryExecutorPyKX:
     """
@@ -265,7 +255,7 @@ def main(args):
 
     # Initialize Result File
     headers = [
-        "threadcount", "idx", "query",
+        "compparam", "threadcount", "idx", "tags", "query", "status",
         "run1timeNS", "run2timeNS", "run3timeNS",
         "run1memKB",
         "run1ioKB", "run2ioKB", "run3ioKB"
@@ -277,13 +267,13 @@ def main(args):
         writer.writerow(headers)
 
         # Log DB Load time as idx 0
-        writer.writerow([pl.thread_pool_size(), 0, "loaddb", t_load_elapsed, None, None,
+        writer.writerow(["nyi", pl.thread_pool_size(), 0, "nyi", "loaddb", "success", t_load_elapsed, None, None,
                          None, io_load_End - io_load_Start, None, None])
         f_out.flush() # Ensure header is written
 
         # Process Queries
         if not args.queryfile.exists():
-            logger.error(f"Query file not found: {args.queryfile}")
+            logger.error("Query file not found: %s", args.queryfile)
             sys.exit(1)
 
         with open(args.queryfile, 'r', encoding='utf-8') as f_in:
@@ -294,13 +284,9 @@ def main(args):
                 idx = row.get('idx', '').strip()
                 query = row.get('query', '').strip()
                 if idx.startswith("#"):
-                    result = QueryResult(thread_count=pl.thread_pool_size(), idx=idx[1:], query_raw=query,
-                               run1_time_ms=None, run2_time_ms=None, run3_time_ms=None,
-                               run1_mem_KB=None, run1_io_KB=None, run2_io_KB=None, run3_io_KB=None)
+                    result = QueryResult(idx[1:], query, "skip")
                 elif query == '':
-                    result = QueryResult(thread_count=pl.thread_pool_size(), idx=idx, query_raw=query,
-                               run1_time_ms=None, run2_time_ms=None, run3_time_ms=None,
-                               run1_mem_KB=None, run1_io_KB=None, run2_io_KB=None, run3_io_KB=None)
+                    result = QueryResult(idx, query, "skip")
                 else:
                     result = run_query(runner, args.db, device, idx, query)
 
@@ -308,7 +294,7 @@ def main(args):
                 f_out.flush() # Write immediately to disk
 
     elapsed = datetime.now() - start_time
-    logger.info(f"Benchmarking completed in {elapsed}. Results saved to {args.result}")
+    logger.info("Benchmarking completed in %s. Results saved to %s", elapsed, args.result)
 
 
 if os.getenv('FLUSH') is None:
