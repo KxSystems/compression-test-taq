@@ -13,7 +13,7 @@ from dataclasses import dataclass
 import psutil
 import subprocess
 import sys
-from datetime import datetime,time # time is used in queries
+from datetime import datetime,time, timedelta # time is used in queries
 import time as time_mod   # alias to avoid naming conflict
 
 from pathlib import Path
@@ -29,7 +29,20 @@ logging.basicConfig(
     format='%(asctime)s - %(levelname)s - %(message)s',
     handlers=[logging.StreamHandler(sys.stdout)]
 )
-logger = logging.getLogger(__name__)
+logger: logging.Logger = logging.getLogger(__name__)
+
+def get_device(db: str) -> str:
+    resolve_device: subprocess.CompletedProcess[str] = subprocess.run(["./src/resolve_device.sh", db],
+                                    capture_output=True, text=True, check=False)
+    if resolve_device.returncode != 0:
+        logger.error("Error occurred while mapping DB dir to a device: %s", resolve_device.stderr)
+        logger.error("IO statistics will not be captured")
+        return None
+    else:
+        return resolve_device.stdout.split('\n')[0].strip()  # TODO: add error handling
+
+def get_io_stat(device: str) -> int:
+    return None if device is None else psutil.disk_io_counters(perdisk=True)[device].read_bytes // 1000
 
 def load_parameters(param_dir: Path) -> Dict[str, Any]:
     """Reads parameter text files into the params dictionary."""
@@ -85,7 +98,7 @@ def run_query(runner, db_path: Path, device: str, idx: str, query: str) -> Query
             subprocess.run([os.getenv('FLUSH'), db_path], check=True,capture_output=True)
         gc.collect()
         # Execute and Time
-        io_Start = psutil.disk_io_counters(perdisk=True)[device].read_bytes // 1000
+        io_Start = get_io_stat(device)
         t_start = time_mod.perf_counter_ns()
         try:
             t_end = runner.execute_query(query, idx, runidx)
@@ -93,7 +106,7 @@ def run_query(runner, db_path: Path, device: str, idx: str, query: str) -> Query
             logger.error("Query %s failed: %s", idx, e)
             # Return 0.0 or -1.0 to indicate failure in results
             return QueryResult(idx, query, "error")
-        io_End = psutil.disk_io_counters(perdisk=True)[device].read_bytes // 1000
+        io_End = get_io_stat(device)
         times.append(t_end - t_start)
         ios.append(io_End-io_Start)
 
@@ -104,7 +117,7 @@ class QueryExecutorPyKX:
     Handles the setup, execution of PyKX Python queries
     on NYSE TAQ kdb+ database.
     """
-    def __init__(self, param:Dict[str, Any]):
+    def __init__(self, param:Dict[str, Any]) -> None:
         self.db: kx.DB = None
         # Parameters available for queries
         self.params: Dict[str, Any] = param
@@ -142,7 +155,7 @@ class QueryExecutorPyKXQ:
     Handles the setup, execution of PyKX q queries
     on NYSE TAQ kdb+ database.
     """
-    def __init__(self, paramdir: Path):
+    def __init__(self, paramdir: Path) -> None:
         self.db: kx.DB = None
         self.paramdir: Path = paramdir
 
@@ -177,7 +190,7 @@ class QueryExecutorPolars:
     on NYSE TAQ hive-partitioned parquet files.
     """
 
-    def __init__(self, param:Dict[str, Any]):
+    def __init__(self, param:Dict[str, Any]) -> None:
         # Dataframes (Lazy)
         self.master: Optional[pl.LazyFrame] = None
         self.trade: Optional[pl.LazyFrame] = None
@@ -189,7 +202,7 @@ class QueryExecutorPolars:
     def load_resources(self, db_path: Path) -> None:
         """Loads database schemas."""
         logger.info("loading hive-partitioned tables at %s", db_path)
-        # Load Polars Scans
+
         self.master = pl.scan_parquet(db_path / "master/date=*/*.parquet", hive_partitioning=True)
 
         exnames = pl.scan_parquet(db_path / "exnames.parquet").collect()
@@ -223,16 +236,18 @@ class QueryExecutorPolars:
             t_end = time_mod.perf_counter_ns()
         return t_end
 
-def main(args):
-    start_time = datetime.now()
+def main(args) -> None:
+    start_time: datetime = datetime.now()
+    if not args.db.exists():
+        logger.error("Database does not exist at %s", args.db)
+        sys.exit(1)
+
 
     # Ensure output directory exists
     args.result.parent.mkdir(parents=True, exist_ok=True)
 
     # Initialize Runner
-    device = subprocess.run(["./src/resolve_device.sh", args.db],
-                            capture_output=True, text=True).stdout.split('\n')[0].strip()  # TODO: add error handling
-
+    device = get_device(args.db)
     logger.info("Loading parameter files...")
 
     if args.engine.lower() == "polars":
@@ -247,14 +262,14 @@ def main(args):
         raise ValueError(f"Invalid engine parameter: {args.engine}")
 
     # Load DB and Params (Time this operation for the first CSV row)
-    io_load_Start = psutil.disk_io_counters(perdisk=True)[device].read_bytes // 1000
+    io_load_Start = get_io_stat(device)
     t_load_start = time_mod.perf_counter_ns()
     runner.load_resources(args.db)
     t_load_elapsed = time_mod.perf_counter_ns() - t_load_start
-    io_load_End = psutil.disk_io_counters(perdisk=True)[device].read_bytes // 1000
+    io_load_End = get_io_stat(device)
 
     # Initialize Result File
-    headers = [
+    headers: List[str] = [
         "compparam", "threadcount", "idx", "tags", "query", "status",
         "run1timeNS", "run2timeNS", "run3timeNS",
         "run1memKB",
@@ -274,7 +289,7 @@ def main(args):
         # Process Queries
         if not args.queryfile.exists():
             logger.error("Query file not found: %s", args.queryfile)
-            sys.exit(1)
+            sys.exit(3)
 
         with open(args.queryfile, 'r', encoding='utf-8') as f_in:
             # Using DictReader to handle pipe delimiter
