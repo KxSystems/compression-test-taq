@@ -65,7 +65,6 @@ def load_parameters(param_dir: Path) -> Dict[str, Any]:
 @dataclass
 class QueryResult:
     """Data class to hold the results of a query benchmark."""
-    idx: str
     query: str
     status: str
     run1_time_ns: int = None
@@ -77,7 +76,6 @@ class QueryResult:
 
     def to_csv_row(self) -> List[Any]:
         return [
-            "nyi", pl.thread_pool_size(), self.idx, "nyi",
             self.query, self.status,
             self.run1_time_ns, self.run2_time_ns, self.run3_time_ns,
             None, # Not Yet Implemented
@@ -105,12 +103,12 @@ def run_query(runner, db_path: Path, device: str, idx: str, query: str) -> Query
         except Exception as e:
             logger.error("Query %s failed: %s", idx, e)
             # Return 0.0 or -1.0 to indicate failure in results
-            return QueryResult(idx, query, "error")
+            return QueryResult(query, "error")
         io_End = get_io_stat(device)
         times.append(t_end - t_start)
         ios.append(io_End-io_Start)
 
-    return QueryResult(idx, query, "success", *times, *ios)
+    return QueryResult(query, "success", *times, *ios)
 
 class QueryExecutorPyKX:
     """
@@ -275,14 +273,14 @@ def main(args) -> None:
         "run1memKB",
         "run1ioKB", "run2ioKB", "run3ioKB"
     ]
-
+    row_start = ["nyi", pl.thread_pool_size()]
     # Write Mode: Overwrite existing
     with open(args.result, 'w', newline='', encoding='utf-8') as f_out:
         writer = csv.writer(f_out, delimiter='|')
         writer.writerow(headers)
 
         # Log DB Load time as idx 0
-        writer.writerow(["nyi", pl.thread_pool_size(), 0, "nyi", "loaddb", "success", t_load_elapsed, None, None,
+        writer.writerow(row_start +[0, "nyi", "loaddb", "success", t_load_elapsed, None, None,
                          None, io_load_End - io_load_Start, None, None])
         f_out.flush() # Ensure header is written
 
@@ -296,16 +294,17 @@ def main(args) -> None:
             reader = csv.DictReader(f_in, delimiter='|')
 
             for row in reader:
-                idx = row.get('idx', '').strip()
-                query = row.get('query', '').strip()
+                idx = row['idx'].strip()
+                query = row['query'].strip()
                 if idx.startswith("#"):
-                    result = QueryResult(idx[1:], query, "skip")
+                    idx = idx[1:]
+                    result = QueryResult(query, "skip")
                 elif query == '':
-                    result = QueryResult(idx, query, "skip")
+                    result = QueryResult(query, "skip")
                 else:
                     result = run_query(runner, args.db, device, idx, query)
 
-                writer.writerow(result.to_csv_row())
+                writer.writerow(row_start + [idx, row['tags'].strip()] + result.to_csv_row())
                 f_out.flush() # Write immediately to disk
 
     elapsed = datetime.now() - start_time
