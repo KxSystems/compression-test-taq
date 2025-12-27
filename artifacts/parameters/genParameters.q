@@ -30,7 +30,8 @@ fivehundredInfreqInstrs: @[; (symNr-1) and til[490] + count[symFreq] div 10] sym
 fivehundredInfreqInstrs: 0N?fivehundredInfreqInstrs, (500-count fivehundredInfreqInstrs)?`4 / add some dummy instrument IDs
 .Q.dd[DST; `fivehundredInfreqInstrs.txt] 0: string fivehundredInfreqInstrs
 
-timeBuckets: ([preopen: 0D08:30; open: 0D09:05; morning: 0D12:30; afternoon: 0D16:30; close: 1D])
+/ time bucket lower bounds:
+timeBuckets: ([closed: 0D; preopen: 0D04:00; open: 0D09:00; morning: 0D09:30; afternoon: 0D12:00; afterhours: 0D16; maintenance: 0D20])
 .Q.dd[DST; `timeBuckets.txt] 0: "=" sv' flip (string[key timeBuckets]; string value timeBuckets)
 
 exit 0

@@ -27,8 +27,8 @@ idx|tags|query
 26||(update tag:`maxbid from select from quote where mysym=aFreqInstr, bid=(max; bid) fby ex, time=(min;time) fby ex), update tag: `minask from select from quote where mysym=mostFreqInstr, ask=(min; ask) fby ex, time=(min;time) fby ex
 27||select from trade where size = (min;size) fby ([] ex;mysym)
 28||ungroup select from (select seqDecr: seq where (<) prior seq by mysym from trade) where 0 < count each seqDecr
-29||update key[timeBuckets] timeBucket from `ex`timeBucket xasc select cnt: count i, sum size by ex, timeBucket: value[timeBuckets] binr time from trade where date=min date
-30||select cnt: count i, sum size by mysym, timeBucket: timeBuckets binr time from trade where date=min date, not corr=0
+29||update key[timeBuckets] timeBucket from `ex`timeBucket xasc select cnt: count i, sum size by ex, timeBucket: value[timeBuckets] bin time from trade where date=min date
+30||select cnt: count i, sum size by mysym, timeBucket: timeBucketsStep time from trade where date=min date, not corr=0
 31||select o: first price, h: max price, l: min price, c: last price, s: sum size by mysym, 0D00:05 xbar time from trade where mysym in hundredInstrs, 0 < count each stop
 32||update inbal: (bsize - asize) % bsize + asize from select first asize, first bsize by minute: `minute$0D00:01 xbar time from quote where mysym = anInfreqInstr
 33||select wsumAsk:asize wsum ask, wsumBid: bid wsum bsize, sdevasksize: sdev asize, sdevbid:sdev bid, corPrice:ask cor bid, corSize: asize cor bsize by mysym from quote where mysym in fivehundredInfreqInstrs
