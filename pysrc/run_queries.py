@@ -150,8 +150,8 @@ class QueryExecutorPyKX:
             t_end = time_mod.perf_counter_ns()
             logger.info("[%s]   Shape of the result: %s x %s", idx, res.shape[0], res.shape[1])
         else:
-                eval(query_str, {"__builtins__": None}, eval_context)
-                t_end = time_mod.perf_counter_ns()
+            eval(query_str, {"__builtins__": None}, eval_context)
+            t_end = time_mod.perf_counter_ns()
         return t_end
 
 class QueryExecutorPyKXQ:
@@ -201,6 +201,12 @@ class QueryExecutorPolars:
         self.quote: Optional[pl.LazyFrame] = None
 
         # Parameters available for queries
+        time_bucket_expr = pl.lit(None) # Initial state
+        for bucket, bound in param['timeBuckets'].items():
+            time_bucket_expr = pl.when(pl.col("time") >= bound).then(
+                pl.lit(bucket)).otherwise(time_bucket_expr)
+
+        param['time_bucket_expr'] = time_bucket_expr
         self.params: Dict[str, Any] = param
 
     def load_resources(self, db_path: Path) -> None:

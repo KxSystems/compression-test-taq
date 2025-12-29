@@ -1,5 +1,5 @@
 idx|tags|query
-1||quote.filter(pl.col("date") == pl.col("date").min()).filter(pl.col("time") < time(8, 0))
+1||quote.filter(pl.col("date") == pl.col("date").min(), pl.col("time") < time(8, 0))
 2||trade.filter(pl.col("seq") == 0)
 3||trade.filter(pl.col("seq") > 0, pl.col("ex") >= "A", pl.col("ex") <= "Z", pl.col("time").is_between(time(0, 0), time(23, 59, 59, 999999), closed="both"), pl.col("size") < 2147483647)
 4||trade.filter(pl.col("date") == pl.col("date").min(), pl.col("time").is_between(time(10), time(10, 0, 10), closed="both"))
@@ -28,7 +28,7 @@ idx|tags|query
 27||trade.filter(pl.col("size") == pl.col("size").min().over(["ex", "sym"]))
 28||trade.with_columns((pl.col("seq").diff().over("sym")).alias("seq_delta")).filter(pl.col("seq_delta") < 0).select("sym", "seq")
 29||
-30||
+30||trade.filter(pl.col("date") == pl.col("date").min(), pl.col("corr") != 0).with_columns(time_bucket=time_bucket_expr).group_by(["sym", "time_bucket"]).agg(pl.count().alias("cnt"), pl.col("size").sum())
 31||trade.filter(pl.col("sym").is_in(hundredInstrs),pl.col("stop") != "").with_columns(datetime = pl.col("date").dt.combine(pl.col("time"))).group_by_dynamic(index_column="datetime", every="5m", closed="left", group_by=["sym"]).agg(pl.col("price").first().alias("o"), pl.col("price").max().alias("h"), pl.col("price").min().alias("l"), pl.col("price").last().alias("c"), pl.col("size").sum().alias("s"))
 32||quote.filter(pl.col("sym") == anInfreqInstr).with_columns(datetime = pl.col("date").dt.combine(pl.col("time"))).group_by_dynamic(index_column="datetime", every="1m", closed="left").agg(pl.col("asize").first(), pl.col("bsize").first()).select("asize", "bsize", ((pl.col("bsize") - pl.col("asize")) / (pl.col("bsize") + pl.col("asize"))).alias("inbal"))
 33||quote.filter(pl.col("sym").is_in(fivehundredInfreqInstrs)).group_by("sym").agg((pl.col("ask") * pl.col("asize")).sum().alias("wsumAsk"), (pl.col("bid") * pl.col("bsize")).sum().alias("wsumBid"), pl.col("asize").std().alias("sdevasksize"), pl.col("bid").std().alias("sdevbid"), pl.corr("ask", "bid").alias("corPrice"), pl.corr("asize", "bsize").alias("corSize"))
