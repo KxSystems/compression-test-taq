@@ -318,7 +318,7 @@ def main(args) -> None:
 
 
 if os.getenv('FLUSH') is None:
-    logger.error("Environment variable FLUSH is not set. Maybe config/env was not loaded.")
+    logger.error("Environment variable FLUSH is not set. Maybe config/queryenv was not loaded.")
     sys.exit(2)
 
 parser = argparse.ArgumentParser(
