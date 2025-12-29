@@ -146,11 +146,11 @@ class QueryExecutorPyKX:
             # We use eval here because the requirement is to run arbitrary queries
             # defined in a text file.
             # .collect() triggers the actual computation for LazyFrames
-            res = eval(query_str, {"__builtins__": None}, eval_context)
+            res = eval(query_str, eval_context)
             t_end = time_mod.perf_counter_ns()
             logger.info("[%s]   Shape of the result: %s x %s", idx, res.shape[0], res.shape[1])
         else:
-            eval(query_str, {"__builtins__": None}, eval_context)
+            eval(query_str, eval_context)
             t_end = time_mod.perf_counter_ns()
         return t_end
 
@@ -205,8 +205,14 @@ class QueryExecutorPolars:
         for bucket, bound in param['timeBuckets'].items():
             time_bucket_expr = pl.when(pl.col("time") >= bound).then(
                 pl.lit(bucket)).otherwise(time_bucket_expr)
-
         param['time_bucket_expr'] = time_bucket_expr
+
+        time_bucket_idx_expr = pl.lit(None) # Initial state
+        for index, bound in enumerate(param['timeBuckets'].values()):
+            time_bucket_idx_expr = pl.when(pl.col("time") >= bound).then(
+                pl.lit(index)).otherwise(time_bucket_idx_expr)
+        param['time_bucket_idx_expr'] = time_bucket_idx_expr
+
         self.params: Dict[str, Any] = param
 
     def load_resources(self, db_path: Path) -> None:
@@ -238,11 +244,11 @@ class QueryExecutorPolars:
             # We use eval here because the requirement is to run arbitrary queries
             # defined in a text file.
             # .collect() triggers the actual computation for LazyFrames
-            res = eval(query_str, {"__builtins__": None}, eval_context).collect()
+            res = eval(query_str, eval_context).collect()
             t_end = time_mod.perf_counter_ns()
             logger.info("[%s]   Shape of the result: %s x %s", idx, res.shape[0], res.shape[1])
         else:
-            eval(query_str, {"__builtins__": None}, eval_context).collect()
+            eval(query_str, eval_context).collect()
             t_end = time_mod.perf_counter_ns()
         return t_end
 
