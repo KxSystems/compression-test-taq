@@ -30,7 +30,7 @@ idx|tags|query
 29||update key[timeBuckets] timeBucket from `ex`timeBucket xasc select cnt: count i, sum size by ex, timeBucket: value[timeBuckets] bin time from trade where date=min date
 30||select cnt: count i, sum size by sym, timeBucket: timeBucketsStep time from trade where date=min date, not corr=0
 31||select o: first price, h: max price, l: min price, c: last price, s: sum size by sym, 0D00:05 xbar time from trade where sym in hundredInstrs, not null stop
-32|,singleinstrument|update inbal: (bsize - asize) % bsize + asize from select first asize, first bsize by time.minute from quote where sym = anInfreqInstr
+32||update inbal: (bsize - asize) % bsize + asize from select first asize, first bsize by time.minute from quote where sym = anInfreqInstr
 33||select wsumAsk:asize wsum ask, wsumBid: bid wsum bsize, sdevasksize: sdev asize, sdevbid:sdev bid, corPrice:ask cor bid, corSize: asize cor bsize by sym from quote where sym in fivehundredInfreqInstrs
 34||select from trade where price = (min;price) fby sym
 35||select FirstTime: first time, LastTime: last time, first price, sum size by sym,pricegroup:({sums differ x};price) fby sym from trade where ex in "LM"
