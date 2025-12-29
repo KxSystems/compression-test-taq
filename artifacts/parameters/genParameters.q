@@ -32,6 +32,6 @@ fivehundredInfreqInstrs: 0N?fivehundredInfreqInstrs, (500-count fivehundredInfre
 
 / time bucket lower bounds:
 timeBuckets: ([closed: 0D; preopen: 0D04:00; open: 0D09:00; morning: 0D09:30; afternoon: 0D12:00; afterhours: 0D16; maintenance: 0D20])
-.Q.dd[DST; `timeBuckets.txt] 0: "=" sv' flip (string[key timeBuckets]; string value timeBuckets)
+.Q.dd[DST; `timeBuckets.txt] 0: "=" sv' flip (string[key timeBuckets]; -6_'string value timeBuckets)
 
 exit 0
