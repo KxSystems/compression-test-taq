@@ -60,6 +60,12 @@ def load_parameters(param_dir: Path) -> Dict[str, Any]:
         "hundredInstrs": read_list("hundredInstrs.txt"),
         "fivehundredInfreqInstrs": read_list("fivehundredInfreqInstrs.txt"),
     })
+
+    with open(param_dir / "timeBuckets.txt", "r", encoding="utf-8") as f:
+        params["timeBuckets"] = {line.split("=")[0].strip():
+                                 datetime.strptime(line.split("=")[1].strip()[2:], "%H:%M:%S.%f").time()
+                                 for line in f}
+
     return params
 
 @dataclass
