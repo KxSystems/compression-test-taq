@@ -32,3 +32,7 @@ idx|tags|query
 31|manualparallelization|raze {select first mysym, o: first price, h: max price, l: min price, c: last price, s: sum size by 0D00:05 xbar time from trade where mysym = x, 0 < count each stop} peach hundredInstrs
 32||
 33|manualparallelization|raze {select first mysym, wsumAsk:asize wsum ask, wsumBid: bid wsum bsize, sdevasksize: sdev asize, sdevbid:sdev bid, corPrice:ask cor bid, corSize: asize cor bsize from quote where mysym = x} peach fivehundredInfreqInstrs
+34||
+35||
+36|manualparallelization|raze {select first mysym, first price, FirstTime: first time, LastTime: last time, cnt: count size, sum size by pricegroup: sums differ price from trade where mysym = x} peach hundredInstrs
+37||

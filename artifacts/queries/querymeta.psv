@@ -32,10 +32,11 @@ idx|tags|description
 31|simple,fewinstruments|
 32|simple,singleinstrument|
 33|advanced,fewinstruments|
-34|advanced|
-35|advanced|trades with the smallest price for all instruments
-36|complex,singleinstrument|We want to calculate how much volume was transacted at each price. Whenever the price changes, we want to restart the count. We only want to consider prices for the same instrument
-37|simple,fewinstruments|
-38|advanced,singleinstrument|
-39|advanced|
-40|advanced|
+34|advanced|trades with the smallest price for all instruments
+35|complex,singleinstrument|We want to calculate how much volume was transacted at each price. Whenever the price changes, we want to restart the count. We only want to consider prices for the same instrument
+36|complex,fewinstruments|We want to calculate how much volume was transacted at each price. Whenever the price changes, we want to restart the count. We only want to consider prices for the same instrument
+37|complex|We want to calculate how much volume was transacted at each price. Whenever the price changes, we want to restart the count. We only want to consider prices for the same instrument
+38|simple,singleinstrument|
+39|advanced,fewinstruments|
+40|advanced,singleinstrument|
+41|advanced|
