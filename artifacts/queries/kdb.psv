@@ -33,7 +33,7 @@ idx|tags|query
 32||update inbal: (bsize - asize) % bsize + asize from select first asize, first bsize by time.minute from quote where sym = anInfreqInstr
 33||select wsumAsk:asize wsum ask, wsumBid: bid wsum bsize, sdevasksize: sdev asize, sdevbid:sdev bid, corPrice:ask cor bid, corSize: asize cor bsize by sym from quote where sym in fivehundredInfreqInstrs
 34||select from trade where price = (min;price) fby sym
-35||select FirstTime: first time, LastTime: last time, first price, sum size by sym,pricegroup:({sums differ x};price) fby sym from trade where ex in "LM"
+35||select first price, FirstTime: first time, LastTime: last time, cnt: count size, sum size by sym,pricegroup:({sums differ x};price) fby sym from trade where ex in "LM"
 36||select medMidSize: med (bsize + asize) from quote where sym=anInfreqInstr
 37||aj[`sym`time; select sym, time, price, size, stop, cond, ex from trade where date=min date, sym in twentyInstrs; select sym, time, bid, ask, bsize, asize, quotecond: cond, quoteex: ex from quote where date=min date]
 38||aj[`time; select time, price, size, stop, cond, ex from trade where date=min date, sym=aFreqInstr; select time, bid, ask, bsize, asize, quotecond: cond, quoteex: ex from quote where date=min date]
