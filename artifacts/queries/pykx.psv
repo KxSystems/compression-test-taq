@@ -22,8 +22,8 @@ idx|tags|query
 21||
 22||
 23||
-24||db.trade.select(kx.Column('time') & kx.Column('size').sums(), where=kx.Column('ex') == b'T')
-25||
+24||
+25||db.trade.select(kx.Column('time') & kx.Column('size').sums(), where=kx.Column('ex') == b'T')
 26||
 27||
 28||
@@ -40,3 +40,4 @@ idx|tags|query
 39||
 40||
 41||
+42||
