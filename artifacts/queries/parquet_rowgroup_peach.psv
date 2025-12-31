@@ -37,3 +37,7 @@ idx|tags|query
 36||
 37|manualparallelization|raze {select first mysym, first price, FirstTime: first time, LastTime: last time, cnt: count size, sum size by pricegroup: sums differ price from trade where mysym = x} peach hundredInstrs
 38||
+39||
+40||
+41||
+42||

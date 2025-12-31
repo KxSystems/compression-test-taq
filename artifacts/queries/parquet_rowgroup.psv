@@ -37,3 +37,7 @@ idx|tags|query
 36||select first price, FirstTime: first time, LastTime: last time, cnt: count size, sum size by pricegroup: sums differ price from trade where mysym=mostFreqInstr
 37||select first price, FirstTime: first time, LastTime: last time, cnt: count size, sum size by mysym, pricegroup: ({sums differ x};price) fby sym from trade where mysym in hundredInstrs
 38||select first price, FirstTime: first time, LastTime: last time, cnt: count size, sum size by mysym, pricegroup: ({sums differ x};price) fby sym from trade where ex in enlist each "LM"
+39||
+40||
+41||
+42||

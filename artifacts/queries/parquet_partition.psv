@@ -33,3 +33,11 @@ idx|tags|query
 32||select o: first price, h: max price, l: min price, c: last price, s: sum size by sym, 0D00:05 xbar time from trade where sym in hundredInstrs, 0 < count each stop
 33||update inbal: (bsize - asize) % bsize + asize from select first asize, first bsize by minute: `minute$0D00:01 xbar time from quote where sym = anInfreqInstr
 34||select wsumAsk:asize wsum ask, wsumBid: bid wsum bsize, sdevasksize: sdev asize, sdevbid:sdev bid, corPrice:ask cor bid, corSize: asize cor bsize by sym from quote where sym in fivehundredInfreqInstrs
+35||
+36||
+37||
+38||
+39||
+40||
+41||
+42||
