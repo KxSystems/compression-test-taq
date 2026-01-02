@@ -1,4 +1,5 @@
 system "l src/log.q"
+system "l src/pivot.q" / This will be available as a KX module
 
 if["" ~ getenv `FLUSH;
   .qlog.info "Environment variable FLUSH is not set. Maybe config/queryenv was not loaded.";

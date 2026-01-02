@@ -88,7 +88,7 @@ class QueryResult:
             self.run1_io_KB, self.run2_io_KB, self.run3_io_KB
         ]
 
-def run_query(runner, db_path: Path, device: str, idx: str, query: str) -> QueryResult:
+def run_query(runner, db_path: Path, device: str, idx: str, tags: List, query: str) -> QueryResult:
     """
     Runs a specific query 3 times (Cold, Warm, Warm) and records timing.
     """
@@ -105,7 +105,7 @@ def run_query(runner, db_path: Path, device: str, idx: str, query: str) -> Query
         io_Start = get_io_stat(device)
         t_start = time_mod.perf_counter_ns()
         try:
-            t_end = runner.execute_query(query, idx, runidx)
+            t_end = runner.execute_query(idx, tags, query, runidx)
         except Exception as e:
             logger.error("Query %s failed: %s", idx, e)
             # Return 0.0 or -1.0 to indicate failure in results
@@ -131,7 +131,7 @@ class QueryExecutorPyKX:
         logger.info("loading kdb DB %s", db_path)
         self.db = kx.DB(path=db_path, change_dir=False)
 
-    def execute_query(self, query_str: str, idx: int, runidx: int) -> int:
+    def execute_query(self, idx: int, tags: List, query_str: str, runidx: int) -> int:
         """
         Safely executes the query string using the loaded data and parameters.
         """
@@ -143,9 +143,6 @@ class QueryExecutorPyKX:
             **self.params
         }
         if runidx == 0:
-            # We use eval here because the requirement is to run arbitrary queries
-            # defined in a text file.
-            # .collect() triggers the actual computation for LazyFrames
             res = eval(query_str, eval_context)
             t_end = time_mod.perf_counter_ns()
             logger.info("[%s]   Shape of the result: %s x %s", idx, res.shape[0], res.shape[1])
@@ -171,14 +168,11 @@ class QueryExecutorPyKXQ:
         kx.q.system.load("src/getQueryParameters.q")
         kx.q('getQueryParameters', kx.q.hsym(kx.SymbolAtom(self.paramdir)))
 
-    def execute_query(self, query_str: str, idx: int, runidx: int) -> int:
+    def execute_query(self, idx: int, tags: List, query_str: str, runidx: int) -> int:
         """
         Safely executes the query string using the loaded data and parameters.
         """
         if runidx == 0:
-            # We use eval here because the requirement is to run arbitrary queries
-            # defined in a text file.
-            # .collect() triggers the actual computation for LazyFrames
             res = kx.q(query_str)
             t_end = time_mod.perf_counter_ns()
             logger.info("[%s]   Shape of the result: %s x %s", idx, res.shape[0], res.shape[1])
@@ -227,7 +221,7 @@ class QueryExecutorPolars:
         self.trade = pl.scan_parquet(db_path / "trade/date=*/*.parquet", hive_partitioning=True)
         self.quote = pl.scan_parquet(db_path / "quote/date=*/*.parquet", hive_partitioning=True)
 
-    def execute_query(self, query_str: str, idx: int, runidx: int) -> int:
+    def execute_query(self, idx: int, tags: List, query_str: str, runidx: int) -> int:
         """
         Safely executes the query string using the loaded data and parameters.
         """
@@ -241,14 +235,12 @@ class QueryExecutorPolars:
             **self.params
         }
         if runidx == 0:
-            # We use eval here because the requirement is to run arbitrary queries
-            # defined in a text file.
             # .collect() triggers the actual computation for LazyFrames
-            res = eval(query_str, eval_context).collect()
+            res = eval(query_str, eval_context) if "dataframeresult" in tags else eval(query_str, eval_context).collect()
             t_end = time_mod.perf_counter_ns()
             logger.info("[%s]   Shape of the result: %s x %s", idx, res.shape[0], res.shape[1])
         else:
-            eval(query_str, eval_context).collect()
+            eval(query_str, eval_context) if "dataframeresult" in tags else eval(query_str, eval_context).collect()
             t_end = time_mod.perf_counter_ns()
         return t_end
 
@@ -320,7 +312,7 @@ def main(args) -> None:
                 elif query == '':
                     result = QueryResult(query, "skip")
                 else:
-                    result = run_query(runner, args.db, device, idx, query)
+                    result = run_query(runner, args.db, device, idx, row['tags'].strip().split(","), query)
 
                 writer.writerow(row_start + [idx, row['tags'].strip()] + result.to_csv_row())
                 f_out.flush() # Write immediately to disk
