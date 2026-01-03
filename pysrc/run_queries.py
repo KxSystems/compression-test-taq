@@ -234,14 +234,13 @@ class QueryExecutorPolars:
             "quote": self.quote,
             **self.params
         }
+        res = eval(query_str, eval_context) if "dataframeresult" in tags else eval(query_str, eval_context).collect()
+        t_end = time_mod.perf_counter_ns()
+
         if runidx == 0:
             # .collect() triggers the actual computation for LazyFrames
-            res = eval(query_str, eval_context) if "dataframeresult" in tags else eval(query_str, eval_context).collect()
-            t_end = time_mod.perf_counter_ns()
             logger.info("[%s]   Shape of the result: %s x %s", idx, res.shape[0], res.shape[1])
-        else:
-            eval(query_str, eval_context) if "dataframeresult" in tags else eval(query_str, eval_context).collect()
-            t_end = time_mod.perf_counter_ns()
+
         return t_end
 
 def main(args) -> None:
@@ -338,7 +337,7 @@ parser = argparse.ArgumentParser(
 parser.add_argument('-db', type=Path, required=True, help="Path to hive-partitioned parquet DB root")
 parser.add_argument('-engine', type=str, choices=["polars", "pykx", "pykxq"], required=True, help="Query engine. Currently supported polars and PyKX")
 parser.add_argument('-queryfile', type=Path, required=True, help="PSV file containing queries")
-parser.add_argument('-querymetafile', type=Path, required=True, help="PSV file containing the meta of queries")
+parser.add_argument('-querymetafile', type=Path, required=True, help="PSV file containing the query metas")
 parser.add_argument('-paramdir', type=Path, required=True, help="Directory containing parameter txt files")
 parser.add_argument('-tags', type=str, required=False, help="Comma separated tags for filtering queries.")
 
