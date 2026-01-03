@@ -17,7 +17,7 @@ from datetime import datetime,time, timedelta # time is used in queries
 import time as time_mod   # alias to avoid naming conflict
 
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Set
 
 import polars as pl
 os.environ['PYKX_4_1_ENABLED'] = 'True'  # needed for change_dir parameter below
@@ -88,7 +88,7 @@ class QueryResult:
             self.run1_io_KB, self.run2_io_KB, self.run3_io_KB
         ]
 
-def run_query(runner, db_path: Path, device: str, idx: str, tags: List, query: str) -> QueryResult:
+def run_query(runner, db_path: Path, device: str, idx: str, tags: Set, query: str) -> QueryResult:
     """
     Runs a specific query 3 times (Cold, Warm, Warm) and records timing.
     """
@@ -131,7 +131,7 @@ class QueryExecutorPyKX:
         logger.info("loading kdb DB %s", db_path)
         self.db = kx.DB(path=db_path, change_dir=False)
 
-    def execute_query(self, idx: int, tags: List, query_str: str, runidx: int) -> int:
+    def execute_query(self, idx: int, tags: Set, query_str: str, runidx: int) -> int:
         """
         Safely executes the query string using the loaded data and parameters.
         """
@@ -168,7 +168,7 @@ class QueryExecutorPyKXQ:
         kx.q.system.load("src/getQueryParameters.q")
         kx.q('getQueryParameters', kx.q.hsym(kx.SymbolAtom(self.paramdir)))
 
-    def execute_query(self, idx: int, tags: List, query_str: str, runidx: int) -> int:
+    def execute_query(self, idx: int, tags: Set, query_str: str, runidx: int) -> int:
         """
         Safely executes the query string using the loaded data and parameters.
         """
@@ -221,7 +221,7 @@ class QueryExecutorPolars:
         self.trade = pl.scan_parquet(db_path / "trade/date=*/*.parquet", hive_partitioning=True)
         self.quote = pl.scan_parquet(db_path / "quote/date=*/*.parquet", hive_partitioning=True)
 
-    def execute_query(self, idx: int, tags: List, query_str: str, runidx: int) -> int:
+    def execute_query(self, idx: int, tags: Set, query_str: str, runidx: int) -> int:
         """
         Safely executes the query string using the loaded data and parameters.
         """
@@ -250,7 +250,7 @@ def main(args) -> None:
         logger.error("Database does not exist at %s", args.db)
         sys.exit(1)
 
-
+    tags = {} if args.tags is None else set(args.tags.strip().split(","))
     # Ensure output directory exists
     args.result.parent.mkdir(parents=True, exist_ok=True)
 
@@ -299,20 +299,24 @@ def main(args) -> None:
             logger.error("Query file not found: %s", args.queryfile)
             sys.exit(3)
 
-        with open(args.queryfile, 'r', encoding='utf-8') as f_in:
-            # Using DictReader to handle pipe delimiter
-            reader = csv.DictReader(f_in, delimiter='|')
+        with open(args.queryfile, 'r', encoding='utf-8') as queryfile, \
+             open(args.querymetafile, "r", encoding="utf-8") as querymetafile:
+            queryreader = csv.DictReader(queryfile, delimiter='|')
+            querymetareader = csv.DictReader(querymetafile, delimiter='|')
 
-            for row in reader:
+            for row, rowmeta in zip(queryreader, querymetareader):
                 idx = row['idx'].strip()
                 query = row['query'].strip()
+                querytags = set(row['tags'].strip().split(",") + rowmeta['tags'].strip().split(","))
                 if idx.startswith("#"):
                     idx = idx[1:]
                     result = QueryResult(query, "skip")
                 elif query == '':
-                    result = QueryResult(query, "skip")
+                    result = QueryResult(query, "emptyquery")
+                elif len(tags) > 0 and len(tags & querytags) == 0:
+                    result = QueryResult(query, "tagfiltered")
                 else:
-                    result = run_query(runner, args.db, device, idx, row['tags'].strip().split(","), query)
+                    result = run_query(runner, args.db, device, idx, querytags, query)
 
                 writer.writerow(row_start + [idx, row['tags'].strip()] + result.to_csv_row())
                 f_out.flush() # Write immediately to disk
@@ -334,7 +338,9 @@ parser = argparse.ArgumentParser(
 parser.add_argument('-db', type=Path, required=True, help="Path to hive-partitioned parquet DB root")
 parser.add_argument('-engine', type=str, choices=["polars", "pykx", "pykxq"], required=True, help="Query engine. Currently supported polars and PyKX")
 parser.add_argument('-queryfile', type=Path, required=True, help="PSV file containing queries")
+parser.add_argument('-querymetafile', type=Path, required=True, help="PSV file containing the meta of queries")
 parser.add_argument('-paramdir', type=Path, required=True, help="Directory containing parameter txt files")
+parser.add_argument('-tags', type=str, required=False, help="Comma separated tags for filtering queries.")
 
 default_result = Path(f"results/nysetaq_query_results.psv")
 parser.add_argument('-result', type=Path, default=default_result, help="Output PSV file path")
