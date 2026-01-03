@@ -305,6 +305,9 @@ def main(args) -> None:
 
             for row, rowmeta in zip(queryreader, querymetareader):
                 idx = row['idx'].strip()
+                if idx != rowmeta['idx'].strip():
+                    logger.error("Index mismatch between the query and the query meta files: %s vs %s", idx, rowmeta['idx'].strip())
+                    sys.exit(4)
                 query = row['query'].strip()
                 querytags = set(row['tags'].strip().split(",") + rowmeta['tags'].strip().split(","))
                 if idx.startswith("#"):
