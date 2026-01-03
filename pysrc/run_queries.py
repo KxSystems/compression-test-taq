@@ -310,6 +310,7 @@ def main(args) -> None:
                     sys.exit(4)
                 query = row['query'].strip()
                 querytags = set(row['tags'].strip().split(",") + rowmeta['tags'].strip().split(","))
+                querytags.discard("")
                 if idx.startswith("#"):
                     idx = idx[1:]
                     result = QueryResult(query, "skip")
@@ -320,7 +321,7 @@ def main(args) -> None:
                 else:
                     result = run_query(runner, args.db, device, idx, querytags, query)
 
-                writer.writerow(row_start + [idx, row['tags'].strip()] + result.to_csv_row())
+                writer.writerow(row_start + [idx, ",".join(querytags)] + result.to_csv_row())
                 f_out.flush() # Write immediately to disk
 
     elapsed = datetime.now() - start_time
