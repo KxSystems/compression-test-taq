@@ -12,14 +12,20 @@ PARAMDIR:  hsym `$o`paramdir
 PARQUET: upper[o `format] like "PARQUET*"
 PARQUETROWGROUP: upper[o `format] ~ "PARQUET_ROWGROUP"
 
-iostatError: `kB_read`kB_wrtn`kB_sum!3#0Nj
+QueryTable: ("***";enlist "|") 0: `$o `queryfile;
+.qlog.info "Loading and executing queries from ", o `queryfile;
+QueryMetaTable: `idx`querytag xcol ("**";enlist "|") 0: `$o `querymetafile;
+
+Tags: ("," vs o`tags) except enlist ""
+
+IOStatError: `kB_read`kB_wrtn`kB_sum!3#0Nj
 
 getKBReadMac: {[device:`C]
-  if[device ~ enlist ""; :iostatError];
+  if[device ~ enlist ""; :IOStatError];
   iostatcmd: "iostat -d -I ", device, " 2>&1"; // -I returns the MB read as last column
   r: @[system; iostatcmd; .qlog.error];
-  if[not 0h ~ type r; :iostatError];
-  @[iostatError;`kB_sum;:;1000*`long$"F"$l last where not "" ~/: l:" " vs last r]
+  if[not 0h ~ type r; :IOStatError];
+  @[IOStatError;`kB_sum;:;1000*`long$"F"$l last where not "" ~/: l:" " vs last r]
   }
 
 getKBReadLinux: {[device:`C]
@@ -27,20 +33,20 @@ getKBReadLinux: {[device:`C]
   r: @[system; iostatcmd; .qlog.error];
   :$[0h ~ type r; [
   	iostats: @[; `disk] first @[; `statistics] first first first value flip value .j.k raze r;
-  	$[count iostats; [m:exec `long$sum kB_read, `long$sum kB_wrtn from iostats;m,([kB_sum: sum m])]; iostatError]];
-	iostatError]
+  	$[count iostats; [m:exec `long$sum kB_read, `long$sum kB_wrtn from iostats;m,([kB_sum: sum m])]; IOStatError]];
+	IOStatError]
   }
 
 getKBRead: $[.z.o ~ `m64; getKBReadMac; getKBReadLinux]
 
-writeRes: {[h; compparm:`C; (idx:`C; tags:`C; query:`C); status:`C; ts:`N; memusage:`j; io:`J]
+writeRes: {[h; compparm:`C; idx:`C; tags; query:`C; (status:`C; ts:`N; memusage:`j; io:`J)]
   if[not 3 = count ts;
     .qlog.error "Three elapsed times are expected";
     ts: 3#ts];
   if[not 4 = count io;
     .qlog.error "Four IO numbers are expected";
     io: 4#io];
-  h ,[;"\n"] SEP sv (compparm; string system "s"; idx except "#"; tags; query; status), string (`long$ts), (memusage div 1000), 1 _ deltas io;
+  h ,[;"\n"] SEP sv (compparm; string system "s"; idx except "#"; "," sv tags; query; status), string (`long$ts), (memusage div 1000), 1 _ deltas io;
   }
 
 loadParquetDB: {[db: `C; device: `C; writerFN]
@@ -57,7 +63,7 @@ loadParquetDB: {[db: `C; device: `C; writerFN]
   memusage: last system "ts loadHiveDataset[DB; PARQUETROWGROUP]";
   ts: .z.p-s;
   io,: getKBRead[device]`kB_read;
-  writerFN[(string 0; ""; "load/mmap DB"); "success"; ts, 2#0Nn; memusage; io, 2#0Nj];
+  writerFN[string 0; enlist ""; "load/mmap DB"; ("success"; ts, 2#0Nn; memusage; io, 2#0Nj)];
 
   exnames:: exec ex!`$name from exnames; / convert back to a map
   }
@@ -77,15 +83,22 @@ loadKDBDB: {[db: `C; device: `C; writerFN]
     .qlog.info "Loading encryption file ", o`encr;
     -36!@[; 0; hsym `$] ":" vs o`encr]
 
-  writerFN[(string 0; ""; "load/mmap DB"); "success"; ts, 2#0Nn; memusage; io, 2#0Nj];
+  writerFN[string 0; enlist ""; "load/mmap DB"; ("success"; ts, 2#0Nn; memusage; io, 2#0Nj)];
   }
 
-runQuery: {[db: `C; device: `C; writerFN; idx:`C; tags:`C; query:`C]
+runQuery: {[db: `C; device: `C; writerFN; tags; idx:`C; querytags; query:`C]
   query: trim query;
-  ts: io: ();
-  if[(not count query) or "#" ~ first idx;
-    writerFN[(idx except "#"; tags; query); "skip"; 3#0Nn; 0Nj; 4#0Nj];
+  if[not count query;
+    writerFN[idx; querytags; query; ("emptyquery"; 3#0Nn; 0Nj; 4#0Nj)];
     :()];
+  if["#" ~ first idx;
+    writerFN[1_idx; querytags; query; ("skip"; 3#0Nn; 0Nj; 4#0Nj)];
+    :()];
+  if[count[tags] and 0 = count querytags inter tags;
+    writerFN[1_idx; querytags; query; ("tagfiltered"; 3#0Nn; 0Nj; 4#0Nj)];
+    :()];
+
+  ts: io: ();
   .qlog.info raze system getenv[`FLUSH], " ", db;
   .qlog.info "Collecting garbage";
   .Q.gc[];
@@ -94,7 +107,7 @@ runQuery: {[db: `C; device: `C; writerFN; idx:`C; tags:`C; query:`C]
   s: .z.p; / \ts does not collect memory usage of the secondary threads
   errormsg: @[system; "ts res:", query; ::];
   if[10h ~ type errormsg;
-    writerFN[(idx; tags; query); errormsg; 3#0Nn; 0Nj; 4#0Nj];
+    writerFN[idx; querytags; query; (errormsg; 3#0Nn; 0Nj; 4#0Nj)];
     :()];
   ts,: .z.p-s;
   io,: getKBRead[device]`kB_read;
@@ -108,7 +121,7 @@ runQuery: {[db: `C; device: `C; writerFN; idx:`C; tags:`C; query:`C]
   s: .z.p;
   errormsg: @[value; "res:", query;::];
   if[10h ~ type errormsg;
-    writerFN[(idx; tags; query); errormsg; ts[0], 2#0Nn; memusage; io, 2#0Nj];
+    writerFN[idx; querytags; query; (errormsg; ts[0], 2#0Nn; memusage; io, 2#0Nj)];
     :()];
   ts,: .z.p-s;
   io,: getKBRead[device]`kB_read;
@@ -119,13 +132,13 @@ runQuery: {[db: `C; device: `C; writerFN; idx:`C; tags:`C; query:`C]
   s: .z.p;
   errormsg: @[value; "res:", query;::];
   if[10h ~ type errormsg;
-    writerFN[(idx; tags; query); errormsg; ts, 0Nn; memusage; io, 0Nj];
+    writerFN[idx; querytags; query; (errormsg; ts, 0Nn; memusage; io, 0Nj)];
     :()];
   ts,: .z.p-s;
   io,: getKBRead[device]`kB_read;
   delete res from `.;
 
-  writerFN[(idx; tags; query); "success"; ts; memusage; io];
+  writerFN[idx; querytags; query; ("success"; ts; memusage; io)];
   };
 
 startTime: .z.p
@@ -154,9 +167,14 @@ $[PARQUET; [
 system "l src/getQueryParameters.q"
 getQueryParameters PARAMDIR
 
-queryFile: o `queryfile;
-.qlog.info "Loading and executing queries from ", queryFile;
-{$[runQuery[DB; Device; WriterFN] . value x]} each ("***";enlist "|") 0: `$queryFile; / skip comments
+if[not QueryTable[`idx] ~ QueryMetaTable`idx;
+  .qlog.error "Index mismatch between the query and the query meta files";
+  exit 4
+  ]
+
+queries: (QueryTable) lj `idx xkey QueryMetaTable;
+queries: select idx, (except[;enlist ""] each "," vs/: querytag ,' "," ,/: tags), query from queries
+{$[runQuery[DB; Device; WriterFN; Tags] . value x]} each queries;
 
 .qlog.info "Query benchmark completed in ", 2_string .z.p - startTime;
 if[not `debug in key o; exit 0];
