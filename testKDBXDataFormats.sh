@@ -61,18 +61,18 @@ function get_numa_config () {
 function execute_queries () {
     mkdir -p ${RESULT_DIR}
     echo "Running Queries..."
-    local query_runner=./src/runQueries.q
+    local query_runner="./src/runQueries.q -querymetafile ./artifacts/queries/querymeta.psv -paramdir ${PARAM_DIR}"
     for s in "${THREAD_NRS[@]}"; do
         echo "--> Running with $s threads"
         $(get_numa_config) $QEXEC ${query_runner} -db ${DB_DIR}/kdb -format kdb -queryfile ./artifacts/queries/kdb.psv -paramdir ${PARAM_DIR} -result ${RESULT_DIR}/kdb_${s}Threads.psv -s ${s}
         QMAP=TRUE $(get_numa_config) $QEXEC ${query_runner} -db ${DB_DIR}/kdb -format kdb -queryfile ./artifacts/queries/kdb_peach.psv -paramdir ${PARAM_DIR} -result ${RESULT_DIR}/kdbPeachQMAP_${s}Threads.psv -s ${s}
 
-        $(get_numa_config) $QEXEC ${query_runner} -db ${DB_DIR}/parquet/hivepartitioned -format parquet -queryfile ./artifacts/queries/parquet_partition.psv -paramdir ${PARAM_DIR} -result ${RESULT_DIR}/parquetHivePartitioned_${s}Threads.psv -s ${s}
-        $(get_numa_config) $QEXEC ${query_runner} -db ${DB_DIR}/parquet/hivepartitioned -format parquet -queryfile ./artifacts/queries/parquet_partition_peach.psv -paramdir ${PARAM_DIR} -result ${RESULT_DIR}/parquetHivePartitionedPeach_${s}Threads.psv -s ${s}
-        $(get_numa_config) $QEXEC ${query_runner} -db ${DB_DIR}/parquet/rowgroup -format parquet_rowgroup -queryfile ./artifacts/queries/parquet_rowgroup.psv -paramdir ${PARAM_DIR} -result ${RESULT_DIR}/parquetRowgroup_${s}Threads.psv -s ${s}
-        $(get_numa_config) $QEXEC ${query_runner} -db ${DB_DIR}/parquet/rowgroup -format parquet_rowgroup -queryfile ./artifacts/queries/parquet_rowgroup_peach.psv -paramdir ${PARAM_DIR} -result ${RESULT_DIR}/parquetRowgroupPeach_${s}Threads.psv -s ${s}
-        $(get_numa_config) $QEXEC ${query_runner} -db ${DB_DIR}/parquet/rowgroup_minrowgroup_100000 -format parquet_rowgroup -queryfile ./artifacts/queries/parquet_rowgroup.psv -paramdir ${PARAM_DIR} -result ${RESULT_DIR}/parquetRowgroupMinSize_${s}Threads.psv -s ${s}
-        $(get_numa_config) $QEXEC ${query_runner} -db ${DB_DIR}/parquet/rowgroup_maxrowgroupsize250000 -format parquet_rowgroup -queryfile ./artifacts/queries/parquet_rowgroup.psv -paramdir ${PARAM_DIR} -result ${RESULT_DIR}/parquetRowgroupMaxSize_${s}Threads.psv -s ${s}
+        $(get_numa_config) $QEXEC ${query_runner} -db ${DB_DIR}/parquet/hivepartitioned -format parquet -queryfile ./artifacts/queries/parquet_partition.psv -result ${RESULT_DIR}/parquetHivePartitioned_${s}Threads.psv -s ${s}
+        $(get_numa_config) $QEXEC ${query_runner} -db ${DB_DIR}/parquet/hivepartitioned -format parquet -queryfile ./artifacts/queries/parquet_partition_peach.psv -result ${RESULT_DIR}/parquetHivePartitionedPeach_${s}Threads.psv -s ${s}
+        $(get_numa_config) $QEXEC ${query_runner} -db ${DB_DIR}/parquet/rowgroup -format parquet_rowgroup -queryfile ./artifacts/queries/parquet_rowgroup.psv -result ${RESULT_DIR}/parquetRowgroup_${s}Threads.psv -s ${s}
+        $(get_numa_config) $QEXEC ${query_runner} -db ${DB_DIR}/parquet/rowgroup -format parquet_rowgroup -queryfile ./artifacts/queries/parquet_rowgroup_peach.psv -result ${RESULT_DIR}/parquetRowgroupPeach_${s}Threads.psv -s ${s}
+        $(get_numa_config) $QEXEC ${query_runner} -db ${DB_DIR}/parquet/rowgroup_minrowgroup_100000 -format parquet_rowgroup -queryfile ./artifacts/queries/parquet_rowgroup.psv -result ${RESULT_DIR}/parquetRowgroupMinSize_${s}Threads.psv -s ${s}
+        $(get_numa_config) $QEXEC ${query_runner} -db ${DB_DIR}/parquet/rowgroup_maxrowgroupsize250000 -format parquet_rowgroup -queryfile ./artifacts/queries/parquet_rowgroup.psv -result ${RESULT_DIR}/parquetRowgroupMaxSize_${s}Threads.psv -s ${s}
     done
 }
 
