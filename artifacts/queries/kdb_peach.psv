@@ -10,19 +10,19 @@ idx|tags|query
 9||
 10||
 11||
-12|manualparallelization|(uj/) {(`time,x) xcol select avgMidSize: avg (bid + ask) % 2 by 0D00:10 xbar time from quote where sym=x} peach fivehundredInfreqInstrs
-13||
-14|manualparallelization|raze {update sym: x from 0!select avgSpread: avg ask - bid by 0D00:10 xbar time from quote where sym = x} peach hundredInstrs
-15||
+12||
+13|manualparallelization|(uj/) {(`time,x) xcol select avgMidSize: avg (bid + ask) % 2 by 0D00:10 xbar time from quote where sym=x} peach fivehundredInfreqInstrs
+14||
+15|manualparallelization|raze {update sym: x from 0!select avgSpread: avg ask - bid by 0D00:10 xbar time from quote where sym = x} peach hundredInstrs
 16||
-17|manualparallelization|raze {update sym: x from 0!select avgWeightedSpread: (asize + bsize) wavg ask - bid, devSpread: dev ask - bid, maxSpread: max ask - bid, minSpread: min ask- bid by exnames ex from quote where date=min date, sym=x} peach hundredInstrs
-18||
+17||
+18|manualparallelization|raze {update sym: x from 0!select avgWeightedSpread: (asize + bsize) wavg ask - bid, devSpread: dev ask - bid, maxSpread: max ask - bid, minSpread: min ask- bid by exnames ex from quote where date=min date, sym=x} peach hundredInstrs
 19||
-20|manualparallelization|raze {select sym, weightedBidPice: bsize wavg bid, weightedOfferPice: asize wavg ask from quote where sym = x} peach twentyInstrs
-21||
+20||
+21|manualparallelization|raze {select sym, weightedBidPice: bsize wavg bid, weightedOfferPice: asize wavg ask from quote where sym = x} peach twentyInstrs
 22||
-23|manualparallelization|raze {select sym, time, movingmid: 5 mavg (ask + bid) % 2, movingsize: 5 mavg asize + bsize from quote where sym = x} peach twentyInstrs
-24||
+23||
+24|manualparallelization|raze {select sym, time, movingmid: 5 mavg (ask + bid) % 2, movingsize: 5 mavg asize + bsize from quote where sym = x} peach twentyInstrs
 25||
 26||
 27||
@@ -32,14 +32,15 @@ idx|tags|query
 31||
 32||
 33||
-34|manualparallelization|raze {update sym: x from 0!select o: first price, h: max price, l: min price, c: last price, s: sum size by 0D00:05 xbar time from trade where sym = x, not null stop} peach hundredInstrs
-35||
-36|manualparallelization|raze {select first sym, wsumAsk:asize wsum ask, wsumBid: bid wsum bsize, sdevasksize: sdev asize, sdevbid:sdev bid, corPrice:ask cor bid, corSize: asize cor bsize from quote where sym = x} peach fivehundredInfreqInstrs
-37||
+34||
+35|manualparallelization|raze {update sym: x from 0!select o: first price, h: max price, l: min price, c: last price, s: sum size by 0D00:05 xbar time from trade where sym = x, not null stop} peach hundredInstrs
+36||
+37|manualparallelization|raze {select first sym, wsumAsk:asize wsum ask, wsumBid: bid wsum bsize, sdevasksize: sdev asize, sdevbid:sdev bid, corPrice:ask cor bid, corSize: asize cor bsize from quote where sym = x} peach fivehundredInfreqInstrs
 38||
-39|manualparallelization|raze {update sym: x from 0!select first price, FirstTime: first time, LastTime: last time, cnt: count size, sum size by pricegroup: sums differ price from trade where sym = x} peach hundredInstrs
-40||
+39||
+40|manualparallelization|raze {update sym: x from 0!select first price, FirstTime: first time, LastTime: last time, cnt: count size, sum size by pricegroup: sums differ price from trade where sym = x} peach hundredInstrs
 41||
-42|manualparallelization|raze {aj[`sym`time; select sym, time, price, size, stop, cond, ex from trade where date=min date, sym = x; select sym, time, bid, ask, bsize, asize, quotecond: cond, quoteex: ex from quote where date=min date]} peach twentyInstrs
-43||
+42||
+43|manualparallelization|raze {aj[`sym`time; select sym, time, price, size, stop, cond, ex from trade where date=min date, sym = x; select sym, time, bid, ask, bsize, asize, quotecond: cond, quoteex: ex from quote where date=min date]} peach twentyInstrs
 44||
+45||
