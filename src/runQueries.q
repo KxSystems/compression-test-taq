@@ -172,9 +172,9 @@ if[not QueryTable[`idx] ~ QueryMetaTable`idx;
   exit 4
   ]
 
-queries: (QueryTable) lj `idx xkey QueryMetaTable;
+queries: QueryTable lj `idx xkey QueryMetaTable;
 queries: select idx, (except[;enlist ""] each "," vs/: querytag ,' "," ,/: tags), query from queries
-{$[runQuery[DB; Device; WriterFN; Tags] . value x]} each queries;
+(runQuery[DB; Device; WriterFN; Tags] . value@) each queries;
 
 .qlog.info "Query benchmark completed in ", 2_string .z.p - startTime;
 if[not `debug in key o; exit 0];
