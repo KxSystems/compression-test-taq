@@ -65,7 +65,7 @@ function execute_queries () {
         QMAP=TRUE $(get_numa_config) $QEXEC ./src/runQueries.q -db ${DB_DIR}/kdb -format kdb -queryfile ./artifacts/queries/kdb_peach.psv ${COMMONPARAMS} -result ${RESULT_DIR}/kdbPeachQMAP_kdb_${s}Threads.psv -s ${s}
         $(get_numa_config) $QEXEC ./src/runQueries.q -db ${DB_DIR}/parquet/rowgroup -format parquet_rowgroup -queryfile ./artifacts/queries/parquet_rowgroup.psv ${COMMONPARAMS} -result ${RESULT_DIR}/kdb_parquetRowgroup_${s}Threads.psv -s ${s}
 
-        POLARS_MAX_THREADS=$((s+1)) $(get_numa_config) python3 pysrc/run_queries.py -engine polars -db ${DB_DIR}/parquet/rowgroup -queryfile ./artifacts/queries/polars.psv ${COMMONPARAMS} -result ${RESULT_DIR}/polars_parquetRowgroup_${s}Threads.psv
+        POLARS_MAX_THREADS=$(( s > 1 ? s : 1 )) $(get_numa_config) python3 pysrc/run_queries.py -engine polars -db ${DB_DIR}/parquet/rowgroup -queryfile ./artifacts/queries/polars.psv ${COMMONPARAMS} -result ${RESULT_DIR}/polars_parquetRowgroup_${s}Threads.psv
         QARGS="-s ${s}" $(get_numa_config) python3 pysrc/run_queries.py -engine pykx -db ${DB_DIR}/kdb -queryfile ./artifacts/queries/pykx.psv ${COMMONPARAMS} -result ${RESULT_DIR}/pykx_kdb_${s}Threads.psv
         QARGS="-s ${s}" $(get_numa_config) python3 pysrc/run_queries.py -engine pykxq -db ${DB_DIR}/kdb -queryfile ./artifacts/queries/kdb.psv ${COMMONPARAMS} -result ${RESULT_DIR}/pykxq_kdb_${s}Threads.psv
     done
