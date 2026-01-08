@@ -8,9 +8,8 @@ if["" ~ getenv `FLUSH;
 ko: key o: first each .Q.opt .z.x;
 
 DB: o `db
-PARAMDIR:  hsym `$o`paramdir
-PARQUET: upper[o `format] like "PARQUET*"
-PARQUETROWGROUP: upper[o `format] ~ "PARQUET_ROWGROUP"
+PARAMDIR: hsym `$o`paramdir
+FORMAT: upper `$o `format
 
 QueryTable: ("***";enlist "|") 0: `$o `queryfile;
 .qlog.info "Loading and executing queries from ", o `queryfile;
@@ -49,7 +48,7 @@ writeRes: {[h; compparm:`C; idx:`C; tags; query:`C; (status:`C; ts:`N; memusage:
   h ,[;"\n"] SEP sv (compparm; string system "s"; idx except "#"; "," sv tags; query; status), string (`long$ts), (memusage div 1000), 1 _ deltas io;
   }
 
-loadParquetDB: {[db: `C; device: `C; writerFN]
+loadParquetDB: {[db: `C; rowgroup: `b; device: `C; writerFN]
   system "l src/loadHiveDataset.q";
 
   .qlog.info raze system getenv[`FLUSH], " ", db;
@@ -60,7 +59,7 @@ loadParquetDB: {[db: `C; device: `C; writerFN]
   .qlog.info "loading parquet dataset at ", db;
   io,: getKBRead[device]`kB_read;
   s: .z.p;
-  memusage: last system "ts loadHiveDataset[DB; PARQUETROWGROUP]";
+  memusage: last system "ts loadHiveDataset[", db, "; ", rowgroup, "]";
   ts: .z.p-s;
   io,: getKBRead[device]`kB_read;
   writerFN[string 0; enlist ""; "load/mmap DB"; ("success"; ts, 2#0Nn; memusage; io, 2#0Nj)];
@@ -68,6 +67,40 @@ loadParquetDB: {[db: `C; device: `C; writerFN]
   exnames:: exec ex!`$name from exnames; / convert back to a map
   }
 
+loadKDBDBIntoMemory: {[db: `s]
+  tablesBefore: tables[];
+  {[fn;x] $[{x ~ key x} child: fn x; [
+    .qlog.info "loading object ", string[x], " into memory";
+    x set get[child] ::];    / load e.g. sym file
+    {[fn; tName]
+      .qlog.info "loading table ", string[tName], " into memory";
+      tName upsert select from get[fn tName] where i>-1 }[.Q.dd child] each key child]
+    }[.Q.dd db] each key db;
+
+  newTables: tables[] except tablesBefore;
+  {[tName]
+    .qlog.info "sorting ", string[tName], " by time";
+    `time xasc tName
+    } each newTables where `time in' cols each newTables;
+
+  {[tName]
+    .qlog.info "Adding groupped attribute to ", string[tName];
+    update `g#sym from tName
+    } each newTables;
+  }
+
+loadInMemKDBDB: {[db: `C; device: `C; writerFN]
+  io: ();
+  .qlog.info "loading kdb DB into memory from ", db;
+  loadcmd: "ts loadKDBDBIntoMemory `$\":", db, "\"";
+  io,: getKBRead[device]`kB_read;
+  s: .z.p;
+  memusage: last system loadcmd;
+  ts: .z.p-s;
+  io,: getKBRead[device]`kB_read;
+
+  writerFN[string 0; enlist ""; "load/mmap DB"; ("success"; ts, 2#0Nn; memusage; io, 2#0Nj)];
+  }
 loadKDBDB: {[db: `C; device: `C; writerFN]
   io: ();
   .qlog.info "loading kdb DB ", db;
@@ -152,15 +185,19 @@ resultH: hopen resFile;
 SEP: "|"
 resultH "compparam|threadcount|idx|tags|query|status|run1timeNS|run2timeNS|run3timeNS|run1memKB|run1ioKB|run2ioKB|run3ioKB\n"
 
-$[PARQUET; [
-  compparm: "nyi_nyi_nyi";
-  WriterFN:: writeRes[resultH; compparm];
-  loadParquetDB[DB; Device; WriterFN]
-  ];[
-  compparmall: -21!hsym `$DB,"/",string[first key hsym `$DB],"/quote/sym";   // or assume that db dir name reflects compression
-  compparm: $[count compparmall; "_" sv string @[;`logicalBlockSize`algorithm`zipLevel] compparmall; "0_0_0"];
-  WriterFN:: writeRes[resultH; compparm];
-  loadKDBDB[DB; Device; WriterFN]
+$[FORMAT like "PARQUET*"; [
+    compparm: "nyi_nyi_nyi";
+    WriterFN:: writeRes[resultH; compparm];
+    loadParquetDB[DB; FORMAT ~ `PARQUET_ROWGROUP; Device; WriterFN]
+  ]; FORMAT = `KDBINMEMORY; [
+    compparm: "0_0_0";
+    WriterFN:: writeRes[resultH; compparm];
+    loadInMemKDBDB[DB; Device; WriterFN]
+  ]; [
+    compparmall: -21!hsym `$DB,"/",string[first key hsym `$DB],"/quote/sym";   // or assume that db dir name reflects compression
+    compparm: $[count compparmall; "_" sv string @[;`logicalBlockSize`algorithm`zipLevel] compparmall; "0_0_0"];
+    WriterFN:: writeRes[resultH; compparm];
+    loadKDBDB[DB; Device; WriterFN]
   ]]
 
 .qlog.info "Loading parameters from ", 1_string PARAMDIR
