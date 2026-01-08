@@ -71,7 +71,7 @@ loadKDBDBIntoMemory: {[db: `s]
   tablesBefore: tables[];
   {[fn;x] $[{x ~ key x} child: fn x; [
     .qlog.info "loading object ", string[x], " into memory";
-    x set get[child] ::];    / load e.g. sym file
+    x set (get[child] ::)];    / load e.g. sym file
     {[fn; tName]
       .qlog.info "loading table ", string[tName], " into memory";
       tName upsert select from get[fn tName] where i>-1 }[.Q.dd child] each key child]
