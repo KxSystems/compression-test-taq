@@ -69,17 +69,20 @@ loadParquetDB: {[db: `C; rowgroup: `b; device: `C; writerFN]
 
 loadKDBDBIntoMemory: {[db: `s]
   tablesBefore: tables[];
-  {[fn;x] $[{x ~ key x} child: fn x; [
-    .qlog.info "loading object ", string[x], " into memory";
-    x set (get[child] ::)];    / load e.g. sym file
-    {[fn; tName]
+  c: key db;
+  files: c where ({x ~ key x} .Q.dd[db]@) each c;
+  db {[db; f]
+    .qlog.info "loading object ", string[f], " into memory";
+    f set (get[.Q.dd[db;f]] ::)}' files;
+  dpath: .Q.dd[db] d: first c except files; / extract the first date's data only
+  .qlog.info "loading tables in partition ", string[d], " into memory";
+  .Q.dd[dpath] {[getPath; tName]
       .qlog.info "loading table ", string[tName], " into memory";
-      tName upsert select from get[fn tName] where i>-1 }[.Q.dd child] each key child]
-    }[.Q.dd db] each key db;
+      tName set select from get[getPath tName] where i>-1 }' key dpath;
 
   newTables: tables[] except tablesBefore;
   {[tName]
-    .qlog.info "sorting ", string[tName], " by time";
+    .qlog.info "sorting ", string[tName], " by date and time";
     `time xasc tName
     } each newTables where `time in' cols each newTables;
 
