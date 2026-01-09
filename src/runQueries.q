@@ -82,7 +82,7 @@ loadKDBDBIntoMemory: {[db: `s]
 
   newTables: tables[] except tablesBefore;
   {[tName]
-    .qlog.info "sorting ", string[tName], " by date and time";
+    .qlog.info "sorting ", string[tName], " by  time";
     `time xasc tName
     } each newTables where `time in' cols each newTables;
 
