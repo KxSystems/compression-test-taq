@@ -59,7 +59,7 @@ loadParquetDB: {[db: `C; rowgroup: `b; device: `C; writerFN]
   .qlog.info "loading parquet dataset at ", db;
   io,: getKBRead[device]`kB_read;
   s: .z.p;
-  memusage: last system "ts loadHiveDataset[", db, "; ", rowgroup, "]";
+  memusage: last system "ts loadHiveDataset[", .Q.s1[db], "; ", .Q.s1[rowgroup], "]";
   ts: .z.p-s;
   io,: getKBRead[device]`kB_read;
   writerFN[string 0; enlist ""; "load/mmap DB"; ("success"; ts, 2#0Nn; memusage; io, 2#0Nj)];
