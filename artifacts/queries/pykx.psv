@@ -13,9 +13,9 @@ idx|tags|query
 12||db.quote.select(columns=((kx.Column('bid') + kx.Column('ask')) / 2).avg().name('avgMidSize'), where=kx.Column('sym') == anInfreqInstr)
 13||
 14||
-15||db.quote.select(columns=(kx.Column('ask') + kx.Column('bid')).avg().name('avgSpread'), where=kx.Column('sym') == anInfreqInstr, by=kx.Column('time').minute.xbar(10))
-16||db.quote.select(columns=(kx.Column('ask') + kx.Column('bid')).avg().name('avgSpread'), where=kx.Column('sym').isin(hundredInstrs), by= kx.Column('sym') & kx.Column('time').minute.xbar(10))
-17||
+15||
+16||db.quote.select(columns=(kx.Column('ask') + kx.Column('bid')).avg().name('avgSpread'), where=kx.Column('sym') == anInfreqInstr, by=kx.Column('time').minute.xbar(10))
+17||db.quote.select(columns=(kx.Column('ask') + kx.Column('bid')).avg().name('avgSpread'), where=kx.Column('sym').isin(hundredInstrs), by= kx.Column('sym') & kx.Column('time').minute.xbar(10))
 18||
 19||
 20||
@@ -27,8 +27,8 @@ idx|tags|query
 26||
 27||
 28||
-29||db.trade.select(kx.Column('time') & kx.Column('size').sums(), where=kx.Column('ex') == b'T')
-30||
+29||
+30||db.trade.select(kx.Column('time') & kx.Column('size').sums(), where=kx.Column('ex') == b'T')
 31||
 32||
 33||
@@ -45,3 +45,4 @@ idx|tags|query
 44||
 45||
 46||
+47||

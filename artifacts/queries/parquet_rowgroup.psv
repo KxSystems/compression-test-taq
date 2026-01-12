@@ -11,37 +11,38 @@ idx|tags|query
 10||select date, mysym, time, bid, ask, bsize, asize, cond, ex from quote where mysym = aFreqInstr
 11||select date, mysym, time, bid, ask, bsize, asize, cond, ex from quote where mysym in fivehundredInfreqInstrs, 2000<bsize+asize
 12||select avgMidSize: avg (bid + ask) % 2 from quote where mysym = anInfreqInstr
-13||.pvt.pivot select avgMidSize: avg (bid + ask) % 2 by 0D00:10 xbar time, ex from quote where mysym = anInfreqInstr
-14||.pvt.pivot select avgMidSize: avg (bid + ask) % 2 by 0D00:10 xbar time, sym from quote where mysym in fivehundredInfreqInstrs
-15||select avgSpread: avg ask - bid by 0D00:10 xbar time from quote where mysym = aFreqInstr
-16||select avgSpread: avg ask - bid by mysym, 0D00:10 xbar time from quote where mysym in hundredInstrs
-17||select avgWeightedSpread: (asize + bsize) wavg ask - bid, devSpread: dev ask - bid, maxSpread: max ask - bid, minSpread: min ask - bid by exnames ex from quote where date=min date, mysym=mostFreqInstr
-18||select avgWeightedSpread: sizes wavg spread, devSpread: dev spread, maxSpread: max spread, minSpread: min spread by exnames ex from (select ex, sizes: asize + bsize, spread: ask - bid from quote where date=min date, mysym=mostFreqInstr)
-19||select avgWeightedSpread: (asize + bsize) wavg ask - bid, devSpread: dev ask - bid, maxSpread: max ask - bid, minSpread: min ask - bid by mysym, exnames ex from quote where date=min date, mysym in hundredInstrs
-20||select avgWeightedSpread: (asize + bsize) wavg ask - bid, devSpread: dev ask - bid, maxSpread: max ask - bid, minSpread: min ask - bid by exnames ex from quote where date=min date, shortSaleRestrictionIndicator ~\: enlist "0"
-21||distinct select mysym, ex from trade where size > 700000
-22||select weightedBidPice: bsize wavg bid, weightedOfferPice: asize wavg ask by mysym from quote where mysym in twentyInstrs
-23||select weightedSpread: (bsize + asize) wavg ask - bid from quote where mysym = anInfreqInstr
-24||select time, 20 mavg price from trade where mysym = mostFreqInstr
-25||ungroup select time, movingmid: 5 mavg (ask + bid) % 2, movingsize: 5 mavg asize + bsize by mysym from quote where mysym in twentyInstrs
-26||select time, sums size from trade where mysym = aFreqInstr
-27||select time, sums size from trade where ex ~\: enlist "L"
-28||update movingvwap:(sums price * size) % sums size by mysym from select mysym, time, price, size from trade where time within 0D08:00 0D08:15
-29||select time, sums size from trade where ex ~\: enlist "T"
-30||select from trade where size = (max;size) fby ex
-31||(update tag:`maxbid from select from quote where mysym=aFreqInstr, bid=(max; bid) fby ex, time=(min;time) fby ex), update tag: `minask from select from quote where mysym=mostFreqInstr, ask=(min; ask) fby ex, time=(min;time) fby ex
-32||select from trade where size = (min;size) fby ([] ex;mysym)
-33||ungroup select from (select seqDecr: seq where (<) prior seq by mysym from trade) where 0 < count each seqDecr
-34||update key[timeBuckets] timeBucket from `ex`timeBucket xasc select cnt: count i, sum size by ex, timeBucket: value[timeBuckets] bin time from trade where date=min date
-35||select cnt: count i, sum size by mysym, timeBucket: timeBucketsStep time from trade where date=min date, not corr=0
-36||select o: first price, h: max price, l: min price, c: last price, s: sum size by mysym, 0D00:05 xbar time from trade where mysym in hundredInstrs, 0 < count each stop
-37||update inbal: (bsize - asize) % bsize + asize from select first asize, first bsize by minute: `minute$0D00:01 xbar time from quote where mysym = anInfreqInstr
-38||select wsumAsk:asize wsum ask, wsumBid: bid wsum bsize, sdevasksize: sdev asize, sdevbid:sdev bid, corPrice:ask cor bid, corSize: asize cor bsize by mysym from quote where mysym in fivehundredInfreqInstrs
-39||select from trade where price = (min;price) fby sym
-40||select first price, FirstTime: first time, LastTime: last time, cnt: count size, sum size by pricegroup: sums differ price from trade where mysym=mostFreqInstr
-41||select first price, FirstTime: first time, LastTime: last time, cnt: count size, sum size by mysym, pricegroup: ({sums differ x};price) fby sym from trade where mysym in hundredInstrs
-42||select first price, FirstTime: first time, LastTime: last time, cnt: count size, sum size by mysym, pricegroup: ({sums differ x};price) fby sym from trade where ex in enlist each "LM"
-43||
+13||select avgMidSize: avg (bid + ask) % 2 by 0D00:10 xbar time, ex from quote where mysym = anInfreqInstr
+14||.pvt.pivot select avgMidSize: avg (bid + ask) % 2 by 0D00:10 xbar time, ex from quote where mysym = anInfreqInstr
+15||.pvt.pivot select avgMidSize: avg (bid + ask) % 2 by 0D00:10 xbar time, sym from quote where mysym in fivehundredInfreqInstrs
+16||select avgSpread: avg ask - bid by 0D00:10 xbar time from quote where mysym = aFreqInstr
+17||select avgSpread: avg ask - bid by mysym, 0D00:10 xbar time from quote where mysym in hundredInstrs
+18||select avgWeightedSpread: (asize + bsize) wavg ask - bid, devSpread: dev ask - bid, maxSpread: max ask - bid, minSpread: min ask - bid by exnames ex from quote where date=min date, mysym=mostFreqInstr
+19||select avgWeightedSpread: sizes wavg spread, devSpread: dev spread, maxSpread: max spread, minSpread: min spread by exnames ex from (select ex, sizes: asize + bsize, spread: ask - bid from quote where date=min date, mysym=mostFreqInstr)
+20||select avgWeightedSpread: (asize + bsize) wavg ask - bid, devSpread: dev ask - bid, maxSpread: max ask - bid, minSpread: min ask - bid by mysym, exnames ex from quote where date=min date, mysym in hundredInstrs
+21||select avgWeightedSpread: (asize + bsize) wavg ask - bid, devSpread: dev ask - bid, maxSpread: max ask - bid, minSpread: min ask - bid by exnames ex from quote where date=min date, shortSaleRestrictionIndicator ~\: enlist "0"
+22||distinct select mysym, ex from trade where size > 700000
+23||select weightedBidPice: bsize wavg bid, weightedOfferPice: asize wavg ask by mysym from quote where mysym in twentyInstrs
+24||select weightedSpread: (bsize + asize) wavg ask - bid from quote where mysym = anInfreqInstr
+25||select time, 20 mavg price from trade where mysym = mostFreqInstr
+26||ungroup select time, movingmid: 5 mavg (ask + bid) % 2, movingsize: 5 mavg asize + bsize by mysym from quote where mysym in twentyInstrs
+27||select time, sums size from trade where mysym = aFreqInstr
+28||select time, sums size from trade where ex ~\: enlist "L"
+29||update movingvwap:(sums price * size) % sums size by mysym from select mysym, time, price, size from trade where time within 0D08:00 0D08:15
+30||select time, sums size from trade where ex ~\: enlist "T"
+31||select from trade where size = (max;size) fby ex
+32||(update tag:`maxbid from select from quote where mysym=aFreqInstr, bid=(max; bid) fby ex, time=(min;time) fby ex), update tag: `minask from select from quote where mysym=mostFreqInstr, ask=(min; ask) fby ex, time=(min;time) fby ex
+33||select from trade where size = (min;size) fby ([] ex;mysym)
+34||ungroup select from (select seqDecr: seq where (<) prior seq by mysym from trade) where 0 < count each seqDecr
+35||update key[timeBuckets] timeBucket from `ex`timeBucket xasc select cnt: count i, sum size by ex, timeBucket: value[timeBuckets] bin time from trade where date=min date
+36||select cnt: count i, sum size by mysym, timeBucket: timeBucketsStep time from trade where date=min date, not corr=0
+37||select o: first price, h: max price, l: min price, c: last price, s: sum size by mysym, 0D00:05 xbar time from trade where mysym in hundredInstrs, 0 < count each stop
+38||update inbal: (bsize - asize) % bsize + asize from select first asize, first bsize by minute: `minute$0D00:01 xbar time from quote where mysym = anInfreqInstr
+39||select wsumAsk:asize wsum ask, wsumBid: bid wsum bsize, sdevasksize: sdev asize, sdevbid:sdev bid, corPrice:ask cor bid, corSize: asize cor bsize by mysym from quote where mysym in fivehundredInfreqInstrs
+40||select from trade where price = (min;price) fby sym
+41||select first price, FirstTime: first time, LastTime: last time, cnt: count size, sum size by pricegroup: sums differ price from trade where mysym=mostFreqInstr
+42||select first price, FirstTime: first time, LastTime: last time, cnt: count size, sum size by mysym, pricegroup: ({sums differ x};price) fby sym from trade where mysym in hundredInstrs
+43||select first price, FirstTime: first time, LastTime: last time, cnt: count size, sum size by mysym, pricegroup: ({sums differ x};price) fby sym from trade where ex in enlist each "LM"
 44||
 45||
 46||
+47||

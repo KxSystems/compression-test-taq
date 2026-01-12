@@ -11,37 +11,38 @@ idx|tags|description|comment
 10|simple,singleinstrument||
 11|simple,fewinstruments||
 12|simple,singleinstrument||
-13|advanced,singleinstrument,pivot||
-14|advanced,fewinstruments,pivot||
-15|simple,singleinstrument||
-16|simple,fewinstruments||
-17|advanced,singleinstrument|calculate weighted average spread, deviation/max/min of spread by exchange names|
-18|advanced,singleinstrument|calculate weighted average spread, deviation/max/min of spread by exchange names|same as query 13 but measures impact of manual optimization (calculate spread once)
-19|advanced,fewinstruments|calculate weighted average spread and deviation of spread by exchange names and instrument|
-20|advanced|calculate weighted average spread and deviation of spread by exchange names for quotes without short sale restriction on UTP (Short Sale Restriction Indicator is "0")|
-21|simple||
-22|simple,fewinstruments||
-23|advanced,singleinstrument||
+13|simple,singleinstrument||
+14|advanced,singleinstrument,pivot||
+15|advanced,fewinstruments,pivot||
+16|simple,singleinstrument||
+17|simple,fewinstruments||
+18|advanced,singleinstrument|calculate weighted average spread, deviation/max/min of spread by exchange names|
+19|advanced,singleinstrument|calculate weighted average spread, deviation/max/min of spread by exchange names|same as query 13 but measures impact of manual optimization (calculate spread once)
+20|advanced,fewinstruments|calculate weighted average spread and deviation of spread by exchange names and instrument|
+21|advanced|calculate weighted average spread and deviation of spread by exchange names for quotes without short sale restriction on UTP (Short Sale Restriction Indicator is "0")|
+22|simple||
+23|simple,fewinstruments||
 24|advanced,singleinstrument||
-25|advanced,fewinstruments||
-26|advanced,singleinstrument|select cummulative trade sizes for a given instrument|
-27|advanced||
-28|complex|calculate moving volume wighted average price by instrument within a time range|
-29|advanced||
-30|advanced|select largest trades on all exchanges|
-31|advanced,singleinstrument|select all rows from quote when a given instrument first reaches its daily maximal bid price or daily minimal ask price. Introduce a new `tag` column that can take either value `maxbid` or `minask`|
-32|advanced||
-33|advanced|select the indices of all rows in which the sequence number decreases for the instrument|
-34|complex|custom time bucket (e.g. before 9:00 is preopen), sort result by instrumentID and time bucket|
-35|complex|custom time bucket (e.g. before 9:00 is preopen)|
-36|simple,fewinstruments||
-37|simple,singleinstrument||
-38|advanced,fewinstruments||
-39|advanced|trades with the smallest price for all instruments|
-40|complex,singleinstrument|We want to calculate how much volume was transacted at each price. Whenever the price changes, we want to restart the count. We only want to consider prices for the same instrument|
-41|complex,fewinstruments|We want to calculate how much volume was transacted at each price. Whenever the price changes, we want to restart the count. We only want to consider prices for the same instrument|
-42|complex|We want to calculate how much volume was transacted at each price. Whenever the price changes, we want to restart the count. We only want to consider prices for the same instrument|
-43|simple,singleinstrument||
-44|advanced,fewinstruments||
-45|advanced,singleinstrument||
-46|advanced||
+25|advanced,singleinstrument||
+26|advanced,fewinstruments||
+27|advanced,singleinstrument|select cummulative trade sizes for a given instrument|
+28|advanced||
+29|complex|calculate moving volume wighted average price by instrument within a time range|
+30|advanced||
+31|advanced|select largest trades on all exchanges|
+32|advanced,singleinstrument|select all rows from quote when a given instrument first reaches its daily maximal bid price or daily minimal ask price. Introduce a new `tag` column that can take either value `maxbid` or `minask`|
+33|advanced||
+34|advanced|select the indices of all rows in which the sequence number decreases for the instrument|
+35|complex|custom time bucket (e.g. before 9:00 is preopen), sort result by instrumentID and time bucket|
+36|complex|custom time bucket (e.g. before 9:00 is preopen)|
+37|simple,fewinstruments||
+38|simple,singleinstrument||
+39|advanced,fewinstruments||
+40|advanced|trades with the smallest price for all instruments|
+41|complex,singleinstrument|We want to calculate how much volume was transacted at each price. Whenever the price changes, we want to restart the count. We only want to consider prices for the same instrument|
+42|complex,fewinstruments|We want to calculate how much volume was transacted at each price. Whenever the price changes, we want to restart the count. We only want to consider prices for the same instrument|
+43|complex|We want to calculate how much volume was transacted at each price. Whenever the price changes, we want to restart the count. We only want to consider prices for the same instrument|
+44|simple,singleinstrument||
+45|advanced,fewinstruments||
+46|advanced,singleinstrument||
+47|advanced||
