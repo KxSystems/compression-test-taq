@@ -10,7 +10,7 @@ idx|tags|query
 9||
 10||db.quote.select(columns=kx.Column('date') & kx.Column('sym') & kx.Column('time') & kx.Column('bid') & kx.Column('ask') & kx.Column('bsize') & kx.Column('asize') & kx.Column('cond') & kx.Column('ex'), where=kx.Column('sym') == aFreqInstr)
 11||db.quote.select(columns=kx.Column('date') & kx.Column('sym') & kx.Column('time') & kx.Column('bid') & kx.Column('ask') & kx.Column('bsize') & kx.Column('asize') & kx.Column('cond') & kx.Column('ex'), where=kx.Column('sym').isin(fivehundredInfreqInstrs) & ((kx.Column('bsize') + kx.Column('asize')) > 2000))
-12||db.quote.select(columns=((kx.Column('bid') + kx.Column('ask')) / 2).avg().name('avgMidSize'), where=kx.Column('sym') == anInfreqInstr)
+12||db.quote.select(columns=((kx.Column('bid') + kx.Column('ask')) / 2).avg().name('avgMid'), where=kx.Column('sym') == anInfreqInstr)
 13||
 14||
 15||

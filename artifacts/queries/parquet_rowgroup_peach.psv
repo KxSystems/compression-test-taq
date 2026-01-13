@@ -13,7 +13,7 @@ idx|tags|query
 12||
 13||
 14||
-15|manualparallelization|(uj/) {(`time,x) xcol select avgMidSize: avg (bid + ask) % 2 by 0D00:10 xbar time from quote where mysym=x} peach fivehundredInfreqInstrs
+15|manualparallelization|(uj/) {(`time,x) xcol select avgMid: avg (bid + ask) % 2 by 0D00:10 xbar time from quote where mysym=x} peach fivehundredInfreqInstrs
 16||
 17|manualparallelization|raze {select first mysym, avgSpread: avg ask - bid by 0D00:10 xbar time from quote where mysym = x} peach hundredInstrs
 18||

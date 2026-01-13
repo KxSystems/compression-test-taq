@@ -10,10 +10,10 @@ idx|tags|query
 9||`bid xdesc select time, bid from quote where sym = mostFreqInstr
 10||select sym, time, bid, ask, bsize, asize, cond, ex from quote where sym = aFreqInstr
 11||select sym, time, bid, ask, bsize, asize, cond, ex from quote where sym in fivehundredInfreqInstrs, 2000<bsize+asize
-12||select avgMidSize: avg (bid + ask) % 2 from quote where sym = anInfreqInstr
-13||select avgMidSize: avg (bid + ask) % 2 by 0D00:10 xbar time, ex from quote where sym = anInfreqInstr
-14||.pvt.pivot select avgMidSize: avg (bid + ask) % 2 by 0D00:10 xbar time, ex from quote where sym = anInfreqInstr
-15||.pvt.pivot select avgMidSize: avg (bid + ask) % 2 by 0D00:10 xbar time, sym from quote where sym in fivehundredInfreqInstrs
+12||select avgMid: avg (bid + ask) % 2 from quote where sym = anInfreqInstr
+13||select avgMid: avg (bid + ask) % 2 by 0D00:10 xbar time, ex from quote where sym = anInfreqInstr
+14||.pvt.pivot select avgMid: avg (bid + ask) % 2 by 0D00:10 xbar time, ex from quote where sym = anInfreqInstr
+15||.pvt.pivot select avgMid: avg (bid + ask) % 2 by 0D00:10 xbar time, sym from quote where sym in fivehundredInfreqInstrs
 16||select avgSpread: avg ask - bid by 0D00:10 xbar time from quote where sym = aFreqInstr
 17||select avgSpread: avg ask - bid by sym, 0D00:10 xbar time from quote where sym in hundredInstrs
 18||select avgWeightedSpread: (asize + bsize) wavg ask - bid, devSpread: dev ask - bid, maxSpread: max ask - bid, minSpread: min ask - bid by exnames ex from quote where sym=mostFreqInstr
