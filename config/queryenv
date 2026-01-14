@@ -1,5 +1,7 @@
+SCRIPTDIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 ### QUERY Parameters ###
-export FLUSH=./flush/directmount.sh
+export FLUSH=${SCRIPTDIR}/flush/directmount.sh
 export SUDO="sudo"  # "" or "sudo" if sudo is required for some commands e.g. to flush page cache
 export QMAP=false   # set to true is .Q.MAP should be called after DB load
 export NUMANODE=0   # comment out to avoid using numactl

@@ -9,9 +9,12 @@ ko: key o: first each .Q.opt .z.x;
 
 DB: o `db
 PARAMDIR: hsym `$o`paramdir
-FORMAT: upper `$o `format
+FORMAT: `$upper o `format
+ENGINE: `$upper o `engine
+if[ENGINE ~ `SQL; .s.init[]]
 
-QueryTable: ("***";enlist "|") 0: `$o `queryfile;
+
+QueryTable: ("****";enlist "|") 0: `$o `queryfile;
 .qlog.info "Loading and executing queries from ", o `queryfile;
 QueryMetaTable: `idx`querytag xcol ("**";enlist "|") 0: `$o `querymetafile;
 
@@ -104,10 +107,11 @@ loadInMemKDBDB: {[db: `C; device: `C; writerFN]
 
   writerFN[string 0; enlist ""; "load/mmap DB"; ("success"; ts, 2#0Nn; memusage; io, 2#0Nj)];
   }
+
 loadKDBDB: {[db: `C; device: `C; writerFN]
   io: ();
   .qlog.info "loading kdb DB ", db;
-  loadcmd: "ts .Q.lo[`$\"", db, "\";0;0]";
+  loadcmd: "ts .Q.lo[`$\"", db, "\";0b;0]";
   if["true" ~ lower getenv `QMAP; loadcmd,:";.Q.MAP[]"];
   io,: getKBRead[device]`kB_read;
   s: .z.p;
@@ -122,8 +126,16 @@ loadKDBDB: {[db: `C; device: `C; writerFN]
   writerFN[string 0; enlist ""; "load/mmap DB"; ("success"; ts, 2#0Nn; memusage; io, 2#0Nj)];
   }
 
-runQuery: {[db: `C; device: `C; writerFN; tags; idx:`C; querytags; query:`C]
+queryWrapper: $[ENGINE ~ `SQL;
+  {[query; parameter] $[count parameter; ".s.sp[", .Q.s1[query], "; enlist ", parameter, "]"; ".s.e ", .Q.s1 query]}; / for now, we accept a single parameter only
+  {[x;] x}]
+
+runQuery: {[db: `C; device: `C; writerFN; tags; idx:`C; querytags; query:`C; parameter:`C]
+  if[ENGINE ~ `SQL; /This is needed due to a bug in kdb+ SQL engine where changing from data directory causes issues
+    pwd: first system "pwd";
+    system "cd ", db];
   query: trim query;
+  parameter: trim parameter;
   if[not count query;
     writerFN[idx; querytags; query; ("emptyquery"; 3#0Nn; 0Nj; 4#0Nj)];
     :()];
@@ -141,11 +153,11 @@ runQuery: {[db: `C; device: `C; writerFN; tags; idx:`C; querytags; query:`C]
   .qlog.info "[", idx, "] Running query: ", query;
   io,: getKBRead[device]`kB_read;
   s: .z.p; / \ts does not collect memory usage of the secondary threads
-  errormsg: @[system; "ts res:", query; ::];
+  errormsg: @[system; "ts res:", queryWrapper[query; parameter]; ::];
+  ts,: .z.p-s;
   if[10h ~ type errormsg;
     writerFN[idx; querytags; query; (errormsg; 3#0Nn; 0Nj; 4#0Nj)];
     :()];
-  ts,: .z.p-s;
   io,: getKBRead[device]`kB_read;
   .qlog.info "[", idx, "]   Shape of the result: ", string[count res], " x ", string count cols res;
   delete res from `.;
@@ -155,26 +167,27 @@ runQuery: {[db: `C; device: `C; writerFN; tags; idx:`C; querytags; query:`C]
   .Q.gc[];
   .qlog.info "[", idx, "] Running query again";
   s: .z.p;
-  errormsg: @[value; "res:", query;::];
+  errormsg: @[value; "res:", queryWrapper[query; parameter];::];
+  ts,: .z.p-s;
   if[10h ~ type errormsg;
     writerFN[idx; querytags; query; (errormsg; ts[0], 2#0Nn; memusage; io, 2#0Nj)];
     :()];
-  ts,: .z.p-s;
   io,: getKBRead[device]`kB_read;
   delete res from `.;
 
   .Q.gc[];
   .qlog.info "[", idx, "] Running query third time";
   s: .z.p;
-  errormsg: @[value; "res:", query;::];
+  errormsg: @[value; "res:", queryWrapper[query; parameter];::];
+  ts,: .z.p-s;
   if[10h ~ type errormsg;
     writerFN[idx; querytags; query; (errormsg; ts, 0Nn; memusage; io, 0Nj)];
     :()];
-  ts,: .z.p-s;
   io,: getKBRead[device]`kB_read;
   delete res from `.;
 
   writerFN[idx; querytags; query; ("success"; ts; memusage; io)];
+  if[ENGINE ~ `SQL; system "cd ", pwd];
   };
 
 startTime: .z.p
@@ -213,7 +226,7 @@ if[not QueryTable[`idx] ~ QueryMetaTable`idx;
   ]
 
 queries: QueryTable lj `idx xkey QueryMetaTable;
-queries: select idx, (except[;enlist ""] each "," vs' "," sv' flip (querytag; tags)), query from queries
+queries: select idx, (except[;enlist ""] each "," vs' "," sv' flip (querytag; tags)), query, parameter from queries
 (runQuery[DB; Device; WriterFN; Tags] . value@) each queries;
 
 .qlog.info "Query benchmark completed in ", 2_string .z.p - startTime;
