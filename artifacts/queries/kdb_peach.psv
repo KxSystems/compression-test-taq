@@ -46,4 +46,3 @@ idx|tags|query|parameter
 45|manualparallelization|raze {aj[`sym`time; select sym, time, price, size, stop, cond, ex from trade where date=min date, sym = x; select sym, time, bid, ask, bsize, asize, quotecond: cond, quoteex: ex from quote where date=min date]} peach twentyInstrs|
 46|||
 47|||
-|

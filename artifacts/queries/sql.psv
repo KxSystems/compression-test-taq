@@ -19,7 +19,7 @@ idx|tags|query|parameter
 18|||
 19|||
 20|||
-21|||
+21||select distinct sym, ex from trade WHERE size>700000|
 22|||
 23|||
 24|||
