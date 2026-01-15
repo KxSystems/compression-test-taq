@@ -11,7 +11,6 @@ DB: o `db
 PARAMDIR: hsym `$o`paramdir
 FORMAT: `$upper o `format
 ENGINE: `$upper o `engine
-if[ENGINE ~ `SQL; .s.init[]]
 
 
 QueryTable: ("****";enlist "|") 0: `$o `queryfile;
@@ -127,7 +126,7 @@ loadKDBDB: {[db: `C; device: `C; writerFN]
   }
 
 queryWrapper: $[ENGINE ~ `SQL;
-  {[query; parameter] $[count parameter; ".s.sp[", .Q.s1[query], "; enlist ", parameter, "]"; ".s.e ", .Q.s1 query]}; / for now, we accept a single parameter only
+  {[query; parameter] $[count parameter; ".s.sp[\"", query, "\"; enlist ", parameter, "]"; ".s.e \"", query, "\""]}; / for now, we accept a single parameter only
   {[x;] x}]
 
 runQuery: {[db: `C; device: `C; writerFN; tags; idx:`C; querytags; query:`C; parameter:`C]
@@ -215,6 +214,12 @@ $[FORMAT like "PARQUET*"; [
     WriterFN:: writeRes[resultH; compparm];
     loadKDBDB[DB; Device; WriterFN]
   ]]
+
+if[ENGINE ~ `SQL;
+  .s.init[];
+  .s.F[`dev]:.s.fx dev;
+  .s.F[`exnames]:.s.fx{exnames x};
+  ]
 
 .qlog.info "Loading parameters from ", 1_string PARAMDIR
 system "l src/getQueryParameters.q"
