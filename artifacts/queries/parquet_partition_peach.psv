@@ -18,11 +18,11 @@ idx|tags|query|parameter
 17|manualparallelization|raze {select first sym, avgSpread: avg ask - bid by 0D00:10 xbar time from quote where sym = x} peach hundredInstrs|
 18|||
 19|||
-20|manualparallelization|raze {select first sym, avgWeightedSpread: (asize + bsize) wavg ask - bid, devSpread: dev ask - bid, maxSpread: max ask - bid, minSpread: min ask- bid by exnames ex from quote where date=min date, sym=x} peach hundredInstrs|
-21|||
+20|||
+21|manualparallelization|raze {select first sym, avgWeightedSpread: (asize + bsize) wavg ask - bid, devSpread: dev ask - bid, maxSpread: max ask - bid, minSpread: min ask- bid by exnames ex from quote where date=min date, sym=x} peach hundredInstrs|
 22|||
-23|manualparallelization|raze {select first sym, weightedBidPice: bsize wavg bid, weightedOfferPice: asize wavg ask from quote where sym = x} peach twentyInstrs|
-24|||
+23|||
+24|manualparallelization|raze {select first sym, weightedBidPice: bsize wavg bid, weightedOfferPice: asize wavg ask from quote where sym = x} peach twentyInstrs|
 25|||
 26|manualparallelization|raze {select sym, time, movingmid: 5 mavg (ask + bid) % 2, movingsize: 5 mavg asize + bsize from quote where sym = x} peach twentyInstrs|
 27|||
