@@ -217,7 +217,11 @@ $[FORMAT like "PARQUET*"; [
 
 if[ENGINE ~ `SQL;
   .s.init[];
-  .s.F[`dev]:.s.fx dev;
+  .s.F[`stddev_pop]:.s.fx dev;
+  .s.F[`stddev_samp]:.s.fx sdev;
+  .s.F[`stddev]:.s.fx sdev;
+  .s.F[`corr]:.s.fx {x cor y};
+  .s.F[`median]:.s.fx med;
   .s.F[`exnames]:.s.fx{exnames x};
   ]
 
