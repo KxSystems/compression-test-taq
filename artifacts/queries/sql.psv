@@ -35,7 +35,7 @@ idx|tags|query|parameter
 34|||
 35|||
 36|||
-37|||
+37||SELECT sym, xbar('0D00:05', time), FIRST(price) AS o, MAX(price) AS h, MIN(price) AS l, LAST(price) AS c, SUM(size) AS s FROM trade WHERE sym IN $1 AND stop IS NOT NULL GROUP BY sym, xbar('0D00:05', time)|hundredInstrs
 38|||
 39|||
 40|||
