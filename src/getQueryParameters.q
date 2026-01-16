@@ -1,11 +1,11 @@
 getQueryParameters: {[paramdir]
-    `aFreqInstr set first `$read0 .Q.dd[paramdir;`aFreqInstr.txt];
-    `mostFreqInstr set first `$read0 .Q.dd[paramdir;`mostFreqInstr.txt];
-    `anInfreqInstr set first `$read0 .Q.dd[paramdir;`anInfreqInstr.txt];
-    `twentyInstrs set `$read0 .Q.dd[paramdir;`twentyInstrs.txt];
-    `hundredInstrs set `$read0 .Q.dd[paramdir;`hundredInstrs.txt];
-    `fivehundredInfreqInstrs set `$read0 .Q.dd[paramdir;`fivehundredInfreqInstrs.txt];
+    aFreqInstr:: first `$read0 .Q.dd[paramdir;`aFreqInstr.txt];
+    mostFreqInstr:: first `$read0 .Q.dd[paramdir;`mostFreqInstr.txt];
+    anInfreqInstr:: first `$read0 .Q.dd[paramdir;`anInfreqInstr.txt];
+    twentyInstrs:: `$read0 .Q.dd[paramdir;`twentyInstrs.txt];
+    hundredInstrs:: `$read0 .Q.dd[paramdir;`hundredInstrs.txt];
+    fivehundredInfreqInstrs:: `$read0 .Q.dd[paramdir;`fivehundredInfreqInstrs.txt];
 
-    `timeBuckets set asc(!/) (`$; "N"$) @' flip  "=" vs/: read0 .Q.dd[paramdir; `timeBuckets.txt];
-    `timeBucketsStep set `s#value[timeBuckets]!key timeBuckets;
+    timeBuckets:: asc(!/) (`$; "N"$) @' flip  "=" vs/: read0 .Q.dd[paramdir; `timeBuckets.txt];
+    timeBucketsStep:: `s#value[timeBuckets]!key timeBuckets;
     }
