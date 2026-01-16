@@ -120,7 +120,7 @@ loadKDBDB: {[db: `C; device: `C; writerFN]
 
   if[`encr in ko;
     .qlog.info "Loading encryption file ", o`encr;
-    -36!@[; 0; hsym `$] ":" vs o`encr]
+    -36!@[; 0; hsym `$] ":" vs o`encr];
 
   writerFN[string 0; enlist ""; "load/mmap DB"; ("success"; ts, 2#0Nn; memusage; io, 2#0Nj)];
   }
