@@ -75,6 +75,7 @@ function execute_queries () {
         $(get_numa_config) $QEXEC ${query_runner} -db ${DB_DIR}/parquet/rowgroup_maxrowgroupsize250000 -format parquet_rowgroup -queryfile ./artifacts/queries/parquet_rowgroup.psv -result ${RESULT_DIR}/parquetRowgroupMaxSize_${s}Threads.psv -s ${s}
 
         $(get_numa_config) $QEXEC ${query_runner} -db ${DB_DIR}/kdb -format kdbinmemory -queryfile ./artifacts/queries/kdb_inmemory.psv -result ${RESULT_DIR}/kdbInMemory_${s}Threads.psv -s ${s}
+        $(get_numa_config) $QEXEC ${query_runner} -db ${DB_DIR}/kdb -format kdbinmemorytabledict -queryfile ./artifacts/queries/kdb_inmemory_tabledict.psv -result ${RESULT_DIR}/kdbInMemoryTableDict_${s}Threads.psv -s ${s}
     done
 }
 

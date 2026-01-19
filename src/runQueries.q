@@ -69,6 +69,24 @@ loadParquetDB: {[db: `C; rowgroup: `b; device: `C; writerFN]
   exnames:: exec ex!`$name from exnames; / convert back to a map
   }
 
+loadKDBDBIntoMemoryTableDict: {[db: `s]
+  c: key db;
+  files: c where ({x ~ key x} .Q.dd[db]@) each c;
+  db {[db; f]
+    .qlog.info "loading object ", string[f], " into memory";
+    f set (get[.Q.dd[db;f]] ::)}' files;
+  dpath: .Q.dd[db] d: first c except files; / extract the first date's data only
+  .qlog.info "loading tables in partition ", string[d], " into memory";
+
+  .Q.dd[dpath] {[getPath; tName]
+    .qlog.info "loading table ", string[tName], " into memory in table dictionary format";
+    mappedT: get getPath tName;
+    syms: exec asc distinct sym from mappedT;
+    tName set $[1000000 < count mappedT;
+       (`u#syms)!mappedT {[t;s] delete sym from update `s#time from select from t where sym=s}/: syms;
+       select from mappedT where i>-1]}' key dpath;
+  }
+
 loadKDBDBIntoMemory: {[db: `s]
   tablesBefore: tables[];
   c: key db;
@@ -94,10 +112,10 @@ loadKDBDBIntoMemory: {[db: `s]
     } each newTables;
   }
 
-loadInMemKDBDB: {[db: `C; device: `C; writerFN]
+loadInMemKDBDB: {[db: `C; loader: `C; device: `C; writerFN]
   io: ();
   .qlog.info "loading kdb DB into memory from ", db;
-  loadcmd: "ts loadKDBDBIntoMemory `$\":", db, "\"";
+  loadcmd: "ts ", loader, " `$\":", db, "\"";
   io,: getKBRead[device]`kB_read;
   s: .z.p;
   memusage: last system loadcmd;
@@ -207,8 +225,14 @@ $[FORMAT like "PARQUET*"; [
   ]; FORMAT = `KDBINMEMORY; [
     compparm: "0_0_0";
     WriterFN:: writeRes[resultH; compparm];
-    loadInMemKDBDB[DB; Device; WriterFN]
-  ]; [
+    loadInMemKDBDB[DB; "loadKDBDBIntoMemory"; Device; WriterFN]
+  ]; FORMAT = `KDBINMEMORYTABLEDICT; [
+    compparm: "0_0_0";
+    WriterFN:: writeRes[resultH; compparm];
+    loadInMemKDBDB[DB; "loadKDBDBIntoMemoryTableDict"; Device; WriterFN]
+    normalize: {`sym xcols raze key[x] {update sym: x from y}'x}; / convert table dictionary to normal table
+  ];
+  [
     compparmall: -21!hsym `$DB,"/",string[first key hsym `$DB],"/quote/sym";   // or assume that db dir name reflects compression
     compparm: $[count compparmall; "_" sv string @[;`logicalBlockSize`algorithm`zipLevel] compparmall; "0_0_0"];
     WriterFN:: writeRes[resultH; compparm];
