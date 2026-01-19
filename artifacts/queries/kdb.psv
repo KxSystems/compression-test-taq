@@ -43,6 +43,7 @@ idx|tags|query|parameter
 42||select first price, FirstTime: first time, LastTime: last time, cnt: count size, sum size by sym, pricegroup:({sums differ x};price) fby sym from trade where sym in hundredInstrs|
 43||select first price, FirstTime: first time, LastTime: last time, cnt: count size, sum size by sym, pricegroup:({sums differ x};price) fby sym from trade where ex in "LM"|
 44||select medMidSize: med (bsize + asize) from quote where sym=anInfreqInstr|
-45||aj[`sym`time; select sym, time, price, size, stop, cond, ex from trade where date=min date, sym in twentyInstrs; select sym, time, bid, ask, bsize, asize, quotecond: cond, quoteex: ex from quote where date=min date]|
-46||aj[`time; select time, price, size, stop, cond, ex from trade where date=min date, sym=aFreqInstr; select time, bid, ask, bsize, asize, quotecond: cond, quoteex: ex from quote where date=min date]|
-47||aj[`sym`ex`time; select sym, time, price, size, stop, cond, ex from trade where date=min date, size>500000; select sym, time, bid, ask, bsize, asize, quotecond: cond, ex from quote where date=min date]|
+45||select medSize: med size by ex from trade
+46||aj[`sym`time; select sym, time, price, size, stop, cond, ex from trade where date=min date, sym in twentyInstrs; select sym, time, bid, ask, bsize, asize, quotecond: cond, quoteex: ex from quote where date=min date]|
+47||aj[`time; select time, price, size, stop, cond, ex from trade where date=min date, sym=aFreqInstr; select time, bid, ask, bsize, asize, quotecond: cond, quoteex: ex from quote where date=min date]|
+48||aj[`sym`ex`time; select sym, time, price, size, stop, cond, ex from trade where date=min date, size>500000; select sym, time, bid, ask, bsize, asize, quotecond: cond, ex from quote where date=min date]|

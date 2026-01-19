@@ -43,6 +43,7 @@ idx|tags|query|parameter
 42|||
 43|||
 44||SELECT MEDIAN(bsize + asize) AS medMidSize FROM quote WHERE sym=$1|anInfreqInstr
-45|||
+45||SELECT MEDIAN(size) AS medSize FROM trade GROUP BY ex|
 46|||
 47|||
+48|||
