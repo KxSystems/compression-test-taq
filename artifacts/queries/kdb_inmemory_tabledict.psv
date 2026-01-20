@@ -10,10 +10,10 @@ idx|tags|query|parameter
 9||`mid xdesc select time, mid: (bid + ask) %2 from quote mostFreqInstr|
 10||select sym: aFreqInstr, time, bid, ask, bsize, asize, cond, ex from quote aFreqInstr|
 11||normalize {select time, bid, ask, bsize, asize, cond, ex from x where 2000<bsize+asize} each fivehundredInfreqInstrs#quote|
-12||select avgMid: avg (bid + ask) % 2 from quote anInfreqInstr|
-13||select avgMid: avg (bid + ask) % 2 by 0D00:10 xbar time, ex from quote anInfreqInstr|
-14||.pvt.pivot select avgMid: avg (bid + ask) % 2 by 0D00:10 xbar time, ex from quote anInfreqInstr|
-15||(uj/) {(`time, x) xcol select avgMid: avg (bid + ask) % 2 by 0D00:10 xbar time from quote x} each fivehundredInfreqInstrs|
+12||select avgMid: avg ((bsize * bid) + asize * ask) % bsize + asize from quote anInfreqInstr|
+13||select avgMid: avg ((bsize * bid) + asize * ask) % bsize + asize by 0D00:10 xbar time, ex from quote anInfreqInstr|
+14||.pvt.pivot select avgMid: avg ((bsize * bid) + asize * ask) % bsize + asize by 0D00:10 xbar time, ex from quote anInfreqInstr|
+15||(uj/) {(`time, x) xcol select avgMid: avg ((bsize * bid) + asize * ask) % bsize + asize by 0D00:10 xbar time from quote x} each fivehundredInfreqInstrs|
 16||select avgSpread: avg ask - bid by 0D00:10 xbar time from quote aFreqInstr|
 17||normalize {0!select avgSpread: avg ask - bid by 0D00:10 xbar time from x} each hundredInstrs#quote|
 18||select avgWeightedSpread: (asize + bsize) wavg ask - bid from quote anInfreqInstr|
@@ -24,7 +24,7 @@ idx|tags|query|parameter
 23||normalize {select distinct ex from x where size > 700000} each trade|
 24||normalize {select weightedBidPice: bsize wavg bid, weightedOfferPice: asize wavg ask from x} each twentyInstrs#quote|
 25||select time, 20 mavg price from trade mostFreqInstr|
-26||normalize {select time, movingmid: 5 mavg (bid + ask) % 2, movingsize: 5 mavg asize + bsize from x} each twentyInstrs#quote|
+26||normalize {select time, movingLiqWMid: 5 mavg ((bsize * bid) + asize * ask) % bsize + asize, movingsize: 5 mavg asize + bsize from x} each twentyInstrs#quote|
 27||select time, sums size from trade aFreqInstr|
 28||normalize {select time, sums size from x where ex = "L"} each trade|
 29||normalize {update movingvwap:(sums price * size) % sums size from select time, price, size from x where time within 0D08:00 0D08:15} each trade|

@@ -10,10 +10,10 @@ idx|tags|query|parameter
 9||`mid xdesc select time, mid: (bid + ask) %2 from quote where sym = mostFreqInstr|
 10||select date, sym, time, bid, ask, bsize, asize, cond, ex from quote where sym = aFreqInstr|
 11||select date, sym, time, bid, ask, bsize, asize, cond, ex from quote where sym in fivehundredInfreqInstrs, 2000<bsize+asize|
-12||select avgMid: avg (bid + ask) % 2 from quote where sym = anInfreqInstr|
-13||select avgMid: avg (bid + ask) % 2 by 0D00:10 xbar time, ex from quote where sym = anInfreqInstr|
-14||.pvt.pivot select avgMid: avg (bid + ask) % 2 by 0D00:10 xbar time, ex from quote where sym = anInfreqInstr|
-15||.pvt.pivot select avgMid: avg (bid + ask) % 2 by 0D00:10 xbar time, sym from quote where sym in fivehundredInfreqInstrs|
+12||select avgMid: avg ((bsize * bid) + asize * ask) % bsize + asize from quote where sym = anInfreqInstr|
+13||select avgMid: avg ((bsize * bid) + asize * ask) % bsize + asize by 0D00:10 xbar time, ex from quote where sym = anInfreqInstr|
+14||.pvt.pivot select avgMid: avg ((bsize * bid) + asize * ask) % bsize + asize by 0D00:10 xbar time, ex from quote where sym = anInfreqInstr|
+15||.pvt.pivot select avgMid: avg ((bsize * bid) + asize * ask) % bsize + asize by 0D00:10 xbar time, sym from quote where sym in fivehundredInfreqInstrs|
 16||select avgSpread: avg ask - bid by 0D00:10 xbar time from quote where sym = aFreqInstr|
 17||select avgSpread: avg ask - bid by sym, 0D00:10 xbar time from quote where sym in hundredInstrs|
 18||select avgWeightedSpread: (asize + bsize) wavg ask - bid from quote where sym = anInfreqInstr|
@@ -24,7 +24,7 @@ idx|tags|query|parameter
 23||distinct select sym, ex from trade where size > 700000|
 24||select weightedBidPice: bsize wavg bid, weightedOfferPice: asize wavg ask by sym from quote where sym in twentyInstrs|
 25||select time, 20 mavg price from trade where sym = mostFreqInstr|
-26||ungroup select time, movingmid: 5 mavg (bid + ask) % 2, movingsize: 5 mavg asize + bsize by sym from quote where sym in twentyInstrs|
+26||ungroup select time, movingLiqWMid: 5 mavg ((bsize * bid) + asize * ask) % bsize + asize, movingsize: 5 mavg asize + bsize by sym from quote where sym in twentyInstrs|
 27||select time, sums size from trade where sym = aFreqInstr|
 28||select time, sums size from trade where ex ~\: enlist "L"|
 29||update movingvwap:(sums price * size) % sums size by sym from select sym, time, price, size from trade where time within 0D08:00 0D08:15|

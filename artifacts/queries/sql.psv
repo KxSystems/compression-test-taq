@@ -10,8 +10,8 @@ idx|tags|query|parameter
 9||SELECT time, (bid + ask) / 2 AS mid FROM quote WHERE sym = $1 ORDER BY mid DESC|mostFreqInstr
 10||SELECT date, sym, time, bid, ask, bsize, asize, cond, ex FROM quote WHERE sym = $1|aFreqInstr
 11||SELECT date, sym, time, bid, ask, bsize, asize, cond, ex FROM quote WHERE sym IN $1 AND 2000<bsize+asize|fivehundredInfreqInstrs
-12||SELECT AVG((bid + ask) / 2) AS avgMid FROM quote WHERE sym = $1|anInfreqInstr
-13||SELECT xbar('0D00:10', time), AVG((bid + ask) / 2) AS avgMid, ex FROM quote WHERE sym = $1 GROUP BY xbar('0D00:10', time), ex|anInfreqInstr
+12||SELECT AVG((bsize * bid + asize * ask) / (bsize + asize)) AS avgLiqWMid FROM quote WHERE sym = $1|anInfreqInstr
+13||SELECT xbar('0D00:10', time), AVG((bsize * bid + asize * ask) / (bsize + asize)) AS avgLiqWMid, ex FROM quote WHERE sym = $1 GROUP BY xbar('0D00:10', time), ex|anInfreqInstr
 14|||
 15|||
 16||SELECT xbar('0D00:10', time), AVG(ask - bid) AS avgSpread FROM quote WHERE sym = $1 GROUP BY xbar('0D00:10', time)|aFreqInstr

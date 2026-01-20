@@ -13,7 +13,7 @@ idx|tags|query|parameter
 12|||
 13|||
 14|||
-15|manualparallelization|(uj/) {(`time,x) xcol select avgMid: avg (bid + ask) % 2 by 0D00:10 xbar time from quote where sym=x} peach fivehundredInfreqInstrs|
+15|manualparallelization|(uj/) {(`time,x) xcol select avgMid: avg ((bsize * bid) + asize * ask) % bsize + asize by 0D00:10 xbar time from quote where sym=x} peach fivehundredInfreqInstrs|
 16|||
 17|manualparallelization|raze {update sym: x from 0!select avgSpread: avg ask - bid by 0D00:10 xbar time from quote where sym = x} peach hundredInstrs|
 18|||
@@ -24,7 +24,7 @@ idx|tags|query|parameter
 23|||
 24|manualparallelization|raze {select first sym, weightedBidPice: bsize wavg bid, weightedOfferPice: asize wavg ask from quote where sym = x} peach twentyInstrs|
 25|||
-26|manualparallelization|raze {select sym, time, movingmid: 5 mavg (bid + ask) % 2, movingsize: 5 mavg asize + bsize from quote where sym = x} peach twentyInstrs|
+26|manualparallelization|raze {select sym, time, movingLiqWMid: 5 mavg ((bsize * bid) + asize * ask) % bsize + asize, movingsize: 5 mavg asize + bsize from quote where sym = x} peach twentyInstrs|
 27|||
 28|||
 29|||
