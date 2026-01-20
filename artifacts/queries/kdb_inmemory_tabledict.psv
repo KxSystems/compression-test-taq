@@ -24,7 +24,7 @@ idx|tags|query|parameter
 23||normalize {select distinct ex from x where size > 700000} each trade|
 24||normalize {select weightedBidPice: bsize wavg bid, weightedOfferPice: asize wavg ask from x} each twentyInstrs#quote|
 25||select time, 20 mavg price from trade mostFreqInstr|
-26||normalize {select time, movingmid: 5 mavg (ask + bid) % 2, movingsize: 5 mavg asize + bsize from x} each twentyInstrs#quote|
+26||normalize {select time, movingmid: 5 mavg (bid + ask) % 2, movingsize: 5 mavg asize + bsize from x} each twentyInstrs#quote|
 27||select time, sums size from trade aFreqInstr|
 28||normalize {select time, sums size from x where ex = "L"} each trade|
 29||normalize {update movingvwap:(sums price * size) % sums size from select time, price, size from x where time within 0D08:00 0D08:15} each trade|

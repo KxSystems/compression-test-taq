@@ -24,7 +24,7 @@ idx|tags|query|parameter
 23|||
 24|manualparallelization|raze {select first sym, weightedBidPice: bsize wavg bid, weightedOfferPice: asize wavg ask from quote where sym = x} peach twentyInstrs|
 25|||
-26|manualparallelization|raze {select sym, time, movingmid: 5 mavg (ask + bid) % 2, movingsize: 5 mavg asize + bsize from quote where sym = x} peach twentyInstrs|
+26|manualparallelization|raze {select sym, time, movingmid: 5 mavg (bid + ask) % 2, movingsize: 5 mavg asize + bsize from quote where sym = x} peach twentyInstrs|
 27|||
 28|||
 29|||

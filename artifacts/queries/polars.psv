@@ -24,7 +24,7 @@ idx|tags|query|parameter
 23||trade.filter(pl.col("size") > 700000).select("sym", "ex").unique()|
 24||quote.filter(pl.col("sym").is_in(twentyInstrs)).group_by("sym").agg(((pl.col("bid") * pl.col("bsize")).sum() / pl.col("bsize").sum()).alias("weightedBidPice"), ((pl.col("ask") * pl.col("asize")).sum() / pl.col("asize").sum()).alias("weightedOfferPice")).sort("sym")|
 25||trade.filter(pl.col("sym") == mostFreqInstr).select("time", pl.col("price").rolling_mean(window_size=20))|
-26||quote.filter(pl.col("sym").is_in(twentyInstrs)).select(pl.col("sym"), pl.col("time"), ((pl.col("ask") + pl.col("bid")) / 2).rolling_mean(window_size=5, min_samples=1).over("sym").alias("movingmid"), (pl.col("asize") + pl.col("bsize")).rolling_mean(window_size=5, min_samples=1).over("sym").alias("movingsize")).sort("sym")|
+26||quote.filter(pl.col("sym").is_in(twentyInstrs)).select(pl.col("sym"), pl.col("time"), ((pl.col("bid") + pl.col("ask")) / 2).rolling_mean(window_size=5, min_samples=1).over("sym").alias("movingmid"), (pl.col("asize") + pl.col("bsize")).rolling_mean(window_size=5, min_samples=1).over("sym").alias("movingsize")).sort("sym")|
 27||trade.filter(pl.col("sym") == aFreqInstr).select("time", pl.col("size").cum_sum())|
 28||trade.filter(pl.col("ex") == "L").select("time", pl.col("size").cum_sum())|
 29||trade.filter(pl.col("time").is_between(time(8), time(8, 15), closed="both")).select(pl.col("sym"), pl.col("time"), pl.col("price"), pl.col("size"), ((pl.col("price") * pl.col("size")).cum_sum() / pl.col("size").cum_sum()).over("sym").alias("movingvwap"))|

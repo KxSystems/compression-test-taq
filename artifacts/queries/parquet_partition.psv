@@ -24,7 +24,7 @@ idx|tags|query|parameter
 23||distinct select sym, ex from trade where size > 700000|
 24||select weightedBidPice: bsize wavg bid, weightedOfferPice: asize wavg ask by sym from quote where sym in twentyInstrs|
 25||select time, 20 mavg price from trade where sym = mostFreqInstr|
-26||ungroup select time, movingmid: 5 mavg (ask + bid) % 2, movingsize: 5 mavg asize + bsize by sym from quote where sym in twentyInstrs|
+26||ungroup select time, movingmid: 5 mavg (bid + ask) % 2, movingsize: 5 mavg asize + bsize by sym from quote where sym in twentyInstrs|
 27||select time, sums size from trade where sym = aFreqInstr|
 28||select time, sums size from trade where ex ~\: enlist "L"|
 29||update movingvwap:(sums price * size) % sums size by sym from select sym, time, price, size from trade where time within 0D08:00 0D08:15|
