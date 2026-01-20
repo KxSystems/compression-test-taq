@@ -19,6 +19,11 @@ QueryMetaTable: `idx`querytag xcol ("**";enlist "|") 0: `$o `querymetafile;
 
 Tags: ("," vs o`tags) except enlist ""
 
+if[not lower[getenv `EACHPEACH] in (""; "each"; "peach");
+  .qlog.error "Invalid value for EACHPEACH environment variable. Allowed values are '', 'each' or 'peach'.";
+  exit 3];
+EACHPEACH: $["" ~ getenv `EACHPEACH; each; value lower getenv `EACHPEACH];
+
 IOStatError: `kB_read`kB_wrtn`kB_sum!3#0Nj
 
 getKBReadMac: {[device:`C]
@@ -223,11 +228,11 @@ $[FORMAT like "PARQUET*"; [
     WriterFN:: writeRes[resultH; compparm];
     loadParquetDB[DB; FORMAT ~ `PARQUET_ROWGROUP; Device; WriterFN]
   ]; FORMAT = `KDBINMEMORY; [
-    compparm: "0_0_0";
+    compparm: "0_0_0"; / data is not compressed in memory
     WriterFN:: writeRes[resultH; compparm];
     loadInMemKDBDB[DB; "loadKDBDBIntoMemory"; Device; WriterFN]
   ]; FORMAT = `KDBINMEMORYTABLEDICT; [
-    compparm: "0_0_0";
+    compparm: "0_0_0"; / data is not compressed in memory
     WriterFN:: writeRes[resultH; compparm];
     loadInMemKDBDB[DB; "loadKDBDBIntoMemoryTableDict"; Device; WriterFN]
     normalize: {`sym xcols raze key[x] {update sym: x from y}'x}; / convert table dictionary to normal table
