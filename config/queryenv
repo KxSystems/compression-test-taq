@@ -5,3 +5,4 @@ export FLUSH=${SCRIPTDIR}/flush/directmount.sh
 export SUDO="sudo"  # "" or "sudo" if sudo is required for some commands e.g. to flush page cache
 export QMAP=false   # set to true is .Q.MAP should be called after DB load
 export NUMANODE=0   # comment out to avoid using numactl
+export IOSTAT=true  # set to true to capture IO statistics (e.g. kb read) during query execution

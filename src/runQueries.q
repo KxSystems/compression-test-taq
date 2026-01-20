@@ -38,7 +38,7 @@ getKBReadLinux: {[device:`C]
 	IOStatError]
   }
 
-getKBRead: $[.z.o ~ `m64; getKBReadMac; getKBReadLinux]
+getKBRead: $["false" ~ lower getenv `IOSTAT; {[x] IOStatError}; .z.o ~ `m64; getKBReadMac; getKBReadLinux]
 
 writeRes: {[h; compparm:`C; idx:`C; tags; query:`C; (status:`C; ts:`N; memusage:`j; io:`J)]
   if[not 3 = count ts;
