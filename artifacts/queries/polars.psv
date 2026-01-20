@@ -5,9 +5,9 @@ idx|tags|query|parameter
 4||trade.filter(pl.col("date") == pl.col("date").min(), pl.col("time").is_between(time(10), time(10, 0, 10), closed="both"))|
 5||quote.filter(pl.col("sym") == anInfreqInstr, pl.col("time").is_between(time(8, 30), time(16, 30), closed="both"))|
 6||trade.filter(pl.col("date") == pl.col("date").min(), pl.col("source") == "N").select("date", "sym", "time", "price", "size", "stop", "cond", "ex")|
-7||quote.filter(pl.col("sym") == mostFreqInstr).select("sym", "time", mid=((pl.col("bid") + pl.col("ask")) / 2))|
-8||quote.filter(pl.col("sym") == mostFreqInstr).select(pl.all()).select("sym", "time", mid=((pl.col("bid") + pl.col("ask")) / 2))|
-9||quote.filter(pl.col("sym") == mostFreqInstr).select("time", "bid").sort("bid", descending=True)|
+7||quote.filter(pl.col("sym") == mostFreqInstr).select("time", mid=((pl.col("bid") + pl.col("ask")) / 2))|
+8||quote.filter(pl.col("sym") == mostFreqInstr).select(pl.all()).select("time", mid=(pl.col("bid") + pl.col("ask")) / 2)|
+9||quote.filter(pl.col("sym") == mostFreqInstr).select("time", mid=(pl.col("bid") + pl.col("ask")) / 2).sort("mid", descending=True)|
 10||quote.filter(pl.col("sym") == aFreqInstr).select("date", "sym", "time", "bid", "ask", "bsize", "asize", "cond", "ex")|
 11||quote.filter(pl.col("sym").is_in(fivehundredInfreqInstrs), pl.col("bsize") + pl.col("asize") > 2000).select("date", "sym", "time", "bid", "ask", "bsize", "asize", "cond", "ex")|
 12||quote.filter(pl.col("sym") == anInfreqInstr).select(((pl.col("bid") + pl.col("ask")) / 2).mean().alias("avgMid"))|

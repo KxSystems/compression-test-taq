@@ -5,9 +5,9 @@ idx|tags|query|parameter
 4||SELECT * FROM trade WHERE date=MIN(date) AND time BETWEEN '0D10:00:00' AND '0D10:00:10'|
 5||SELECT * FROM quote WHERE sym = $1 AND time BETWEEN '0D08:30' AND '0D16:30'|anInfreqInstr
 6||SELECT date, sym, time, price, size, stop, cond, ex FROM trade WHERE date=MIN(date) AND source = 'N'|
-7||SELECT sym, time, (bid + ask) / 2 AS mid FROM quote WHERE sym = $1|mostFreqInstr
-8||SELECT sym, time, (bid + ask) / 2 AS mid FROM (SELECT * FROM quote WHERE sym = $1)|mostFreqInstr
-9||SELECT time, bid FROM quote WHERE sym = $1 ORDER BY bid DESC|mostFreqInstr
+7||SELECT time, (bid + ask) / 2 AS mid FROM quote WHERE sym = $1|mostFreqInstr
+8||SELECT time, (bid + ask) / 2 AS mid FROM (SELECT * FROM quote WHERE sym = $1)|mostFreqInstr
+9||SELECT time, (bid + ask) / 2 AS mid FROM quote WHERE sym = $1 ORDER BY mid DESC|mostFreqInstr
 10||SELECT date, sym, time, bid, ask, bsize, asize, cond, ex FROM quote WHERE sym = $1|aFreqInstr
 11||SELECT date, sym, time, bid, ask, bsize, asize, cond, ex FROM quote WHERE sym IN $1 AND 2000<bsize+asize|fivehundredInfreqInstrs
 12||SELECT AVG((bid + ask) / 2) AS avgMid FROM quote WHERE sym = $1|anInfreqInstr

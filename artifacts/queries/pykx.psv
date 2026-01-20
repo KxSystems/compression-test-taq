@@ -5,8 +5,8 @@ idx|tags|query|parameter
 4||db.trade.select(where=(kx.Column('date') == kx.Column('date').min()) & kx.Column('time').within(time(10, 0), time(10, 0, 10)))|
 5||db.quote.select(where=(kx.Column('sym') == anInfreqInstr) & kx.Column('time').within(time(8, 30), time(16, 30)))|
 6||db.trade.select(columns=kx.Column('date') & kx.Column('sym') & kx.Column('time') & kx.Column('price') & kx.Column('size') & kx.Column('cond') & kx.Column('ex'), where=(kx.Column('date') == kx.Column('date').min()) & (kx.Column('source') == b'N'))|
-7||db.quote.select(columns=kx.Column('date') & kx.Column('sym') & kx.Column('time') & ((kx.Column('bid') + kx.Column('ask')) / 2).name('mid'), where=kx.Column('sym') == mostFreqInstr)|
-8||db.quote.select(where=kx.Column('sym') == mostFreqInstr).select(columns=kx.Column('date') & kx.Column('sym') & kx.Column('time') & ((kx.Column('bid') + kx.Column('ask')) / 2).name('mid'))|
+7||db.quote.select(columns=kx.Column('date') & kx.Column('time') & ((kx.Column('bid') + kx.Column('ask')) / 2).name('mid'), where=kx.Column('sym') == mostFreqInstr)|
+8||db.quote.select(where=kx.Column('sym') == mostFreqInstr).select(columns=kx.Column('date') & kx.Column('time') & ((kx.Column('bid') + kx.Column('ask')) / 2).name('mid'))|
 9|||
 10||db.quote.select(columns=kx.Column('date') & kx.Column('sym') & kx.Column('time') & kx.Column('bid') & kx.Column('ask') & kx.Column('bsize') & kx.Column('asize') & kx.Column('cond') & kx.Column('ex'), where=kx.Column('sym') == aFreqInstr)|
 11||db.quote.select(columns=kx.Column('date') & kx.Column('sym') & kx.Column('time') & kx.Column('bid') & kx.Column('ask') & kx.Column('bsize') & kx.Column('asize') & kx.Column('cond') & kx.Column('ex'), where=kx.Column('sym').isin(fivehundredInfreqInstrs) & ((kx.Column('bsize') + kx.Column('asize')) > 2000))|

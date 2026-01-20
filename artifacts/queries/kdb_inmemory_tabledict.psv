@@ -5,9 +5,9 @@ idx|tags|query|parameter
 4||normalize {select from x where time within 0D10:00:00 0D10:00:10} each trade|
 5||select from quote[anInfreqInstr] where time within 0D08:30 0D16:30|
 6||normalize {select time, price, size, stop, cond, ex from x where source = "N"} each trade|
-7||select sym: mostFreqInstr, time, mid: (bid + ask) %2 from quote mostFreqInstr|
-8||select sym: mostFreqInstr, time, mid: (bid + ask) %2 from select from quote mostFreqInstr|
-9||`bid xdesc select time, bid from quote mostFreqInstr|
+7||select time, mid: (bid + ask) %2 from quote mostFreqInstr|
+8||select time, mid: (bid + ask) %2 from select from quote mostFreqInstr|
+9||`mid xdesc select time, mid: (bid + ask) %2 from quote mostFreqInstr|
 10||select sym: aFreqInstr, time, bid, ask, bsize, asize, cond, ex from quote aFreqInstr|
 11||normalize {select time, bid, ask, bsize, asize, cond, ex from x where 2000<bsize+asize} each fivehundredInfreqInstrs#quote|
 12||select avgMid: avg (bid + ask) % 2 from quote anInfreqInstr|
