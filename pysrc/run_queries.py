@@ -19,10 +19,6 @@ import time as time_mod   # alias to avoid naming conflict
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set
 
-import polars as pl
-os.environ['PYKX_4_1_ENABLED'] = 'True'  # needed for change_dir parameter below
-import pykx as kx
-
 # Configure Logging
 logging.basicConfig(
     level=logging.INFO,
@@ -243,6 +239,72 @@ class QueryExecutorPolars:
 
         return t_end
 
+class QueryExecutorPolarsInMemory:
+    """
+    Handles the setup, execution of Polars queries
+    on NYSE TAQ hive-partitioned parquet files.
+    """
+
+    def __init__(self, param:Dict[str, Any]) -> None:
+        # Dataframes (Lazy)
+        self.datadate: Optional[datetime.date] = None
+        self.master: Optional[pl.DataFrame] = None
+        self.trade: Optional[pl.DataFrame] = None
+        self.quote: Optional[pl.DataFrame] = None
+
+        # Parameters available for queries
+        time_bucket_expr = pl.lit(None) # Initial state
+        for bucket, bound in param['timeBuckets'].items():
+            time_bucket_expr = pl.when(pl.col("time") >= bound).then(
+                pl.lit(bucket)).otherwise(time_bucket_expr)
+        param['time_bucket_expr'] = time_bucket_expr
+
+        time_bucket_idx_expr = pl.lit(None) # Initial state
+        for index, bound in enumerate(param['timeBuckets'].values()):
+            time_bucket_idx_expr = pl.when(pl.col("time") >= bound).then(
+                pl.lit(index)).otherwise(time_bucket_idx_expr)
+        param['time_bucket_idx_expr'] = time_bucket_idx_expr
+
+        self.params: Dict[str, Any] = param
+
+    def load_resources(self, db_path: Path) -> None:
+        """Loads database schemas."""
+        logger.info("loading first partition of hive-partitioned tables at %s into memory", db_path)
+        master = pl.scan_parquet(db_path / "master/date=*/*.parquet", hive_partitioning=True)
+        self.datadate = master.select(pl.first("date")).collect().item()
+        self.master = master.filter(pl.col("date") == self.datadate).drop("date").collect()
+
+        exnames = pl.scan_parquet(db_path / "exnames.parquet").collect()
+        self.params["exnames"] = dict(zip(exnames["ex"], exnames["name"]))
+
+        self.trade = pl.scan_parquet(db_path / "trade/date=*/*.parquet",
+            hive_partitioning=True).filter(pl.col("date") == self.datadate).drop("date").collect()
+        self.quote = pl.scan_parquet(db_path / "quote/date=*/*.parquet",
+            hive_partitioning=True).filter(pl.col("date") == self.datadate).drop("date").collect()
+
+    def execute_query(self, idx: int, tags: Set, query_str: str, runidx: int) -> int:
+        """
+        Safely executes the query string using the loaded data and parameters.
+        """
+        # Create a restricted execution context
+        eval_context = {
+            "pl": pl,
+            "time": time,
+            "datadate": self.datadate,
+            "master": self.master,
+            "trade": self.trade,
+            "quote": self.quote,
+            **self.params
+        }
+        res = eval(query_str, eval_context)
+        t_end = time_mod.perf_counter_ns()
+
+        if runidx == 0:
+            # .collect() triggers the actual computation for LazyFrames
+            logger.info("[%s]   Shape of the result: %s x %s", idx, res.shape[0], res.shape[1])
+
+        return t_end
+
 def main(args) -> None:
     start_time: datetime = datetime.now()
     if not args.db.exists():
@@ -256,14 +318,27 @@ def main(args) -> None:
     # Initialize Runner
     device = get_device(args.db)
     logger.info("Loading parameter files...")
-
-    if args.engine.lower() == "polars":
+    engine = args.engine.lower()
+    if engine == "polars":
+        import polars as pl
+        globals()['pl'] = pl
         params = load_parameters(args.paramdir)
         runner = QueryExecutorPolars(params)
-    elif args.engine.lower() == "pykx":
+    elif engine == "polars_inmemory":
+        import polars as pl
+        globals()['pl'] = pl
+        params = load_parameters(args.paramdir)
+        runner = QueryExecutorPolarsInMemory(params)
+    elif engine == "pykx":
+        os.environ['PYKX_4_1_ENABLED'] = 'True'  # needed for change_dir parameter below
+        import pykx as kx
+        globals()['kx'] = kx
         params = load_parameters(args.paramdir)
         runner = QueryExecutorPyKX(params)
-    elif args.engine.lower() == "pykxq":
+    elif engine == "pykxq":
+        os.environ['PYKX_4_1_ENABLED'] = 'True'  # needed for change_dir parameter below
+        import pykx as kx
+        globals()['kx'] = kx
         runner = QueryExecutorPyKXQ(args.paramdir)
     else:
         raise ValueError(f"Invalid engine parameter: {args.engine}")
@@ -339,7 +414,7 @@ parser = argparse.ArgumentParser(
 
 
 parser.add_argument('-db', type=Path, required=True, help="Path to hive-partitioned parquet DB root")
-parser.add_argument('-engine', type=str, choices=["polars", "pykx", "pykxq"], required=True, help="Query engine. Currently supported polars and PyKX")
+parser.add_argument('-engine', type=str, choices=["polars", "polars_inmemory", "pykx", "pykxq"], required=True, help="Query engine. Currently supported polars and PyKX")
 parser.add_argument('-queryfile', type=Path, required=True, help="PSV file containing queries")
 parser.add_argument('-querymetafile', type=Path, required=True, help="PSV file containing the query metas")
 parser.add_argument('-paramdir', type=Path, required=True, help="Directory containing parameter txt files")
