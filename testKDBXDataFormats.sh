@@ -5,8 +5,9 @@ set -euo pipefail
 script_dir=$(dirname "${BASH_SOURCE[0]}")
 source "${script_dir}/util.sh"
 
-THREAD_NRS=()
+THREAD_NRS=(1 4)
 RESULT_DIR="./results"
+SCOPE="ondisk"
 
 usage() {
     cat <<EOF
@@ -17,8 +18,9 @@ Options:
   --db-dir           Directory where databases will be generated
   -p, --param-dir    Directory of the query parameters
   -d, --date         Target date
-  -t, --threads      Space-separated list of thread counts (e.g., "1 2 4")
-  -r, --result-dir   Directory for query results
+  -t, --threads      Space-separated list of thread counts, e.g., "1 4 16", (default: "1 4")
+  -r, --result-dir   Directory for query results (default: ./results)
+  -s, --scope        Scope of the test, e.g. ondisk, inmem (default: ondisk)
   -h, --help         Show this help message
 EOF
     exit 1
@@ -32,6 +34,7 @@ while [[ $# -gt 0 ]]; do
         -d|--date)       RAW_DATE="$2"; shift 2 ;;
         -t|--threads)    read -ra THREAD_NRS <<< "$2"; shift 2 ;;
         -r|--result-dir) RESULT_DIR="$2"; shift 2 ;;
+        -s|--scope)      SCOPE="$2"; shift 2 ;;
         -h|--help)    usage ;;
         *) echo "Unknown option: $1"; usage ;;
     esac
@@ -67,17 +70,20 @@ function execute_queries () {
         $(get_numa_config) $QEXEC ${query_runner} -db ${DB_DIR}/kdb -format kdb -queryfile ./artifacts/queries/kdb.psv -result ${RESULT_DIR}/kdb_${s}Threads.psv -s ${s}
         QMAP=TRUE $(get_numa_config) $QEXEC ${query_runner} -db ${DB_DIR}/kdb -format kdb -queryfile ./artifacts/queries/kdb_peach.psv -result ${RESULT_DIR}/kdbPeachQMAP_${s}Threads.psv -s ${s}
 
-        $(get_numa_config) $QEXEC ${query_runner} -db ${DB_DIR}/parquet/hivepartitioned -format parquet -queryfile ./artifacts/queries/parquet_partition.psv -result ${RESULT_DIR}/parquetHivePartitioned_${s}Threads.psv -s ${s}
-        $(get_numa_config) $QEXEC ${query_runner} -db ${DB_DIR}/parquet/hivepartitioned -format parquet -queryfile ./artifacts/queries/parquet_partition_peach.psv -result ${RESULT_DIR}/parquetHivePartitionedPeach_${s}Threads.psv -s ${s}
-        $(get_numa_config) $QEXEC ${query_runner} -db ${DB_DIR}/parquet/rowgroup -format parquet_rowgroup -queryfile ./artifacts/queries/parquet_rowgroup.psv -result ${RESULT_DIR}/parquetRowgroup_${s}Threads.psv -s ${s}
-        $(get_numa_config) $QEXEC ${query_runner} -db ${DB_DIR}/parquet/rowgroup -format parquet_rowgroup -queryfile ./artifacts/queries/parquet_rowgroup_peach.psv -result ${RESULT_DIR}/parquetRowgroupPeach_${s}Threads.psv -s ${s}
-        $(get_numa_config) $QEXEC ${query_runner} -db ${DB_DIR}/parquet/rowgroup_minrowgroup_100000 -format parquet_rowgroup -queryfile ./artifacts/queries/parquet_rowgroup.psv -result ${RESULT_DIR}/parquetRowgroupMinSize_${s}Threads.psv -s ${s}
-        $(get_numa_config) $QEXEC ${query_runner} -db ${DB_DIR}/parquet/rowgroup_maxrowgroupsize250000 -format parquet_rowgroup -queryfile ./artifacts/queries/parquet_rowgroup.psv -result ${RESULT_DIR}/parquetRowgroupMaxSize_${s}Threads.psv -s ${s}
+        if [[ "${SCOPE}" == *"ondisk"* ]]; then
+            $(get_numa_config) $QEXEC ${query_runner} -db ${DB_DIR}/parquet/hivepartitioned -format parquet -queryfile ./artifacts/queries/parquet_partition.psv -result ${RESULT_DIR}/parquetHivePartitioned_${s}Threads.psv -s ${s}
+            $(get_numa_config) $QEXEC ${query_runner} -db ${DB_DIR}/parquet/hivepartitioned -format parquet -queryfile ./artifacts/queries/parquet_partition_peach.psv -result ${RESULT_DIR}/parquetHivePartitionedPeach_${s}Threads.psv -s ${s}
+            $(get_numa_config) $QEXEC ${query_runner} -db ${DB_DIR}/parquet/rowgroup -format parquet_rowgroup -queryfile ./artifacts/queries/parquet_rowgroup.psv -result ${RESULT_DIR}/parquetRowgroup_${s}Threads.psv -s ${s}
+            $(get_numa_config) $QEXEC ${query_runner} -db ${DB_DIR}/parquet/rowgroup -format parquet_rowgroup -queryfile ./artifacts/queries/parquet_rowgroup_peach.psv -result ${RESULT_DIR}/parquetRowgroupPeach_${s}Threads.psv -s ${s}
+            $(get_numa_config) $QEXEC ${query_runner} -db ${DB_DIR}/parquet/rowgroup_minrowgroup_100000 -format parquet_rowgroup -queryfile ./artifacts/queries/parquet_rowgroup.psv -result ${RESULT_DIR}/parquetRowgroupMinSize_${s}Threads.psv -s ${s}
+            $(get_numa_config) $QEXEC ${query_runner} -db ${DB_DIR}/parquet/rowgroup_maxrowgroupsize250000 -format parquet_rowgroup -queryfile ./artifacts/queries/parquet_rowgroup.psv -result ${RESULT_DIR}/parquetRowgroupMaxSize_${s}Threads.psv -s ${s}
+        fi
 
-        $(get_numa_config) $QEXEC ${query_runner} -db ${DB_DIR}/kdb -format kdbinmemory -queryfile ./artifacts/queries/kdb_inmemory.psv -result ${RESULT_DIR}/kdbInMemory_${s}Threads.psv -s ${s}
-        $(get_numa_config) $QEXEC ${query_runner} -db ${DB_DIR}/kdb -format kdbinmemorytabledict -queryfile ./artifacts/queries/kdb_inmemory_tabledict.psv -result ${RESULT_DIR}/kdbInMemoryTableDict_${s}Threads.psv -s ${s}
-        EACHPEACH=peach $(get_numa_config) $QEXEC ${query_runner} -db ${DB_DIR}/kdb -format kdbinmemorytabledict -queryfile ./artifacts/queries/kdb_inmemory_tabledict.psv -result ${RESULT_DIR}/kdbInMemoryTableDictPeach_${s}Threads.psv -s ${s}
-
+        if [[ "${SCOPE}" == *"inmem"* ]]; then
+            $(get_numa_config) $QEXEC ${query_runner} -db ${DB_DIR}/kdb -format kdbinmemory -queryfile ./artifacts/queries/kdb_inmemory.psv -result ${RESULT_DIR}/kdbInMemory_${s}Threads.psv -s ${s}
+            $(get_numa_config) $QEXEC ${query_runner} -db ${DB_DIR}/kdb -format kdbinmemorytabledict -queryfile ./artifacts/queries/kdb_inmemory_tabledict.psv -result ${RESULT_DIR}/kdbInMemoryTableDict_${s}Threads.psv -s ${s}
+            EACHPEACH=peach $(get_numa_config) $QEXEC ${query_runner} -db ${DB_DIR}/kdb -format kdbinmemorytabledict -queryfile ./artifacts/queries/kdb_inmemory_tabledict.psv -result ${RESULT_DIR}/kdbInMemoryTableDictPeach_${s}Threads.psv -s ${s}
+        fi
     done
 }
 
