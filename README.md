@@ -12,6 +12,17 @@ This benchmark uses public [NYSE TAQ data](https://ftp.nyse.com/Historical%20Dat
 
 The benchmark uses Pyarrow to persist data into parquet format.
 
+The following engines and formats are currently supported
+
+| data format | KDB-X | KDB-X Python | KDB-X SQL | Polars |
+| --- | ---: | ---: | ---: | ---: |
+| in memory | ✅ | | ✅ | ✅
+| in memory table dicitonary | ✅ | | ❌ | TODO
+| kdb+ on disk | ✅ | In Progress | ✅ | ❌
+| hive partitioned parquet | ✅ | | | ✅
+| parquet rowgroup partitioned | ✅ | | | ✅
+| parquet rowgroup partitioned max row group | ✅ | | | ✅
+
 ## Prerequisites
 
 We assume that **KDB-X** is installed. Set the `QHOME` environment variable in `./config/kdbenv` and then run:
