@@ -17,11 +17,11 @@ The following engines and formats are currently supported
 | data format | KDB-X | KDB-X Python | KDB-X SQL | Polars |
 | --- | ---: | ---: | ---: | ---: |
 | in memory | ✅ | | ✅ | ✅
-| in memory table dicitonary | ✅ | | ❌ | TODO
+| in memory, table dicitonary | ✅ | | ❌ | TODO
 | kdb+ on disk | ✅ | In Progress | ✅ | ❌
-| hive partitioned parquet | ✅ | | | ✅
-| parquet rowgroup partitioned | ✅ | | | ✅
-| parquet rowgroup partitioned max row group | ✅ | | | ✅
+| hive partitioned parquet | ✅ | | ❌ | ✅
+| parquet rowgroup partitioned | ✅ | | ❌ | ✅
+| parquet rowgroup partitioned max row group | ✅ | | ❌ | ✅
 
 ## Prerequisites
 
