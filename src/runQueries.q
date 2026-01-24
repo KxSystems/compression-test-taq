@@ -11,6 +11,7 @@ DB: o `db
 PARAMDIR: hsym `$o`paramdir
 FORMAT: `$upper o `format
 ENGINE: `$upper o `engine
+QUERYOUTPUTDIR: hsym `$o `queryoutputdir
 
 
 QueryTable: ("****";enlist "|") 0: `$o `queryfile;
@@ -182,6 +183,9 @@ runQuery: {[db: `C; device: `C; writerFN; tags; idx:`C; querytags; query:`C; par
     :()];
   io,: getKBRead[device]`kB_read;
   .qlog.info "[", idx, "]   Shape of the result: ", string[count res], " x ", string count cols res;
+  if[not null QUERYOUTPUTDIR;
+    outFile: .Q.dd[QUERYOUTPUTDIR; `$"queryoutput_", idx, ".csv"];
+    outFile 0: .h.cd res];
   delete res from `.;
   memusage: last errormsg;
 
