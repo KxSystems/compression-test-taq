@@ -84,7 +84,7 @@ class QueryResult:
             self.run1_io_KB, self.run2_io_KB, self.run3_io_KB
         ]
 
-def run_query(runner, db_path: Path, device: str, idx: str, tags: Set, query: str) -> QueryResult:
+def run_query(runner, db_path: Path, device: str, idx: str, tags: Set, query: str, queryoutputdir: Path) -> QueryResult:
     """
     Runs a specific query 3 times (Cold, Warm, Warm) and records timing.
     """
@@ -101,12 +101,18 @@ def run_query(runner, db_path: Path, device: str, idx: str, tags: Set, query: st
         io_Start = get_io_stat(device)
         t_start = time_mod.perf_counter_ns()
         try:
-            t_end = runner.execute_query(idx, tags, query, runidx)
+            res = runner.execute_query(idx, tags, query, runidx)
+            t_end = time_mod.perf_counter_ns()
+            io_End = get_io_stat(device)
         except Exception as e:
             logger.error("Query %s failed: %s", idx, e)
             # Return 0.0 or -1.0 to indicate failure in results
             return QueryResult(query, "error")
-        io_End = get_io_stat(device)
+        if runidx == 0:
+            logger.info("[%s]   Shape of the result: %s x %s", idx, res.shape[0], res.shape[1])
+            if not queryoutputdir is None:
+                outFile = queryoutputdir / f"queryoutput_{idx}.csv"
+                runner.write_csv(res, outFile)
         times.append(t_end - t_start)
         ios.append(io_End-io_Start)
 
@@ -138,14 +144,10 @@ class QueryExecutorPyKX:
             "db": self.db,
             **self.params
         }
-        if runidx == 0:
-            res = eval(query_str, eval_context)
-            t_end = time_mod.perf_counter_ns()
-            logger.info("[%s]   Shape of the result: %s x %s", idx, res.shape[0], res.shape[1])
-        else:
-            eval(query_str, eval_context)
-            t_end = time_mod.perf_counter_ns()
-        return t_end
+        return eval(query_str, eval_context)
+
+    def write_csv(self, res, outFile: Path) -> None:
+        kx.q.write.csv(outFile, res)
 
 class QueryExecutorPyKXQ:
     """
@@ -168,14 +170,10 @@ class QueryExecutorPyKXQ:
         """
         Safely executes the query string using the loaded data and parameters.
         """
-        if runidx == 0:
-            res = kx.q(query_str)
-            t_end = time_mod.perf_counter_ns()
-            logger.info("[%s]   Shape of the result: %s x %s", idx, res.shape[0], res.shape[1])
-        else:
-            kx.q(query_str)
-            t_end = time_mod.perf_counter_ns()
-        return t_end
+        return kx.q(query_str)
+
+    def write_csv(self, res, outFile: Path) -> None:
+        kx.q.write.csv(outFile, res)
 
 
 class QueryExecutorPolars:
@@ -230,14 +228,10 @@ class QueryExecutorPolars:
             "quote": self.quote,
             **self.params
         }
-        res = eval(query_str, eval_context) if "dataframeresult" in tags else eval(query_str, eval_context).collect()
-        t_end = time_mod.perf_counter_ns()
+        return eval(query_str, eval_context) if "dataframeresult" in tags else eval(query_str, eval_context).collect()
 
-        if runidx == 0:
-            # .collect() triggers the actual computation for LazyFrames
-            logger.info("[%s]   Shape of the result: %s x %s", idx, res.shape[0], res.shape[1])
-
-        return t_end
+    def write_csv(self, res, outFile: Path) -> None:
+        res.write_csv(outFile)
 
 class QueryExecutorPolarsInMemory:
     """
@@ -296,14 +290,11 @@ class QueryExecutorPolarsInMemory:
             "quote": self.quote,
             **self.params
         }
-        res = eval(query_str, eval_context)
-        t_end = time_mod.perf_counter_ns()
+        return eval(query_str, eval_context)
 
-        if runidx == 0:
-            # .collect() triggers the actual computation for LazyFrames
-            logger.info("[%s]   Shape of the result: %s x %s", idx, res.shape[0], res.shape[1])
+    def write_csv(self, res, outFile: Path) -> None:
+        res.write_csv(outFile)
 
-        return t_end
 
 def main(args) -> None:
     start_time: datetime = datetime.now()
@@ -373,6 +364,9 @@ def main(args) -> None:
             logger.error("Query file not found: %s", args.queryfile)
             sys.exit(3)
 
+        if not args.queryoutputdir is None:
+            args.queryoutputdir.mkdir(parents=True, exist_ok=True)
+
         with open(args.queryfile, 'r', encoding='utf-8') as queryfile, \
              open(args.querymetafile, "r", encoding="utf-8") as querymetafile:
             queryreader = csv.DictReader(queryfile, delimiter='|')
@@ -394,7 +388,7 @@ def main(args) -> None:
                 elif len(tags) > 0 and len(tags & querytags) == 0:
                     result = QueryResult(query, "tagfiltered")
                 else:
-                    result = run_query(runner, args.db, device, idx, querytags, query)
+                    result = run_query(runner, args.db, device, idx, querytags, query, args.queryoutputdir)
 
                 writer.writerow(row_start + [idx, ",".join(querytags)] + result.to_csv_row())
                 f_out.flush() # Write immediately to disk
@@ -419,6 +413,7 @@ parser.add_argument('-queryfile', type=Path, required=True, help="PSV file conta
 parser.add_argument('-querymetafile', type=Path, required=True, help="PSV file containing the query metas")
 parser.add_argument('-paramdir', type=Path, required=True, help="Directory containing parameter txt files")
 parser.add_argument('-tags', type=str, required=False, help="Comma separated tags for filtering queries.")
+parser.add_argument('-queryoutputdir', type=Path, required=False, help="Directory to save query results.")
 
 default_result = Path(f"results/nysetaq_query_results.psv")
 parser.add_argument('-result', type=Path, default=default_result, help="Output PSV file path")
