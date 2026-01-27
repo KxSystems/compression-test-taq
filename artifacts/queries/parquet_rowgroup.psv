@@ -31,7 +31,7 @@ idx|tags|query|parameter
 30||update movingvwap:(sums price * size) % sums size by mysym from select mysym, time, price, size from trade where time within 0D08:00 0D08:15|
 31||select time, sums size from trade where ex ~\: enlist "T"|
 32||select from trade where size = (max;size) fby ex|
-33||(update tag:`maxbid from select from quote where mysym=aFreqInstr, bid=(max; bid) fby ex, time=(min;time) fby ex), update tag: `minask from select from quote where mysym=mostFreqInstr, ask=(min; ask) fby ex, time=(min;time) fby ex|
+33||(update tag:`maxbid from select from quote where mysym=mostFreqInstr, bid=(max; bid) fby ex, time=(min;time) fby ex), update tag: `minask from select from quote where mysym=mostFreqInstr, ask=(min; ask) fby ex, time=(min;time) fby ex|
 34||select from trade where size = (min;size) fby ([] ex;mysym)|
 35||ungroup select from (select seqDecr: seq where (<) prior seq by mysym from trade) where 0 < count each seqDecr|
 36||update key[timeBuckets] timeBucket from `ex`timeBucket xasc select cnt: count i, sum size by ex, timeBucket: value[timeBuckets] bin time from trade where date=min date|

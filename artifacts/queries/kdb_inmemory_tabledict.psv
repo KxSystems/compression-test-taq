@@ -31,7 +31,7 @@ idx|tags|query|parameter
 30||normalize EACHPEACH[{update movingvwap:(sums price * size) % sums size from select time, price, size from x where time within 0D08:00 0D08:15}; trade]|
 31||normalize EACHPEACH[{select time, sums size from x where ex = "T"}; trade]|
 32||select from normalize EACHPEACH[{select from x where size = (max;size) fby ex}; trade] where size = (max;size) fby ex|
-33||(update tag:`maxbid from select from quote[aFreqInstr] where bid=(max; bid) fby ex, time=(min;time) fby ex), update tag: `minask from select from quote[mostFreqInstr] where ask=(min; ask) fby ex, time=(min;time) fby ex|
+33||(update tag:`maxbid from select from quote[mostFreqInstr] where bid=(max; bid) fby ex, time=(min;time) fby ex), update tag: `minask from select from quote[mostFreqInstr] where ask=(min; ask) fby ex, time=(min;time) fby ex|
 34||normalize EACHPEACH[{select from x where size = (min;size) fby ex}; trade]|
 35||normalize EACHPEACH[{select from (select seqDecr: seq where (<) prior seq from x) where 0 < count each seqDecr}; trade]|
 36||update key[timeBuckets] timeBucket from `ex`timeBucket xasc select sum cnt, sum size by ex, timeBucket from normalize EACHPEACH[{0!select cnt: count i, sum size by ex, timeBucket: value[timeBuckets] bin time from x}; trade]|

@@ -31,7 +31,7 @@ idx|tags|query|parameter
 30||update movingvwap:(sums price * size) % sums size by sym from select sym, time, price, size from trade where time within 0D08:00 0D08:15|
 31||select time, sums size from trade where ex = "T"|
 32||select from trade where size = (max;size) fby ex|
-33||(update tag:`maxbid from select from quote where sym=aFreqInstr, bid=(max; bid) fby ex, time=(min;time) fby ex), update tag: `minask from select from quote where sym=mostFreqInstr, ask=(min; ask) fby ex, time=(min;time) fby ex|
+33||(update tag:`maxbid from select from quote where sym=mostFreqInstr, bid=(max; bid) fby ex, time=(min;time) fby ex), update tag: `minask from select from quote where sym=mostFreqInstr, ask=(min; ask) fby ex, time=(min;time) fby ex|
 34||select from trade where size = (min;size) fby ([] ex;sym)|
 35||ungroup select from (select seqDecr: seq where (<) prior seq by sym from trade) where 0 < count each seqDecr|
 36||update key[timeBuckets] timeBucket from `ex`timeBucket xasc select cnt: count i, sum size by ex, timeBucket: value[timeBuckets] bin time from trade where date=min date|
@@ -46,5 +46,5 @@ idx|tags|query|parameter
 45||select medMidSize: med (bsize + asize) from quote where sym=anInfreqInstr|
 46||select medSize: med size by ex from trade
 47||aj[`sym`time; select sym, time, price, size, stop, cond, ex from trade where date=min date, sym in twentyInstrs; select sym, time, bid, ask, bsize, asize, quotecond: cond, quoteex: ex from quote where date=min date]|
-48||aj[`time; select time, price, size, stop, cond, ex from trade where date=min date, sym=aFreqInstr; select time, bid, ask, bsize, asize, quotecond: cond, quoteex: ex from quote where date=min date]|
+48||aj[`time; select time, price, size, stop, cond, ex from trade where date=min date, sym=aFreqInstr; select time, bid, ask, bsize, asize, quotecond: cond, quoteex: ex from quote where date=min date, sym=aFreqInstr]|
 49||aj[`sym`ex`time; select sym, time, price, size, stop, cond, ex from trade where date=min date, size>500000; select sym, time, bid, ask, bsize, asize, quotecond: cond, ex from quote where date=min date]|
