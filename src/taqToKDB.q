@@ -118,7 +118,7 @@ QUOTESCHEMA: ([
   retailInterestIndicator:"C";
   shortSaleRestrictionIndicator:"C";
   LULDBBOIndicator:"C";
-  SIPGeneratedMessageIdentifier:"N";
+  SIPGeneratedMessageIdentifier:"C";
   nationalBBOLULDIndicator:"C";
   participantTimestamp:"N";
   FINRAADFTimestamp:"N";
