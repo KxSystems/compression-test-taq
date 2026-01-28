@@ -266,15 +266,15 @@ class QueryExecutorPolarsInMemory:
         logger.info("loading first partition of hive-partitioned tables at %s into memory", db_path)
         master = pl.scan_parquet(db_path / "master/date=*/*.parquet", hive_partitioning=True)
         self.datadate = master.select(pl.first("date")).collect().item()
-        self.master = master.filter(pl.col("date") == self.datadate).drop("date").collect()
+        self.master = master.filter(pl.col("date") == self.datadate).drop("date").with_columns(pl.col("sym").cast(pl.Categorical)).collect()
 
         exnames = pl.scan_parquet(db_path / "exnames.parquet").collect()
         self.params["exnames"] = dict(zip(exnames["ex"], exnames["name"]))
 
         self.trade = pl.scan_parquet(db_path / "trade/date=*/*.parquet",
-            hive_partitioning=True).filter(pl.col("date") == self.datadate).drop("date").collect()
+            hive_partitioning=True).filter(pl.col("date") == self.datadate).drop("date").with_columns(pl.col("sym").cast(pl.Categorical)).collect()
         self.quote = pl.scan_parquet(db_path / "quote/date=*/*.parquet",
-            hive_partitioning=True).filter(pl.col("date") == self.datadate).drop("date").collect()
+            hive_partitioning=True).filter(pl.col("date") == self.datadate).drop("date").with_columns(pl.col("sym").cast(pl.Categorical)).collect()
 
     def execute_query(self, idx: int, tags: Set, query_str: str, runidx: int) -> int:
         """
