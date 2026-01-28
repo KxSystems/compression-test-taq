@@ -11,7 +11,7 @@ DB: o `db
 PARAMDIR: hsym `$o`paramdir
 FORMAT: `$upper o `format
 ENGINE: `$upper o `engine
-QUERYOUTPUTDIR: hsym `$o `queryoutputdir
+QUERYOUTPUT: hsym `$o `queryoutput
 
 
 QueryTable: ("****";enlist "|") 0: `$o `queryfile;
@@ -153,6 +153,17 @@ queryWrapper: $[ENGINE ~ `SQL;
   {[query; parameter] $[count parameter; ".s.sp[\"", query, "\"; enlist ", parameter, "]"; ".s.e \"", query, "\""]}; / for now, we accept a single parameter only
   {[x;] x}]
 
+persistOutput: {[dir; res; idx:`C]
+  if[not null dir;
+    outFile: .Q.dd[dir; `$"queryoutput_", idx, ".csv"];
+    origCols: cols res;
+    res: .Q.id res;
+    floatingCols: exec c from meta[res] where t in "ef";
+    res: ![res; (); 0b; floatingCols!(each; .Q.f[6]; ) each floatingCols];
+    outFile 0: .h.cd origCols xcol res;
+  ];
+  }
+
 runQuery: {[db: `C; device: `C; writerFN; tags; idx:`C; querytags; query:`C; parameter:`C]
   if[ENGINE ~ `SQL; /This is needed due to a bug in kdb+ SQL engine where changing from data directory causes issues
     pwd: first system "pwd";
@@ -183,9 +194,7 @@ runQuery: {[db: `C; device: `C; writerFN; tags; idx:`C; querytags; query:`C; par
     :()];
   io,: getKBRead[device]`kB_read;
   .qlog.info "[", idx, "]   Shape of the result: ", string[count res], " x ", string count cols res;
-  if[not null QUERYOUTPUTDIR;
-    outFile: .Q.dd[QUERYOUTPUTDIR; `$"queryoutput_", idx, ".csv"];
-    outFile 0: .h.cd res];
+  persistOutput[QUERYOUTPUT; 0!res; idx];
   delete res from `.;
   memusage: last errormsg;
 
@@ -239,7 +248,7 @@ $[FORMAT like "PARQUET*"; [
     compparm: "0_0_0"; / data is not compressed in memory
     WriterFN:: writeRes[resultH; compparm];
     loadInMemKDBDB[DB; "loadKDBDBIntoMemoryTableDict"; Device; WriterFN]
-    normalize: {`sym xcols raze key[x] {update sym: x from y}'x}; / convert table dictionary to normal table
+    normalize: {cnt: count each x; ([] sym: where cnt) ,' raze x}; / convert table dictionary to normal table
   ];
   [
     compparmall: -21!hsym `$DB,"/",string[first key hsym `$DB],"/quote/sym";   // or assume that db dir name reflects compression

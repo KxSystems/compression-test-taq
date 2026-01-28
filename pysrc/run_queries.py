@@ -84,7 +84,7 @@ class QueryResult:
             self.run1_io_KB, self.run2_io_KB, self.run3_io_KB
         ]
 
-def run_query(runner, db_path: Path, device: str, idx: str, tags: Set, query: str, queryoutputdir: Path) -> QueryResult:
+def run_query(runner, db_path: Path, device: str, idx: str, tags: Set, query: str, queryoutput: Path) -> QueryResult:
     """
     Runs a specific query 3 times (Cold, Warm, Warm) and records timing.
     """
@@ -110,8 +110,8 @@ def run_query(runner, db_path: Path, device: str, idx: str, tags: Set, query: st
             return QueryResult(query, "error")
         if runidx == 0:
             logger.info("[%s]   Shape of the result: %s x %s", idx, res.shape[0], res.shape[1])
-            if not queryoutputdir is None:
-                outFile = queryoutputdir / f"queryoutput_{idx}.csv"
+            if not queryoutput is None:
+                outFile = queryoutput / f"queryoutput_{idx}.csv"
                 runner.write_csv(res, outFile)
         times.append(t_end - t_start)
         ios.append(io_End-io_Start)
@@ -231,7 +231,7 @@ class QueryExecutorPolars:
         return eval(query_str, eval_context) if "dataframeresult" in tags else eval(query_str, eval_context).collect()
 
     def write_csv(self, res, outFile: Path) -> None:
-        res.write_csv(outFile)
+        res.with_columns(pl.col(pl.Boolean).cast(pl.Int8)).fill_nan(None).write_csv(outFile, float_precision=6)
 
 class QueryExecutorPolarsInMemory:
     """
@@ -364,8 +364,8 @@ def main(args) -> None:
             logger.error("Query file not found: %s", args.queryfile)
             sys.exit(3)
 
-        if not args.queryoutputdir is None:
-            args.queryoutputdir.mkdir(parents=True, exist_ok=True)
+        if not args.queryoutput is None:
+            args.queryoutput.mkdir(parents=True, exist_ok=True)
 
         with open(args.queryfile, 'r', encoding='utf-8') as queryfile, \
              open(args.querymetafile, "r", encoding="utf-8") as querymetafile:
@@ -388,7 +388,7 @@ def main(args) -> None:
                 elif len(tags) > 0 and len(tags & querytags) == 0:
                     result = QueryResult(query, "tagfiltered")
                 else:
-                    result = run_query(runner, args.db, device, idx, querytags, query, args.queryoutputdir)
+                    result = run_query(runner, args.db, device, idx, querytags, query, args.queryoutput)
 
                 writer.writerow(row_start + [idx, ",".join(querytags)] + result.to_csv_row())
                 f_out.flush() # Write immediately to disk
@@ -413,7 +413,7 @@ parser.add_argument('-queryfile', type=Path, required=True, help="PSV file conta
 parser.add_argument('-querymetafile', type=Path, required=True, help="PSV file containing the query metas")
 parser.add_argument('-paramdir', type=Path, required=True, help="Directory containing parameter txt files")
 parser.add_argument('-tags', type=str, required=False, help="Comma separated tags for filtering queries.")
-parser.add_argument('-queryoutputdir', type=Path, required=False, help="Directory to save query results.")
+parser.add_argument('-queryoutput', type=Path, required=False, help="Directory to save query results.")
 
 default_result = Path(f"results/nysetaq_query_results.psv")
 parser.add_argument('-result', type=Path, default=default_result, help="Output PSV file path")
