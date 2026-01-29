@@ -45,6 +45,6 @@ idx|tags|query|parameter
 44||normalize EACHPEACH[{0!select first price, FirstTime: first time, LastTime: last time, cnt: count size, sum size by pricegroup: sums differ price from x where ex in "LM" }; trade]|
 45||select medMidSize: med (bsize + asize) from quote anInfreqInstr|
 46||select medSize: med size by ex from raze EACHPEACH[{select ex, size from x}; trade]|
-47||raze EACHPEACH[{update sym:x from aj[`time; select time, price, size, stop, cond, ex from trade x; select time, bid, ask, bsize, asize, quotecond: cond, quoteex: ex from quote x]}; twentyInstrs]|
+47||{cnt: count each x; ([] sym: twentyInstrs where cnt) ,' raze x} EACHPEACH[{aj[`time; select time, price, size, stop, cond, ex from trade x; select time, bid, ask, bsize, asize, quotecond: cond, quoteex: ex from quote x]}; twentyInstrs]|
 48||aj[`time; select time, price, size, stop, cond, ex from trade aFreqInstr; select time, bid, ask, bsize, asize, quotecond: cond, quoteex: ex from quote aFreqInstr]|
-49||raze EACHPEACH[{update sym:x from aj[`ex`time; select time, price, size, stop, cond, ex from trade[x] where size>500000; select time, bid, ask, bsize, asize, quotecond: cond, ex from quote x]}; key trade]|
+49||{cnt: count each x; ([] sym: key[trade] where cnt) ,' raze x} EACHPEACH[{aj[`ex`time; select time, price, size, stop, cond, ex from trade[x] where size>500000; select time, bid, ask, bsize, asize, quotecond: cond, ex from quote x]}; key trade]|
