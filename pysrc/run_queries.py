@@ -149,6 +149,44 @@ class QueryExecutorPyKX:
     def write_csv(self, res, outFile: Path) -> None:
         kx.q.write.csv(outFile, res)
 
+class QueryExecutorPyKXInMemory:
+    """
+    Handles the setup, execution of PyKX Python queries
+    on NYSE TAQ kdb+ database.
+    """
+    def __init__(self, param:Dict[str, Any]) -> None:
+        self.master: kx.Table = None
+        self.quote: kx.Table = None
+        self.trade: kx.Table = None
+        # Parameters available for queries
+        self.params: Dict[str, Any] = param
+
+    def load_resources(self, db_path: Path) -> None:
+        """Loads kdb+ database"""
+        logger.info("loading first partition's tables of the kdb+ database at %s into memory", db_path)
+        db = kx.DB(path=db_path, change_dir=False)
+        self.master = db.master.select(where=kx.Column('date') == kx.Column('date').min()).delete(columns=kx.Column('date')).select(where=kx.Column('i') > -1)
+        self.quote = db.quote.select(where=kx.Column('date') == kx.Column('date').min()).delete(columns=kx.Column('date')).select(where=kx.Column('i') > -1)
+        self.trade = db.trade.select(where=kx.Column('date') == kx.Column('date').min()).delete(columns=kx.Column('date')).select(where=kx.Column('i') > -1)
+
+    def execute_query(self, idx: int, tags: Set, query_str: str, runidx: int) -> int:
+        """
+        Safely executes the query string using the loaded data and parameters.
+        """
+        # Create a restricted execution context
+        eval_context = {
+            "kx":kx,
+            "time": time,
+            "master": self.master,
+            "trade": self.trade,
+            "quote": self.quote,
+            **self.params
+        }
+        return eval(query_str, eval_context)
+
+    def write_csv(self, res, outFile: Path) -> None:
+        kx.q.write.csv(outFile, res)
+
 class QueryExecutorPyKXQ:
     """
     Handles the setup, execution of PyKX q queries
@@ -240,7 +278,7 @@ class QueryExecutorPolarsInMemory:
     """
 
     def __init__(self, param:Dict[str, Any]) -> None:
-        # Dataframes (Lazy)
+        # Dataframes
         self.datadate: Optional[datetime.date] = None
         self.master: Optional[pl.DataFrame] = None
         self.trade: Optional[pl.DataFrame] = None
@@ -315,22 +353,33 @@ def main(args) -> None:
         globals()['pl'] = pl
         params = load_parameters(args.paramdir)
         runner = QueryExecutorPolars(params)
+        threadnr = pl.thread_pool_size()
     elif engine == "polars_inmemory":
         import polars as pl
         globals()['pl'] = pl
         params = load_parameters(args.paramdir)
         runner = QueryExecutorPolarsInMemory(params)
+        threadnr = pl.thread_pool_size()
     elif engine == "pykx":
         os.environ['PYKX_4_1_ENABLED'] = 'True'  # needed for change_dir parameter below
         import pykx as kx
         globals()['kx'] = kx
         params = load_parameters(args.paramdir)
         runner = QueryExecutorPyKX(params)
+        threadnr = kx.q.system.num_threads
+    elif engine == "pykx_inmemory":
+        os.environ['PYKX_4_1_ENABLED'] = 'True'  # needed for change_dir parameter below
+        import pykx as kx
+        globals()['kx'] = kx
+        params = load_parameters(args.paramdir)
+        runner = QueryExecutorPyKXInMemory(params)
+        threadnr = kx.q.system.num_threads
     elif engine == "pykxq":
         os.environ['PYKX_4_1_ENABLED'] = 'True'  # needed for change_dir parameter below
         import pykx as kx
         globals()['kx'] = kx
         runner = QueryExecutorPyKXQ(args.paramdir)
+        threadnr = kx.q.system.num_threads
     else:
         raise ValueError(f"Invalid engine parameter: {args.engine}")
 
@@ -348,7 +397,7 @@ def main(args) -> None:
         "run1memKB",
         "run1ioKB", "run2ioKB", "run3ioKB"
     ]
-    row_start = ["nyi", pl.thread_pool_size()]
+    row_start = ["nyi", threadnr]
     # Write Mode: Overwrite existing
     with open(args.result, 'w', newline='', encoding='utf-8') as f_out:
         writer = csv.writer(f_out, delimiter='|')
@@ -408,7 +457,7 @@ parser = argparse.ArgumentParser(
 
 
 parser.add_argument('-db', type=Path, required=True, help="Path to hive-partitioned parquet DB root")
-parser.add_argument('-engine', type=str, choices=["polars", "polars_inmemory", "pykx", "pykxq"], required=True, help="Query engine. Currently supported polars and PyKX")
+parser.add_argument('-engine', type=str, choices=["polars", "polars_inmemory", "pykx", "pykx_inmemory", "pykxq"], required=True, help="Query engine. Currently supported polars and PyKX")
 parser.add_argument('-queryfile', type=Path, required=True, help="PSV file containing queries")
 parser.add_argument('-querymetafile', type=Path, required=True, help="PSV file containing the query metas")
 parser.add_argument('-paramdir', type=Path, required=True, help="Directory containing parameter txt files")

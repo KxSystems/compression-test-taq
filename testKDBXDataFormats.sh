@@ -85,6 +85,7 @@ function execute_queries () {
             $(get_numa_config) $QEXEC ./src/runQueries.q ${COMMONPARAMS} -db ${DB_DIR}/kdb -format kdbinmemory -engine sql -queryfile ./artifacts/queries/sql_inmemory.psv -result ${RESULT_DIR}/sqlInMemory_${s}Threads.psv -s ${s}
             EACHPEACH=peach $(get_numa_config) $QEXEC ./src/runQueries.q ${COMMONPARAMS} -db ${DB_DIR}/kdb -format kdbinmemorytabledict -queryfile ./artifacts/queries/kdb_inmemory_tabledict.psv -result ${RESULT_DIR}/kdbInMemoryTableDictPeach_${s}Threads.psv -s ${s}
             POLARS_MAX_THREADS=$(( s > 1 ? s : 1 )) $(get_numa_config) python3 pysrc/run_queries.py ${COMMONPARAMS} -db ${DB_DIR}/parquet/rowgroup -engine polars_inmemory -queryfile ./artifacts/queries/polars_inmemory.psv -result ${RESULT_DIR}/polarsInMemory_${s}Threads.psv
+            QARGS="-s ${s}" $(get_numa_config) python3 pysrc/run_queries.py -engine pykx_inmemory -db ${DB_DIR}/kdb -queryfile ./artifacts/queries/pykx_inmemory.psv ${COMMONPARAMS} -result ${RESULT_DIR}/pykx_inmemory_kdb_${s}Threads.psv
         fi
     done
 }
