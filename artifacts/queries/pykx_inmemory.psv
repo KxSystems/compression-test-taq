@@ -23,7 +23,7 @@ idx|tags|query|parameter
 22||quote.select(columns=(kx.Column('asize') + kx.Column('bsize')).wavg(kx.Column('ask') - kx.Column('bid')).name('avgWeightedSpread') & (kx.Column('ask') - kx.Column('bid')).dev().name('devSpread') & (kx.Column('ask') - kx.Column('bid')).max().name('maxSpread') & (kx.Column('ask') - kx.Column('bid')).min().name('minSpread'), where=kx.Column('sym').isin(hundredInstrs), by=kx.Column('sym') & kx.Column('ex').call(exnames))|
 23||quote.select(columns=(kx.Column('asize') + kx.Column('bsize')).wavg(kx.Column('ask') - kx.Column('bid')).name('avgWeightedSpread') & (kx.Column('ask') - kx.Column('bid')).dev().name('devSpread') & (kx.Column('ask') - kx.Column('bid')).max().name('maxSpread') & (kx.Column('ask') - kx.Column('bid')).min().name('minSpread'), where=kx.Column('shortSaleRestrictionIndicator')=="0", by='sym')|
 24||trade.select(columns=['sym', 'ex'], where=kx.Column('size') > 700000).drop_duplicates()|
-25|||
+25||quote.select(columns=kx.Column('bsize').wavg(kx.Column('bid')).name('weightedBidPrice') & kx.Column('asize').wavg(kx.Column('ask')).name('weightedAskPrice'), where=kx.Column('sym').isin(twentyInstrs), by='sym')|
 26|||
 27|||
 28|||
