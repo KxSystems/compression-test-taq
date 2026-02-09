@@ -40,9 +40,9 @@ idx|tags|query|parameter
 39||quote.select(columns=kx.Column('asize').first() & kx.Column('bsize').first(), where=kx.Column('sym') == anInfreqInstr, by=kx.Column('time').minute).update(columns=((kx.Column('asize') - kx.Column('bsize')) / (kx.Column('asize') + kx.Column('bsize'))).name('inbal'))|
 40||quote.select(columns=kx.Column('asize').wsum(kx.Column('ask')).name('wsumAsk') & kx.Column('bsize').wsum(kx.Column('bid')).name('wsumBid') & kx.Column('asize').sdev().name('sdevasksize') & kx.Column('bid').sdev().name('sdevbid') & kx.Column('ask').cor(kx.Column('bid')).name('corPrice') & kx.Column('asize').cor(kx.Column('bsize')).name('corSize'), where=kx.Column('sym').isin(fivehundredInfreqInstrs), by="sym")|
 41||trade.select(where=kx.Column('price') == kx.Column.fby(kx.Column('sym'), kx.q.min, kx.Column('price')))|
-42|||
-43|||
-44|||
+42||trade.select(columns=kx.Column('price').first() & kx.Column('time').first().name('FirstTime') & kx.Column('time').last().name('LastTime') & kx.Column('size').count().name('csn') & kx.Column('size').sum(), where=kx.Column('sym') == mostFreqInstr, by=kx.Column('price').differ().sums().name('pricegroup'))|
+43||trade.select(columns=kx.Column('price').first() & kx.Column('time').first().name('FirstTime') & kx.Column('time').last().name('LastTime') & kx.Column('size').count().name('csn') & kx.Column('size').sum(), where=kx.Column('sym').isin(hundredInstrs), by=kx.Column('sym') & kx.Column.fby(kx.Column('sym'), kx.q('sums differ@'), kx.Column('price')).name('pricegroup'))|
+44||trade.select(columns=kx.Column('price').first() & kx.Column('time').first().name('FirstTime') & kx.Column('time').last().name('LastTime') & kx.Column('size').count().name('csn') & kx.Column('size').sum(), where=kx.Column('ex').isin([b"L", b"M"]), by=kx.Column('sym') & kx.Column.fby(kx.Column('sym'), kx.q('sums differ@'), kx.Column('price')).name('pricegroup'))|
 45||quote.select(columns=(kx.Column('bsize') + kx.Column('asize')).med().name('medMidSize'), where=kx.Column('sym') == anInfreqInstr)|
 46||trade.select(columns=kx.Column('size').med().name('medMidSize'), by="ex")|
 47|||
