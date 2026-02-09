@@ -39,12 +39,12 @@ idx|tags|query|parameter
 38|||
 39|||
 40|||
-41|||
+41||trade.select(where=kx.Column('price') == kx.Column.fby(kx.Column('sym'), kx.q.min, kx.Column('price')))|
 42|||
 43|||
 44|||
-45|||
-46|||
+45||quote.select(columns=(kx.Column('bsize') + kx.Column('asize')).med().name('medMidSize'), where=kx.Column('sym') == anInfreqInstr)|
+46||trade.select(columns=kx.Column('size').med().name('medMidSize'), by="ex")|
 47|||
 48|||
 49|||
