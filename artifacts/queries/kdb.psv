@@ -41,8 +41,8 @@ idx|tags|query|parameter
 40||select wsumAsk:asize wsum ask, wsumBid: bid wsum bsize, sdevasksize: sdev asize, sdevbid:sdev bid, corPrice:ask cor bid, corSize: asize cor bsize by sym from quote where sym in fivehundredInfreqInstrs|
 41||select from trade where price = (min;price) fby sym|
 42||select first price, FirstTime: first time, LastTime: last time, cnt: count size, sum size by pricegroup: sums differ price from trade where sym=mostFreqInstr|
-43||select first price, FirstTime: first time, LastTime: last time, cnt: count size, sum size by sym, pricegroup:({sums differ x};price) fby sym from trade where sym in hundredInstrs|
-44||select first price, FirstTime: first time, LastTime: last time, cnt: count size, sum size by sym, pricegroup:({sums differ x};price) fby sym from trade where ex in "LM"|
+43||select first price, FirstTime: first time, LastTime: last time, cnt: count size, sum size by sym, pricegroup:(sums differ@;price) fby sym from trade where sym in hundredInstrs|
+44||select first price, FirstTime: first time, LastTime: last time, cnt: count size, sum size by sym, pricegroup:(sums differ@;price) fby sym from trade where ex in "LM"|
 45||select medMidSize: med (bsize + asize) from quote where sym=anInfreqInstr|
 46||select medSize: med size by ex from trade
 47||aj[`sym`time; select sym, time, price, size, stop, cond, ex from trade where date=min date, sym in twentyInstrs; select sym, time, bid, ask, bsize, asize, quotecond: cond, quoteex: ex from quote where date=min date]|
