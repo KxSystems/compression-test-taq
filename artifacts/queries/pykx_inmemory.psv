@@ -45,6 +45,6 @@ idx|tags|query|parameter
 44||trade.select(columns=kx.Column('price').first() & kx.Column('time').first().name('FirstTime') & kx.Column('time').last().name('LastTime') & kx.Column('size').count().name('csn') & kx.Column('size').sum(), where=kx.Column('ex').isin([b"L", b"M"]), by=kx.Column('sym') & kx.Column.fby(kx.Column('sym'), kx.q('sums differ@'), kx.Column('price')).name('pricegroup'))|
 45||quote.select(columns=(kx.Column('bsize') + kx.Column('asize')).med().name('medMidSize'), where=kx.Column('sym') == anInfreqInstr)|
 46||trade.select(columns=kx.Column('size').med().name('medMidSize'), by="ex")|
-47|||
-48|||
-49|||
+47||trade.select(columns=["sym", "time", "price", "size", "stop", "cond", "ex"], where=kx.Column('sym').isin(twentyInstrs)).merge_asof(quote.select(columns=kx.Column('sym') & kx.Column('time') & kx.Column('bid') & kx.Column('ask') & kx.Column('bsize') & kx.Column('asize') & kx.Column('cond').name('quotecond') & kx.Column('ex').name('quoteex')), on=["sym","time"])|
+48||trade.select(columns=["time", "price", "size", "stop", "cond", "ex"], where=kx.Column('sym') == aFreqInstr).merge_asof(quote.select(columns=kx.Column('time') & kx.Column('bid') & kx.Column('ask') & kx.Column('bsize') & kx.Column('asize') & kx.Column('cond').name('quotecond') & kx.Column('ex').name('quoteex'), where=kx.Column('sym') == aFreqInstr), on="time")|
+49||trade.select(columns=["sym", "time", "price", "size", "stop", "cond", "ex"], where=kx.Column('size') > 500000).merge_asof(quote.select(columns=kx.Column('sym') & kx.Column('time') & kx.Column('bid') & kx.Column('ask') & kx.Column('bsize') & kx.Column('asize') & kx.Column('cond').name('quotecond') & kx.Column('ex')), on=["sym", "ex", "time"])|
