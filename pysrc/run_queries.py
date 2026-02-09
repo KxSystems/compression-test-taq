@@ -160,6 +160,7 @@ class QueryExecutorPyKXInMemory:
         self.trade: kx.Table = None
         # Parameters available for queries
         self.params: Dict[str, Any] = param
+        kx.q['timeBucketsStep'] = kx.q('{`s#value[x]!key x}', param['timeBuckets'])
 
     def load_resources(self, db_path: Path) -> None:
         """Loads kdb+ database"""
