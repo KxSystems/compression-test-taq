@@ -64,7 +64,7 @@ function get_numa_config () {
 function execute_queries () {
     mkdir -p ${RESULT_DIR}
     echo "Running Queries..."
-    local COMMONPARAMS="-querymetafile ./artifacts/queries/querymeta.psv -paramdir ${PARAM_DIR}"
+    local COMMONPARAMS="-querymeta ./artifacts/queries/querymeta.psv -paramdir ${PARAM_DIR}"
     for s in "${THREAD_NRS[@]}"; do
         echo "--> Running with $s threads"
         if [[ "${SCOPE}" == *"ondisk"* ]]; then

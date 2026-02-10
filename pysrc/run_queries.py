@@ -418,9 +418,9 @@ def main(args) -> None:
             args.queryoutput.mkdir(parents=True, exist_ok=True)
 
         with open(args.queryfile, 'r', encoding='utf-8') as queryfile, \
-             open(args.querymetafile, "r", encoding="utf-8") as querymetafile:
+             open(args.querymeta, "r", encoding="utf-8") as querymeta:
             queryreader = csv.DictReader(queryfile, delimiter='|')
-            querymetareader = csv.DictReader(querymetafile, delimiter='|')
+            querymetareader = csv.DictReader(querymeta, delimiter='|')
 
             for row, rowmeta in zip(queryreader, querymetareader):
                 idx = row['idx'].strip()
@@ -460,7 +460,7 @@ parser = argparse.ArgumentParser(
 parser.add_argument('-db', type=Path, required=True, help="Path to hive-partitioned parquet DB root")
 parser.add_argument('-engine', type=str, choices=["polars", "polars_inmemory", "pykx", "pykx_inmemory", "pykxq"], required=True, help="Query engine. Currently supported polars and PyKX")
 parser.add_argument('-queryfile', type=Path, required=True, help="PSV file containing queries")
-parser.add_argument('-querymetafile', type=Path, required=True, help="PSV file containing the query metas")
+parser.add_argument('-querymeta', type=Path, required=True, help="PSV file containing the query metas")
 parser.add_argument('-paramdir', type=Path, required=True, help="Directory containing parameter txt files")
 parser.add_argument('-tags', type=str, required=False, help="Comma separated tags for filtering queries.")
 parser.add_argument('-queryoutput', type=Path, required=False, help="Directory to save query results.")

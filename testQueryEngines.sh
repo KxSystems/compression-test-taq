@@ -58,7 +58,7 @@ function get_numa_config () {
 function execute_queries () {
     mkdir -p ${RESULT_DIR}
     echo "Running Queries..."
-    local COMMONPARAMS="-querymetafile ./artifacts/queries/querymeta.psv -paramdir ${PARAM_DIR}"
+    local COMMONPARAMS="-querymeta ./artifacts/queries/querymeta.psv -paramdir ${PARAM_DIR}"
     for s in "${THREAD_NRS[@]}"; do
         echo "--> Running with $s threads"
         $(get_numa_config) $QEXEC ./src/runQueries.q -db ${DB_DIR}/kdb -format kdb -queryfile ./artifacts/queries/kdb.psv ${COMMONPARAMS} -result ${RESULT_DIR}/kdb_kdb_${s}Threads.psv -s ${s}
@@ -72,7 +72,7 @@ function execute_queries () {
     done
 }
 
-# generate_data
+generate_data
 execute_queries
 
 echo "Benchmark suite complete."

@@ -16,7 +16,7 @@ QUERYOUTPUT: hsym `$o `queryoutput
 
 QueryTable: ("****";enlist "|") 0: `$o `queryfile;
 .qlog.info "Loading and executing queries from ", o `queryfile;
-QueryMetaTable: `idx`querytag xcol ("**";enlist "|") 0: `$o `querymetafile;
+QueryMetaTable: `idx`querytag xcol ("**";enlist "|") 0: `$o `querymeta;
 
 Tags: ("," vs o`tags) except enlist ""
 
