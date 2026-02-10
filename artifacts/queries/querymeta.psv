@@ -7,25 +7,25 @@ idx|tags|description|comment
 6|simple||
 7|simple,singleinstrument||
 8|simple,singleinstrument,unnecessarycolumnfetch||We fetch columns that we immediately throw away
-9|simple,singleinstrument,sort||
+9|simple,singleinstrument,sort,sortedoutput_mid||
 10|simple,singleinstrument||
 11|simple,fewinstruments||
 12|simple,singleinstrument||
-13|simple,singleinstrument||
-14|advanced,singleinstrument,pivot||
-15|advanced,fewinstruments,pivot||
-16|advanced,fewinstruments,pivot,fillforward||
+13|simple,singleinstrument,sortedoutput_time_ex||
+14|advanced,singleinstrument,pivot,sortedoutput_time||
+15|advanced,fewinstruments,pivot,sortedoutput_time||
+16|advanced,fewinstruments,pivot,fillforward,sortedoutput_time||
 17|simple,singleinstrument||
 18|simple,fewinstruments||
 19|advanced,singleinstrument||
-20|advanced,singleinstrument|calculate weighted average spread, deviation/max/min of spread by exchange names|
-21|advanced,singleinstrument|calculate weighted average spread, deviation/max/min of spread by exchange names|same as query 13 but measures impact of manual optimization (calculate spread once)
-22|advanced,fewinstruments|calculate weighted average spread and deviation of spread by exchange names and instrument|
-23|advanced|calculate weighted average spread and deviation of spread by exchange names for quotes without short sale restriction on UTP (Short Sale Restriction Indicator is "0")|
+20|advanced,singleinstrument,sortedoutput_ex|calculate weighted average spread, deviation/max/min of spread by exchange names|
+21|advanced,singleinstrument,sortedoutput_ex|calculate weighted average spread, deviation/max/min of spread by exchange names|same as query 13 but measures impact of manual optimization (calculate spread once)
+22|advanced,fewinstruments,sortedoutput_sym_ex|calculate weighted average spread and deviation of spread by exchange names and instrument|
+23|advanced,sortedoutput_ex|calculate weighted average spread and deviation of spread by exchange names for quotes without short sale restriction on UTP (Short Sale Restriction Indicator is "0")|
 24|simple||
-25|simple,fewinstruments||
+25|simple,fewinstruments,sortedoutput_sym||
 26|advanced,singleinstrument||
-27|advanced,fewinstruments||
+27|advanced,fewinstruments,sortedoutput_sym||
 28|advanced,singleinstrument|select cummulative trade sizes for a given instrument|
 29|advanced||
 30|complex|calculate moving volume wighted average price by instrument within a time range|
@@ -34,17 +34,17 @@ idx|tags|description|comment
 33|advanced,singleinstrument|select all rows from quote when a given instrument first reaches its daily maximal bid price or daily minimal ask price. Introduce a new `tag` column that can take either value `maxbid` or `minask`|
 34|advanced||
 35|advanced|select the indices of all rows in which the sequence number decreases for the instrument|
-36|complex|custom time bucket (e.g. before 9:00 is preopen), sort result by instrumentID and time bucket|
-37|complex|custom time bucket (e.g. before 9:00 is preopen)|
-38|simple,fewinstruments||
+36|complex,sortedoutput_ex_timeBucket|custom time bucket (e.g. before 9:00 is preopen), sort result by instrumentID and time bucket|
+37|complex,sortedoutput_sym|custom time bucket (e.g. before 9:00 is preopen)|
+38|simple,fewinstruments,sortedoutput_sym||
 39|simple,singleinstrument||
-40|advanced,fewinstruments||
+40|advanced,fewinstruments,sortedoutput_sym||
 41|advanced|trades with the smallest price for all instruments|
 42|complex,singleinstrument|We want to calculate how much volume was transacted at each price. Whenever the price changes, we want to restart the count. We only want to consider prices for the same instrument|
 43|complex,fewinstruments|We want to calculate how much volume was transacted at each price. Whenever the price changes, we want to restart the count. We only want to consider prices for the same instrument|
-44|complex|We want to calculate how much volume was transacted at each price. Whenever the price changes, we want to restart the count. We only want to consider prices for the same instrument|
+44|complex,sortedoutput_sym_pricegroup|We want to calculate how much volume was transacted at each price. Whenever the price changes, we want to restart the count. We only want to consider prices for the same instrument|
 45|simple,singleinstrument||
-46|simple||
+46|simple,sortedoutput_ex||
 47|advanced,fewinstruments,asofjoin||
 48|advanced,singleinstrument,asofjoin||
 49|advanced,asofjoin||
