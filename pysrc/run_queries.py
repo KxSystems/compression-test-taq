@@ -168,7 +168,9 @@ class QueryExecutorPyKXInMemory:
         db = kx.DB(path=db_path, change_dir=False)
         self.master = db.master.select(where=kx.Column('date') == kx.Column('date').min()).delete(columns=kx.Column('date')).select(where=kx.Column('i') > -1)
         self.quote = db.quote.select(where=kx.Column('date') == kx.Column('date').min()).delete(columns=kx.Column('date')).select(where=kx.Column('i') > -1)
+        self.quote = self.quote.sort_values(by='time').grouped('sym')
         self.trade = db.trade.select(where=kx.Column('date') == kx.Column('date').min()).delete(columns=kx.Column('date')).select(where=kx.Column('i') > -1)
+        self.trade = self.trade.sort_values(by='time').grouped('sym')
 
     def execute_query(self, idx: int, tags: Set, query_str: str, runidx: int) -> int:
         """
@@ -311,9 +313,9 @@ class QueryExecutorPolarsInMemory:
         self.params["exnames"] = dict(zip(exnames["ex"], exnames["name"]))
 
         self.trade = pl.scan_parquet(db_path / "trade/date=*/*.parquet",
-            hive_partitioning=True).filter(pl.col("date") == self.datadate).drop("date").with_columns(pl.col("sym").cast(pl.Categorical)).collect()
+            hive_partitioning=True).filter(pl.col("date") == self.datadate).drop("date").with_columns(pl.col("sym").cast(pl.Categorical)).sort("time").collect()
         self.quote = pl.scan_parquet(db_path / "quote/date=*/*.parquet",
-            hive_partitioning=True).filter(pl.col("date") == self.datadate).drop("date").with_columns(pl.col("sym").cast(pl.Categorical)).collect()
+            hive_partitioning=True).filter(pl.col("date") == self.datadate).drop("date").with_columns(pl.col("sym").cast(pl.Categorical)).sort("time").collect()
 
     def execute_query(self, idx: int, tags: Set, query_str: str, runidx: int) -> int:
         """
