@@ -1,7 +1,14 @@
 system "l src/log.q"
 
-src1: hsym `$first .z.x
-src2: hsym `$last .z.x
+ko: key o: first each .Q.opt .z.x;
+
+if[not all `querymeta`queryoutput1`queryoutput2 in ko;
+    .qlog.error "Missing parameter(s): ", "," sv string `querymeta`queryoutput1`queryoutput2 except ko;
+    exit 1];
+
+querymeta: ("J*"; enlist "|")0: hsym `$o`querymeta / we only care about idx and tags
+queryoutput1: hsym `$o`queryoutput1
+queryoutput2: hsym `$o`queryoutput2
 
 FLOATDIFFTHREASHOLD: 0.00005
 
@@ -18,7 +25,17 @@ types: tradeTypes, quoteTypes, ([mid: "f"; avgLiqWMid: "f"]),
  ([wsumAsk: "f"; wsumBid: "f"; sdevasksize: "f"; sdevbid: "f"; corPrice: "f"; corSize: "f"]),
  ([pricegroup: "i"; FirstTime: "n"; LastTime: "n"; medMidSize: "f"; medSize: "f"; quotecond: "c"; quoteex: "c"])
 
-compare: {[srct1; srct2]
+compare: {[idx: `j; tags: `C]
+    filename: `$"queryoutput_" , string[idx], ".csv";
+    if[not filename in key queryoutput1;
+        .qlog.error "Missing query output: ", string[filename], " from ", 1_string queryoutput1;
+        :()];
+    if[not filename in key queryoutput2;
+        .qlog.error "Missing query output: ", string[filename], " from ", 1_string queryoutput2;
+        :()];
+
+    srct1: .Q.dd[queryoutput1; `$"queryoutput_" , string[idx], ".csv"];
+    srct2: .Q.dd[queryoutput2; `$"queryoutput_" , string[idx], ".csv"];
     .qlog.info "Comparing tables with ", string[srct1], " and ", string srct2;
     t1cols: `$"," vs first system "head -n 1 ", 1_string srct1;
     t2cols: `$"," vs first system "head -n 1 ", 1_string srct2;
@@ -43,13 +60,24 @@ compare: {[srct1; srct2]
 
     t2: cols[t1] xcols t2; / reorder columns to match t1
 
-    / sort based on some columns if they exist
-    $[all `sym`ex`time in cols t1;
-      [t1: `sym`ex`time xasc t1; t2: `sym`ex`time xasc t2];
-      $[all `sym`timeBucket in cols t1;
-        [t1: `sym`timeBucket xasc t1; t2: `sym`timeBucket xasc t2];
-        $[`sym in cols t1; [t1: `sym xasc t1; t2: `sym xasc t2];
-          if[`time in cols t1; [t1: `time xasc t1; t2: `time xasc t2]]]]];
+    if[not any "sortedoutput*" like/: "," vs tags;
+        / sort based on some columns if they exist
+        $[all `sym`ex`time in cols t1; [
+          .qlog.info "Sorting by sym, ex, time";
+          t1: `sym`ex`time xasc t1;
+          t2: `sym`ex`time xasc t2];
+          all `sym`timeBucket in cols t1; [
+            .qlog.info "Sorting by sym, timeBucket";
+            t1: `sym`timeBucket xasc t1;
+            t2: `sym`timeBucket xasc t2];
+            `sym in cols t1; [
+              .qlog.info "Sorting by sym";
+              t1: `sym xasc t1;
+              t2: `sym xasc t2];
+              `time in cols t1; [
+                .qlog.info "Sorting by time";
+                t1: `time xasc t1;
+                t2: `time xasc t2]]];
 
     {[t1;t2;c]
         notok: not $[.Q.ty[t1 c] in "ef"; FLOATDIFFTHREASHOLD > abs t1[c] - t2 c; "C" ~ .Q.ty t1 c; t1[c] like' t2 c; t1[c] = t2 c];
@@ -62,6 +90,6 @@ compare: {[srct1; srct2]
     .qlog.info "Content: \t\tOK";
   }
 
-(.Q.dd[src1] each key src1) compare' (.Q.dd[src2] each key src2)
+(compare . value@) each querymeta;
 
 .qlog.info "ALL OK"
