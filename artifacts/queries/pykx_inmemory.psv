@@ -31,7 +31,7 @@ idx|tags|query|parameter
 30||trade.select(columns=['sym', 'time', 'price', 'size'], where=kx.Column('time').within(time(8), time(8, 15))).update(columns=((kx.Column('price') * kx.Column('size')).sums() / kx.Column('size').sums()).name('movingvwap'), by=kx.Column("sym"))|
 31||trade.select(columns=kx.Column('time') & kx.Column('size').sums(), where=kx.Column('ex') == b'T')|
 32||trade.select(where=kx.Column('size') == kx.Column.fby(kx.Column('ex'), kx.q.max, kx.Column('size')))|
-33||kx.q.raze([quote.select(where=(kx.Column('sym') == mostFreqInstr) & (kx.Column('ask') == kx.Column.fby(kx.Column('ex'), kx.q.max, kx.Column('ask'))) & (kx.Column('time') == kx.Column.fby(kx.Column('ex'), kx.q.min, kx.Column('time')))).update({'tag': '`maxask'}), quote.select(where=(kx.Column('sym') == mostFreqInstr) & (kx.Column('ask') == kx.Column.fby(kx.Column('ex'), kx.q.min, kx.Column('ask'))) & (kx.Column('time') == kx.Column.fby(kx.Column('ex'), kx.q.min, kx.Column('time')))).update({'tag': '`minask'})])|
+33||kx.q.raze([quote.select(where=(kx.Column('sym') == mostFreqInstr) & (kx.Column('bid') == kx.Column.fby(kx.Column('ex'), kx.q.max, kx.Column('bid'))) & (kx.Column('time') == kx.Column.fby(kx.Column('ex'), kx.q.min, kx.Column('time')))).update({'tag': '`maxbid'}), quote.select(where=(kx.Column('sym') == mostFreqInstr) & (kx.Column('ask') == kx.Column.fby(kx.Column('ex'), kx.q.min, kx.Column('ask'))) & (kx.Column('time') == kx.Column.fby(kx.Column('ex'), kx.q.min, kx.Column('time')))).update({'tag': '`minask'})])|
 34||trade.select(where=kx.Column('size') == kx.Column.fby(kx.Column('ex') & kx.Column('sym'), kx.q.min, kx.Column('size')))|
 35|||
 36|||
