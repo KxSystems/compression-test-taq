@@ -7,7 +7,7 @@ idx|tags|query|parameter
 6||trade.select(columns=['sym', 'time', 'price', 'size', 'stop', 'cond', 'ex'], where=kx.Column('source') == b'N')|
 7||quote.select(columns=kx.Column('time') & ((kx.Column('bid') + kx.Column('ask')) / 2).name('mid'), where=kx.Column('sym') == mostFreqInstr)|
 8||quote.select(where=kx.Column('sym') == mostFreqInstr).select(columns=kx.Column('time') & ((kx.Column('bid') + kx.Column('ask')) / 2).name('mid'))|
-9||quote.select(where=kx.Column('sym') == mostFreqInstr).select(columns=kx.Column('time') & ((kx.Column('bid') + kx.Column('ask')) / 2).name('mid')).sort_values(by='mid', ascending=False)|
+9||quote.select(columns=kx.Column('time') & ((kx.Column('bid') + kx.Column('ask')) / 2).name('mid'), where=kx.Column('sym') == mostFreqInstr).sort_values(by='mid', ascending=False)|
 10||quote.select(columns=['sym', 'time', 'bid', 'ask', 'bsize', 'asize', 'cond', 'ex'], where=kx.Column('sym') == aFreqInstr)|
 11||quote.select(columns=['sym', 'time', 'bid', 'ask', 'bsize', 'asize', 'cond', 'ex'], where=kx.Column('sym').isin(fivehundredInfreqInstrs) & ((kx.Column('bsize') + kx.Column('asize')) > 2000))|
 12||quote.select(columns=((kx.Column('bsize') * kx.Column('bid') + kx.Column('asize') * kx.Column('ask')) / (kx.Column('bsize') + kx.Column('asize'))).avg().name('avgLiqWMid'), where=kx.Column('sym') == anInfreqInstr)|
