@@ -111,11 +111,14 @@ loadKDBDBIntoMemory: {[db: `s]
     .qlog.info "sorting ", string[tName], " by time";
     `time xasc tName
     } each newTables where `time in' cols each newTables;
+  }
 
+loadKDBDBIntoMemoryGroupped: {[db: `s]
+  loadKDBDBIntoMemory db;
   {[tName]
     .qlog.info "Adding groupped attribute to ", string[tName];
     update `g#sym from tName
-    } each newTables;
+    } each `quote`trade;
   }
 
 loadInMemKDBDB: {[db: `C; loader: `C; device: `C; writerFN]
@@ -240,6 +243,10 @@ $[FORMAT like "PARQUET*"; [
     compparm: "nyi_nyi_nyi";
     WriterFN:: writeRes[resultH; compparm];
     loadParquetDB[DB; FORMAT ~ `PARQUET_ROWGROUP; Device; WriterFN]
+  ]; FORMAT = `KDBINMEMORYGROUPPED; [
+    compparm: "0_0_0"; / data is not compressed in memory
+    WriterFN:: writeRes[resultH; compparm];
+    loadInMemKDBDB[DB; "loadKDBDBIntoMemoryGroupped"; Device; WriterFN]
   ]; FORMAT = `KDBINMEMORY; [
     compparm: "0_0_0"; / data is not compressed in memory
     WriterFN:: writeRes[resultH; compparm];
