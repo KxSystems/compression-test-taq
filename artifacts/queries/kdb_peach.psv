@@ -13,20 +13,20 @@ idx|tags|query|parameter
 12|||
 13|||
 14|||
-15|manualparallelization|(uj/) {(`time,x) xcol select avgMid: avg ((bsize * bid) + asize * ask) % bsize + asize by 0D00:10 xbar time from quote where sym=x} peach fivehundredInfreqInstrs|
-16|||
+15|||
+16|manualparallelization|(uj/) {(`time,x) xcol select avgMid: avg ((bsize * bid) + asize * ask) % bsize + asize by 0D00:10 xbar time from quote where sym=x} peach fivehundredInfreqInstrs|
 17|||
-18|manualparallelization|raze {update sym: x from 0!select avgSpread: avg ask - bid by 0D00:10 xbar time from quote where sym = x} peach hundredInstrs|
-19|||
+18|||
+19|manualparallelization|raze {update sym: x from 0!select avgSpread: avg ask - bid by 0D00:10 xbar time from quote where sym = x} peach hundredInstrs|
 20|||
 21|||
-22|manualparallelization|raze {update sym: x from 0!select avgWeightedSpread: (asize + bsize) wavg ask - bid, devSpread: dev ask - bid, maxSpread: max ask - bid, minSpread: min ask- bid by exnames ex from quote where date=min date, sym=x} peach hundredInstrs|
-23|||
+22|||
+23|manualparallelization|raze {update sym: x from 0!select avgWeightedSpread: (asize + bsize) wavg ask - bid, devSpread: dev ask - bid, maxSpread: max ask - bid, minSpread: min ask- bid by exnames ex from quote where date=min date, sym=x} peach hundredInstrs|
 24|||
-25|manualparallelization|raze {select first sym, weightedBidPice: bsize wavg bid, weightedOfferPice: asize wavg ask from quote where sym = x} peach twentyInstrs|
-26|||
-27|manualparallelization|raze {select sym, time, movingLiqWMid: 5 mavg ((bsize * bid) + asize * ask) % bsize + asize, movingsize: 5 mavg asize + bsize from quote where sym = x} peach twentyInstrs|
-28|||
+25|||
+26|manualparallelization|raze {select first sym, weightedBidPice: bsize wavg bid, weightedOfferPice: asize wavg ask from quote where sym = x} peach twentyInstrs|
+27|||
+28|manualparallelization|raze {select sym, time, movingLiqWMid: 5 mavg ((bsize * bid) + asize * ask) % bsize + asize, movingsize: 5 mavg asize + bsize from quote where sym = x} peach twentyInstrs|
 29|||
 30|||
 31|||
@@ -36,15 +36,16 @@ idx|tags|query|parameter
 35|||
 36|||
 37|||
-38|manualparallelization|raze {update sym: x from 0!select o: first price, h: max price, l: min price, c: last price, s: sum size by 0D00:05 xbar time from trade where sym = x, not null stop} peach hundredInstrs|
-39|||
-40|manualparallelization|raze {select first sym, wsumAsk:asize wsum ask, wsumBid: bid wsum bsize, sdevasksize: sdev asize, sdevbid:sdev bid, corPrice:ask cor bid, corSize: asize cor bsize from quote where sym = x} peach fivehundredInfreqInstrs|
-41|||
+38|||
+39|manualparallelization|raze {update sym: x from 0!select o: first price, h: max price, l: min price, c: last price, s: sum size by 0D00:05 xbar time from trade where sym = x, not null stop} peach hundredInstrs|
+40|||
+41|manualparallelization|raze {select first sym, wsumAsk:asize wsum ask, wsumBid: bid wsum bsize, sdevasksize: sdev asize, sdevbid:sdev bid, corPrice:ask cor bid, corSize: asize cor bsize from quote where sym = x} peach fivehundredInfreqInstrs|
 42|||
-43|manualparallelization|raze {update sym: x from 0!select first price, FirstTime: first time, LastTime: last time, cnt: count size, sum size by pricegroup: sums differ price from trade where sym = x} peach hundredInstrs|
-44|||
+43|||
+44|manualparallelization|raze {update sym: x from 0!select first price, FirstTime: first time, LastTime: last time, cnt: count size, sum size by pricegroup: sums differ price from trade where sym = x} peach hundredInstrs|
 45|||
 46|||
-47|manualparallelization|raze {aj[`sym`time; select sym, time, price, size, stop, cond, ex from trade where date=min date, sym = x; select sym, time, bid, ask, bsize, asize, quotecond: cond, quoteex: ex from quote where date=min date]} peach twentyInstrs|
-48|||
+47|||
+48|manualparallelization|raze {aj[`sym`time; select sym, time, price, size, stop, cond, ex from trade where date=min date, sym = x; select sym, time, bid, ask, bsize, asize, quotecond: cond, quoteex: ex from quote where date=min date]} peach twentyInstrs|
 49|||
+50|||

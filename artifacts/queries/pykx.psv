@@ -4,20 +4,20 @@ idx|tags|query|parameter
 3||db.trade.select(where=(kx.Column('seq') > 0) & kx.Column('ex').within(b"A", b"Z") & kx.Column('time').within(time(0), time(23, 59, 59, 999999)) & (kx.Column('size') < 2147483647))|
 4||db.trade.select(where=(kx.Column('date') == kx.Column('date').min()) & kx.Column('time').within(time(10, 0), time(10, 0, 10)))|
 5||db.quote.select(where=(kx.Column('sym') == anInfreqInstr) & kx.Column('time').within(time(8, 30), time(16, 30)))|
-6||db.trade.select(columns=kx.Column('date') & kx.Column('sym') & kx.Column('time') & kx.Column('price') & kx.Column('size') & kx.Column('cond') & kx.Column('ex'), where=(kx.Column('date') == kx.Column('date').min()) & (kx.Column('source') == b'N'))|
-7||db.quote.select(columns=kx.Column('date') & kx.Column('time') & ((kx.Column('bid') + kx.Column('ask')) / 2).name('mid'), where=kx.Column('sym') == mostFreqInstr)|
-8||db.quote.select(where=kx.Column('sym') == mostFreqInstr).select(columns=kx.Column('date') & kx.Column('time') & ((kx.Column('bid') + kx.Column('ask')) / 2).name('mid'))|
-9|||
-10||db.quote.select(columns=kx.Column('date') & kx.Column('sym') & kx.Column('time') & kx.Column('bid') & kx.Column('ask') & kx.Column('bsize') & kx.Column('asize') & kx.Column('cond') & kx.Column('ex'), where=kx.Column('sym') == aFreqInstr)|
-11||db.quote.select(columns=kx.Column('date') & kx.Column('sym') & kx.Column('time') & kx.Column('bid') & kx.Column('ask') & kx.Column('bsize') & kx.Column('asize') & kx.Column('cond') & kx.Column('ex'), where=kx.Column('sym').isin(fivehundredInfreqInstrs) & ((kx.Column('bsize') + kx.Column('asize')) > 2000))|
-12||db.quote.select(columns=((kx.Column('bsize') * kx.Column('bid') + kx.Column('asize') * kx.Column('ask')) / (kx.Column('bsize') + kx.Column('asize'))).avg().name('avgLiqWMid'), where=kx.Column('sym') == anInfreqInstr)|
-13|||
+6||db.quote.select(where=(kx.Column('sym').isin(hundredInstrs)) & kx.Column('time').within(time(8, 30), time(8, 35)))|
+7||db.trade.select(columns=kx.Column('date') & kx.Column('sym') & kx.Column('time') & kx.Column('price') & kx.Column('size') & kx.Column('cond') & kx.Column('ex'), where=(kx.Column('date') == kx.Column('date').min()) & (kx.Column('source') == b'N'))|
+8||db.quote.select(columns=kx.Column('date') & kx.Column('time') & ((kx.Column('bid') + kx.Column('ask')) / 2).name('mid'), where=kx.Column('sym') == mostFreqInstr)|
+9||db.quote.select(where=kx.Column('sym') == mostFreqInstr).select(columns=kx.Column('date') & kx.Column('time') & ((kx.Column('bid') + kx.Column('ask')) / 2).name('mid'))|
+10|||
+11||db.quote.select(columns=kx.Column('date') & kx.Column('sym') & kx.Column('time') & kx.Column('bid') & kx.Column('ask') & kx.Column('bsize') & kx.Column('asize') & kx.Column('cond') & kx.Column('ex'), where=kx.Column('sym') == aFreqInstr)|
+12||db.quote.select(columns=kx.Column('date') & kx.Column('sym') & kx.Column('time') & kx.Column('bid') & kx.Column('ask') & kx.Column('bsize') & kx.Column('asize') & kx.Column('cond') & kx.Column('ex'), where=kx.Column('sym').isin(fivehundredInfreqInstrs) & ((kx.Column('bsize') + kx.Column('asize')) > 2000))|
+13||db.quote.select(columns=((kx.Column('bsize') * kx.Column('bid') + kx.Column('asize') * kx.Column('ask')) / (kx.Column('bsize') + kx.Column('asize'))).avg().name('avgLiqWMid'), where=kx.Column('sym') == anInfreqInstr)|
 14|||
 15|||
 16|||
-17||db.quote.select(columns=(kx.Column('ask') + kx.Column('bid')).avg().name('avgSpread'), where=kx.Column('sym') == anInfreqInstr, by=kx.Column('time').minute.xbar(10))|
-18||db.quote.select(columns=(kx.Column('ask') + kx.Column('bid')).avg().name('avgSpread'), where=kx.Column('sym').isin(hundredInstrs), by= kx.Column('sym') & kx.Column('time').minute.xbar(10))|
-19|||
+17|||
+18||db.quote.select(columns=(kx.Column('ask') + kx.Column('bid')).avg().name('avgSpread'), where=kx.Column('sym') == anInfreqInstr, by=kx.Column('time').minute.xbar(10))|
+19||db.quote.select(columns=(kx.Column('ask') + kx.Column('bid')).avg().name('avgSpread'), where=kx.Column('sym').isin(hundredInstrs), by= kx.Column('sym') & kx.Column('time').minute.xbar(10))|
 20|||
 21|||
 22|||
@@ -29,8 +29,8 @@ idx|tags|query|parameter
 28|||
 29|||
 30|||
-31||db.trade.select(kx.Column('time') & kx.Column('size').sums(), where=kx.Column('ex') == b'T')|
-32|||
+31|||
+32||db.trade.select(kx.Column('time') & kx.Column('size').sums(), where=kx.Column('ex') == b'T')|
 33|||
 34|||
 35|||
@@ -48,3 +48,4 @@ idx|tags|query|parameter
 47|||
 48|||
 49|||
+50|||
