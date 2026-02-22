@@ -81,7 +81,7 @@ function execute_queries () {
 
         if [[ "${SCOPE}" == *"inmem"* ]]; then
             $(get_numa_config) $QEXEC ./src/runQueries.q ${COMMONPARAMS} -db ${DB_DIR}/kdb -format kdbinmemory -queryfile ./artifacts/queries/kdb_inmemory.psv -result ${RESULT_DIR}/kdbInMemory_${s}Threads.psv -s ${s}
-            $(get_numa_config) $QEXEC ./src/runQueries.q ${COMMONPARAMS} -db ${DB_DIR}/kdb -format kdbinmemorygroupped -queryfile ./artifacts/queries/kdb_inmemory.psv -result ${RESULT_DIR}/kdbInMemoryGroupped_${s}Threads.psv -s ${s}
+            $(get_numa_config) $QEXEC ./src/runQueries.q ${COMMONPARAMS} -db ${DB_DIR}/kdb -format kdbinmemorygroupped -queryfile ./artifacts/queries/kdb_inmemory_groupped.psv -result ${RESULT_DIR}/kdbInMemoryGroupped_${s}Threads.psv -s ${s}
             $(get_numa_config) $QEXEC ./src/runQueries.q ${COMMONPARAMS} -db ${DB_DIR}/kdb -format kdbinmemorytabledict -queryfile ./artifacts/queries/kdb_inmemory_tabledict.psv -result ${RESULT_DIR}/kdbInMemoryTableDict_${s}Threads.psv -s ${s}
             $(get_numa_config) $QEXEC ./src/runQueries.q ${COMMONPARAMS} -db ${DB_DIR}/kdb -format kdbinmemorygroupped -engine sql -queryfile ./artifacts/queries/sql_inmemory.psv -result ${RESULT_DIR}/sqlInMemoryGroupped_${s}Threads.psv -s ${s}
             EACHPEACH=peach $(get_numa_config) $QEXEC ./src/runQueries.q ${COMMONPARAMS} -db ${DB_DIR}/kdb -format kdbinmemorytabledict -queryfile ./artifacts/queries/kdb_inmemory_tabledict.psv -result ${RESULT_DIR}/kdbInMemoryTableDictPeach_${s}Threads.psv -s ${s}

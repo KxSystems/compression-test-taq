@@ -46,6 +46,6 @@ idx|tags|query|parameter
 45||select first price, FirstTime: first time, LastTime: last time, cnt: count size, sum size by sym, pricegroup:(sums differ@;price) fby sym from trade where ex in "LM"|
 46||select medMidSize: med (bsize + asize) from quote where sym=anInfreqInstr|
 47||select medSize: med size by ex from trade|
-48||aj[`sym`time; select sym, time, price, size, stop, cond, ex from trade where sym in twentyInstrs; select `g#sym, time, bid, ask, bsize, asize, quotecond: cond, quoteex: ex from quote where sym in twentyInstrs]|
+48||aj[`sym`time; select sym, time, price, size, stop, cond, ex from trade where sym in twentyInstrs; select sym, time, bid, ask, bsize, asize, quotecond: cond, quoteex: ex from quote]|
 49||aj[`time; select time, price, size, stop, cond, ex from trade where sym=aFreqInstr; select time, bid, ask, bsize, asize, quotecond: cond, quoteex: ex from quote where sym=aFreqInstr]|
-50||aj[`sym`ex`time; select sym, time, price, size, stop, cond, ex from trade where size>500000; select `g#sym, time, bid, ask, bsize, asize, quotecond: cond, ex from quote]|
+50||aj[`sym`ex`time; select sym, time, price, size, stop, cond, ex from trade where size>500000; select sym, time, bid, ask, bsize, asize, quotecond: cond, ex from quote]|
