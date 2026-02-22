@@ -81,9 +81,9 @@ function execute_queries () {
 
         if [[ "${SCOPE}" == *"inmem"* ]]; then
             $(get_numa_config) $QEXEC ./src/runQueries.q ${COMMONPARAMS} -db ${DB_DIR}/kdb -format kdbinmemory -queryfile ./artifacts/queries/kdb_inmemory.psv -result ${RESULT_DIR}/kdbInMemory_${s}Threads.psv -s ${s}
-            $(get_numa_config) $QEXEC ./src/runQueries.q ${COMMONPARAMS} -db ${DB_DIR}/kdb -format kdbinmemorygroupped -queryfile ./artifacts/queries/kdb_inmemory_groupped.psv -result ${RESULT_DIR}/kdbInMemoryGroupped_${s}Threads.psv -s ${s}
+            $(get_numa_config) $QEXEC ./src/runQueries.q ${COMMONPARAMS} -db ${DB_DIR}/kdb -format kdbinmemorygrouped -queryfile ./artifacts/queries/kdb_inmemory_groupped.psv -result ${RESULT_DIR}/kdbInMemoryGrouped_${s}Threads.psv -s ${s}
             $(get_numa_config) $QEXEC ./src/runQueries.q ${COMMONPARAMS} -db ${DB_DIR}/kdb -format kdbinmemorytabledict -queryfile ./artifacts/queries/kdb_inmemory_tabledict.psv -result ${RESULT_DIR}/kdbInMemoryTableDict_${s}Threads.psv -s ${s}
-            $(get_numa_config) $QEXEC ./src/runQueries.q ${COMMONPARAMS} -db ${DB_DIR}/kdb -format kdbinmemorygroupped -engine sql -queryfile ./artifacts/queries/sql_inmemory.psv -result ${RESULT_DIR}/sqlInMemoryGroupped_${s}Threads.psv -s ${s}
+            $(get_numa_config) $QEXEC ./src/runQueries.q ${COMMONPARAMS} -db ${DB_DIR}/kdb -format kdbinmemorygrouped -engine sql -queryfile ./artifacts/queries/sql_inmemory.psv -result ${RESULT_DIR}/sqlInMemoryGroupped_${s}Threads.psv -s ${s}
             EACHPEACH=peach $(get_numa_config) $QEXEC ./src/runQueries.q ${COMMONPARAMS} -db ${DB_DIR}/kdb -format kdbinmemorytabledict -queryfile ./artifacts/queries/kdb_inmemory_tabledict.psv -result ${RESULT_DIR}/kdbInMemoryTableDictPeach_${s}Threads.psv -s ${s}
             POLARS_MAX_THREADS=$(( s > 1 ? s : 1 )) $(get_numa_config) python3 pysrc/run_queries.py ${COMMONPARAMS} -db ${DB_DIR}/parquet/rowgroup -engine polars_inmemory -queryfile ./artifacts/queries/polars_inmemory.psv -result ${RESULT_DIR}/polarsInMemory_${s}Threads.psv
             QARGS="-s ${s}" $(get_numa_config) python3 pysrc/run_queries.py -engine pykx_inmemory -db ${DB_DIR}/kdb -queryfile ./artifacts/queries/pykx_inmemory.psv ${COMMONPARAMS} -result ${RESULT_DIR}/pykx_inmemory_kdb_${s}Threads.psv
