@@ -104,7 +104,8 @@ loadKDBDBIntoMemory: {[db: `s]
   .qlog.info "loading tables in partition ", string[d], " into memory";
   .Q.dd[dpath] {[getPath; tName]
       .qlog.info "loading table ", string[tName], " into memory";
-      tName set select from get[getPath tName] where i>-1 }' key dpath;
+      tName set select from get[getPath tName] where i>-1;
+      .qlog.info "Shape of ", string[tName], ": ", string[count value tName], " x ", string count cols tName; }' key dpath;
 
   newTables: tables[] except tablesBefore;
   {[tName]
@@ -113,10 +114,10 @@ loadKDBDBIntoMemory: {[db: `s]
     } each newTables where `time in' cols each newTables;
   }
 
-loadKDBDBIntoMemoryGroupped: {[db: `s]
+loadKDBDBIntoMemoryGrouped: {[db: `s]
   loadKDBDBIntoMemory db;
   {[tName]
-    .qlog.info "Adding groupped attribute to ", string[tName];
+    .qlog.info "Adding grouped attribute to ", string[tName];
     update `g#sym from tName
     } each `quote`trade;
   }
@@ -243,10 +244,10 @@ $[FORMAT like "PARQUET*"; [
     compparm: "nyi_nyi_nyi";
     WriterFN:: writeRes[resultH; compparm];
     loadParquetDB[DB; FORMAT ~ `PARQUET_ROWGROUP; Device; WriterFN]
-  ]; FORMAT = `KDBINMEMORYGROUPPED; [
+  ]; FORMAT = `KDBINMEMORYGROUPED; [
     compparm: "0_0_0"; / data is not compressed in memory
     WriterFN:: writeRes[resultH; compparm];
-    loadInMemKDBDB[DB; "loadKDBDBIntoMemoryGroupped"; Device; WriterFN]
+    loadInMemKDBDB[DB; "loadKDBDBIntoMemoryGrouped"; Device; WriterFN]
   ]; FORMAT = `KDBINMEMORY; [
     compparm: "0_0_0"; / data is not compressed in memory
     WriterFN:: writeRes[resultH; compparm];
@@ -256,13 +257,12 @@ $[FORMAT like "PARQUET*"; [
     WriterFN:: writeRes[resultH; compparm];
     loadInMemKDBDB[DB; "loadKDBDBIntoMemoryTableDict"; Device; WriterFN]
     normalize: {cnt: count each x; ([] sym: where cnt) ,' raze x}; / convert table dictionary to normal table
-  ];
-  [
+  ]; FORMAT = `KDB; [
     compparmall: -21!hsym `$DB,"/",string[first key hsym `$DB],"/quote/sym";   // or assume that db dir name reflects compression
     compparm: $[count compparmall; "_" sv string @[;`logicalBlockSize`algorithm`zipLevel] compparmall; "0_0_0"];
     WriterFN:: writeRes[resultH; compparm];
     loadKDBDB[DB; Device; WriterFN]
-  ]]
+  ]; [.qlog.error "Unknown format ", FORMAT; exit 1]]
 
 if[ENGINE ~ `SQL;
   .s.init[];
