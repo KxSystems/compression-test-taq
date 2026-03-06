@@ -1,10 +1,10 @@
 idx|tags|query|parameter
-1||db.quote.select(where=(kx.Column('date') == kx.Column('date').min()) & (kx.Column('time') <  time(8, 0)))|
+1||db.quote.select(where=(kx.Column('date') == kx.Column('date').min()) & (kx.Column('time') <  timedelta(hours=8)))|
 2||db.trade.select(where=kx.Column('seq') == 0)|
 3||db.trade.select(where=(kx.Column('seq') > 0) & (kx.Column('price') > 0) & kx.Column('time').within(time(0), time(23, 59, 59, 999999)) & (kx.Column('size') < 2147483647))|
-4||db.trade.select(where=(kx.Column('date') == kx.Column('date').min()) & kx.Column('time').within(time(10, 0), time(10, 0, 10)))|
-5||db.quote.select(where=(kx.Column('sym') == anInfreqInstr) & kx.Column('time').within(time(8, 30), time(16, 30)))|
-6||db.quote.select(where=(kx.Column('sym').isin(hundredInstrs)) & kx.Column('time').within(time(8, 30), time(8, 35)))|
+4||db.trade.select(where=(kx.Column('date') == kx.Column('date').min()) & kx.Column('time').within(time(10, 0), timedelta(hours=10, seconds=10)))|
+5||db.quote.select(where=(kx.Column('sym') == anInfreqInstr) & kx.Column('time').within(time(8, 30), timedelta(hours=16, minutes=30)))|
+6||db.quote.select(where=(kx.Column('sym').isin(hundredInstrs)) & kx.Column('time').within(time(8, 30), timedelta(hours=8, minutes=35)))|
 7||db.trade.select(columns=kx.Column('date') & kx.Column('sym') & kx.Column('time') & kx.Column('price') & kx.Column('size') & kx.Column('cond') & kx.Column('ex'), where=(kx.Column('date') == kx.Column('date').min()) & (kx.Column('source') == b'N'))|
 8||db.quote.select(columns=kx.Column('date') & kx.Column('time') & ((kx.Column('bid') + kx.Column('ask')) / 2).name('mid'), where=kx.Column('sym') == mostFreqInstr)|
 9||db.quote.select(where=kx.Column('sym') == mostFreqInstr).select(columns=kx.Column('date') & kx.Column('time') & ((kx.Column('bid') + kx.Column('ask')) / 2).name('mid'))|

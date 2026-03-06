@@ -1,10 +1,10 @@
 idx|tags|query|parameter
-1||quote.filter(pl.col("time") < time(8, 0))|
+1||quote.filter(pl.col("time") < timedelta(hours=8))|
 2||trade.filter(pl.col("seq") == 0)|
-3||trade.filter(pl.col("seq") > 0, pl.col("price") > 0, pl.col("time").is_between(time(0, 0), time(23, 59, 59, 999999), closed="both"), pl.col("size") < 2147483647)|
-4||trade.filter(pl.col("time").is_between(time(10), time(10, 0, 10), closed="both"))|
-5||quote.filter(pl.col("sym") == anInfreqInstr, pl.col("time").is_between(time(8, 30), time(16, 30), closed="both"))|
-6||quote.filter(pl.col("sym").is_in(hundredInstrs), pl.col("time").is_between(time(8, 30), time(8, 35), closed="both"))|
+3||trade.filter(pl.col("seq") > 0, pl.col("price") > 0, pl.col("time").is_between(timedelta(), timedelta(days=1), closed="left"), pl.col("size") < 2147483647)|
+4||trade.filter(pl.col("time").is_between(timedelta(hours=10), timedelta(hours=10, seconds=10), closed="both"))|
+5||quote.filter(pl.col("sym") == anInfreqInstr, pl.col("time").is_between(timedelta(hours=8, minutes=30), timedelta(hours=16, minutes=30), closed="both"))|
+6||quote.filter(pl.col("sym").is_in(hundredInstrs), pl.col("time").is_between(timedelta(hours=8, minutes=30), timedelta(hours=8, minutes=35), closed="both"))|
 7||trade.filter(pl.col("source") == "N").select("sym", "time", "price", "size", "stop", "cond", "ex")|
 8||quote.filter(pl.col("sym") == mostFreqInstr).select("time", mid=((pl.col("bid") + pl.col("ask")) / 2))|
 9||quote.filter(pl.col("sym") == mostFreqInstr).select(pl.all()).select("time", mid=(pl.col("bid") + pl.col("ask")) / 2)|
@@ -29,7 +29,7 @@ idx|tags|query|parameter
 28||quote.filter(pl.col("sym").is_in(twentyInstrs)).select(pl.col("sym"), pl.col("time"), ((pl.col("bsize") * pl.col("bid") + pl.col("asize") * pl.col("ask")) / (pl.col("asize") + pl.col("bsize"))).fill_nan(None).rolling_mean(window_size=5, min_samples=1).over("sym").alias("movingLiqWMid"), (pl.col("asize") + pl.col("bsize")).fill_nan(None).rolling_mean(window_size=5, min_samples=1).over("sym").alias("movingsize")).sort("sym")|
 29||trade.filter(pl.col("sym") == aFreqInstr).select("time", pl.col("size").cum_sum())|
 30||trade.filter(pl.col("ex") == "L").select("time", pl.col("size").cum_sum())|
-31||trade.filter(pl.col("time").is_between(time(8), time(8, 15), closed="both")).select(pl.col("sym"), pl.col("time"), pl.col("price"), pl.col("size"), ((pl.col("price") * pl.col("size")).cum_sum() / pl.col("size").cum_sum()).over("sym").alias("movingvwap"))|
+31||trade.filter(pl.col("time").is_between(timedelta(hours=8), timedelta(hours=8, minutes=15), closed="both")).select(pl.col("sym"), pl.col("time"), pl.col("price"), pl.col("size"), ((pl.col("price") * pl.col("size")).cum_sum() / pl.col("size").cum_sum()).over("sym").alias("movingvwap"))|
 32||trade.filter(pl.col("ex") == "T").select("time", pl.col("size").cum_sum())|
 33||trade.filter(pl.col("size") == pl.col("size").max().over("ex"))|
 34||pl.concat([quote.filter(pl.col("sym") == mostFreqInstr).filter(pl.col("bid") == pl.col("bid").max().over("ex")).filter(pl.col("time") == pl.col("time").min().over("ex")).with_columns(pl.lit("maxbid").alias("tag")), quote.filter(pl.col("sym") == mostFreqInstr).filter(pl.col("ask") == pl.col("ask").min().over("ex")).filter(pl.col("time") == pl.col("time").min().over("ex")).with_columns(pl.lit("minask").alias("tag"))])|
