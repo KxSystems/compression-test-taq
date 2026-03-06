@@ -308,6 +308,7 @@ class QueryExecutorPolarsInMemory:
         master = pl.scan_parquet(db_path / "master/date=*/*.parquet", hive_partitioning=True)
         self.datadate = master.select(pl.first("date")).collect().item()
         self.master = master.filter(pl.col("date") == self.datadate).drop("date").with_columns(pl.col("sym").cast(pl.Categorical)).collect()
+        logger.info("Shape of master: %s x %s", self.master.shape[0], self.master.shape[1])
 
         exnames = pl.scan_parquet(db_path / "exnames.parquet").collect()
         self.params["exnames"] = dict(zip(exnames["ex"], exnames["name"]))
@@ -315,9 +316,11 @@ class QueryExecutorPolarsInMemory:
         logger.info("loading trade")
         self.trade = pl.scan_parquet(db_path / "trade/date=*/*.parquet",
             hive_partitioning=True).filter(pl.col("date") == self.datadate).drop("date").with_columns(pl.col("sym").cast(pl.Categorical)).sort("time").collect()
+        logger.info("Shape of trade: %s x %s", self.trade.shape[0], self.trade.shape[1])
         logger.info("loading quote")
         self.quote = pl.scan_parquet(db_path / "quote/date=*/*.parquet",
             hive_partitioning=True).filter(pl.col("date") == self.datadate).drop("date").with_columns(pl.col("sym").cast(pl.Categorical)).sort("time").collect()
+        logger.info("Shape of quote: %s x %s", self.quote.shape[0], self.quote.shape[1])
 
     def execute_query(self, idx: int, tags: Set, query_str: str, runidx: int) -> int:
         """
@@ -365,6 +368,7 @@ class QueryExecutorPandas:
         master = master_ds.to_table(filter=(ds.field("date") == datadate)).drop("date")
         master = master.set_column(master.schema.get_field_index("sym"), "sym", master.column("sym").dictionary_encode())
         self.master = master.to_pandas()
+        logger.info("Shape of master: %s x %s", self.master.shape[0], self.master.shape[1])
 
         exnames = pd.read_parquet(db_path / "exnames.parquet")
         self.params["exnames"] = dict(zip(exnames["ex"], exnames["name"]))
@@ -375,6 +379,7 @@ class QueryExecutorPandas:
         trade = trade.set_column(trade.schema.get_field_index("sym"), "sym", trade.column("sym").dictionary_encode())
         logger.info("converting to pandas")
         self.trade = trade.to_pandas().sort_values(by="time")
+        logger.info("Shape of trade: %s x %s", self.trade.shape[0], self.trade.shape[1])
 
         logger.info("loading quote as a pyarrow dataset")
         quote_ds=ds.dataset(db_path / "quote", format="parquet", partitioning="hive")
@@ -382,6 +387,7 @@ class QueryExecutorPandas:
         quote = quote.set_column(quote.schema.get_field_index("sym"), "sym", quote.column("sym").dictionary_encode())
         logger.info("converting to pandas")
         self.quote = quote.to_pandas().sort_values(by="time")
+        logger.info("Shape of quote: %s x %s", self.quote.shape[0], self.quote.shape[1])
 
     def execute_query(self, idx: int, tags: Set, query_str: str, runidx: int) -> int:
         """
@@ -399,6 +405,8 @@ class QueryExecutorPandas:
         return eval(query_str, eval_context)
 
     def write_csv(self, res, outFile: Path) -> None:
+        for col in res.select_dtypes(include=['timedelta64']).columns:
+            res[col] = res[col].apply(lambda td: f"{td.days}D{td.seconds//3600:02}:{(td.seconds%3600)//60:02}:{td.seconds%60:02}.{td.microseconds:06}{td.nanoseconds:03}")
         res.to_csv(outFile, index=False)
 
 
