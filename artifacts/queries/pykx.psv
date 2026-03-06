@@ -1,7 +1,7 @@
 idx|tags|query|parameter
 1||db.quote.select(where=(kx.Column('date') == kx.Column('date').min()) & (kx.Column('time') <  time(8, 0)))|
 2||db.trade.select(where=kx.Column('seq') == 0)|
-3||db.trade.select(where=(kx.Column('seq') > 0) & kx.Column('ex').within(b"A", b"Z") & kx.Column('time').within(time(0), time(23, 59, 59, 999999)) & (kx.Column('size') < 2147483647))|
+3||db.trade.select(where=(kx.Column('seq') > 0) & (kx.Column('price') > 0) & kx.Column('time').within(time(0), time(23, 59, 59, 999999)) & (kx.Column('size') < 2147483647))|
 4||db.trade.select(where=(kx.Column('date') == kx.Column('date').min()) & kx.Column('time').within(time(10, 0), time(10, 0, 10)))|
 5||db.quote.select(where=(kx.Column('sym') == anInfreqInstr) & kx.Column('time').within(time(8, 30), time(16, 30)))|
 6||db.quote.select(where=(kx.Column('sym').isin(hundredInstrs)) & kx.Column('time').within(time(8, 30), time(8, 35)))|

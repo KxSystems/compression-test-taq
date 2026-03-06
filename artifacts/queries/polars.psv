@@ -1,7 +1,7 @@
 idx|tags|query|parameter
 1||quote.filter(pl.col("date") == pl.col("date").min(), pl.col("time") < time(8, 0))|
 2||trade.filter(pl.col("seq") == 0)|
-3||trade.filter(pl.col("seq") > 0, pl.col("ex") >= "A", pl.col("ex") <= "Z", pl.col("time").is_between(time(0, 0), time(23, 59, 59, 999999), closed="both"), pl.col("size") < 2147483647)|
+3||trade.filter(pl.col("seq") > 0, pl.col("price") > 0, pl.col("time").is_between(time(0, 0), time(23, 59, 59, 999999), closed="both"), pl.col("size") < 2147483647)|
 4||trade.filter(pl.col("date") == pl.col("date").min(), pl.col("time").is_between(time(10), time(10, 0, 10), closed="both"))|
 5||quote.filter(pl.col("sym") == anInfreqInstr, pl.col("time").is_between(time(8, 30), time(16, 30), closed="both"))|
 6||quote.filter(pl.col("sym").is_in(hundredInstrs), pl.col("time").is_between(time(8, 30), time(08, 35), closed="both"))|
