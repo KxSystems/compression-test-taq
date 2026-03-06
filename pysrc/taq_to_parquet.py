@@ -449,7 +449,7 @@ def main(date: datetime, src: Path, dst: Path, letters: str, includetestsymbols:
     quote_files = list(src.glob(f"SPLITS_US_ALL_BBO_[{letters}]_{datestr}.psv")) # first letter filter happens here
     quote_conv = [extra_conv, conv.symbol_conv,
             partial(conv.trim_dict_encode, ['FINRA_BBO_Indicator']),
-            partial(conv.convert_time_strings_to_time64, ['Time', 'Participant_Timestamp', 'FINRA_ADF_Timestamp']),
+            partial(conv.convert_time_strings_to_duration_ns, ['Time', 'Participant_Timestamp', 'FINRA_ADF_Timestamp']),
             partial(conv.add_date_column, date), partial(conv.rename, QUOTERENAME)]
     parquet_options_quote = get_write_options(QUOTE_SCHEMA.get_field_index('time'))
 
@@ -473,7 +473,7 @@ def main(date: datetime, src: Path, dst: Path, letters: str, includetestsymbols:
     trade_file = f"{src}/EQY_US_ALL_TRADE_{datestr}.psv"
     trade_conv = [first_letter_filter, extra_conv, conv.symbol_conv,
         partial(conv.trim_dict_encode, ['Sale Condition']),
-        partial(conv.convert_time_strings_to_time64, ['Time', 'Participant Timestamp', 'Trade Reporting Facility TRF Timestamp']),
+        partial(conv.convert_time_strings_to_duration_ns, ['Time', 'Participant Timestamp', 'Trade Reporting Facility TRF Timestamp']),
         partial(conv.add_date_column, date), partial(conv.rename, TRADERENAME)]
     parquet_options_trade = get_write_options(TRADE_SCHEMA.get_field_index('time'))
     trade = parse_and_convert(trade_file, TRADE_SCHEMA, trade_conv)

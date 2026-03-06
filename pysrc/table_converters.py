@@ -62,8 +62,10 @@ def trim_dict_encode(trim_cols: List[str], table: pa.Table) -> pa.Table:
         table = table.set_column(table.schema.get_field_index(col_name), col_name, casted_column)
     return table
 
-def convert_time_string_array_to_time64(time_strings: pa.Array) -> pa.Array:
-    """Converts a string array of 'HHMMSSNNNNNNNNN' to pa.time64('ns').
+def convert_time_string_array_to_duration_ns(time_strings: pa.Array) -> pa.Array:
+    """
+    Converts a pa.Array of strings 'HHMMSSNNNNNNNNN' to a pa.Array of duration(ns).
+    HH=hours, MM=minutes, SS=seconds, NNNNNNNNN=nanoseconds (9 digits)
 
     This function is designed for high performance using PyArrow compute
     functions. It handles empty strings ('') as null values.
@@ -87,38 +89,29 @@ def convert_time_string_array_to_time64(time_strings: pa.Array) -> pa.Array:
         time_strings
     )
 
-    # Extract components using string slicing
-    hours = pc.utf8_slice_codeunits(time_strings_safe, 0, 2)
-    minutes = pc.utf8_slice_codeunits(time_strings_safe, 2, 4)
-    seconds = pc.utf8_slice_codeunits(time_strings_safe, 4, 6)
-    nanoseconds = pc.utf8_slice_codeunits(time_strings_safe, 6, 15)
+    hours   = pc.cast(pc.utf8_slice_codeunits(time_strings_safe, 0, 2), pa.int64())
+    minutes = pc.cast(pc.utf8_slice_codeunits(time_strings_safe, 2, 4), pa.int64())
+    seconds = pc.cast(pc.utf8_slice_codeunits(time_strings_safe, 4, 6), pa.int64())
+    nanos   = pc.cast(pc.utf8_slice_codeunits(time_strings_safe, 6, 15), pa.int64())
 
-    # Convert to integers
-    hours_int = pc.cast(hours, pa.int64())
-    minutes_int = pc.cast(minutes, pa.int64())
-    seconds_int = pc.cast(seconds, pa.int64())
-    nanoseconds_int = pc.cast(nanoseconds, pa.int64())
+    NS_PER_HOUR   = 3_600_000_000_000
+    NS_PER_MINUTE =    60_000_000_000
+    NS_PER_SECOND =     1_000_000_000
 
-    # Calculate total nanoseconds from midnight
     total_ns = pc.add(
-        pc.multiply(
+        pc.add(
             pc.add(
-                pc.add(
-                    pc.multiply(hours_int, 3600),
-                    pc.multiply(minutes_int, 60)
-                ),
-            seconds_int
+                pc.multiply(hours,   pa.scalar(NS_PER_HOUR,   pa.int64())),
+                pc.multiply(minutes, pa.scalar(NS_PER_MINUTE, pa.int64()))
             ),
-            1_000_000_000
+            pc.multiply(seconds, pa.scalar(NS_PER_SECOND, pa.int64()))
         ),
-        nanoseconds_int
+        nanos
     )
+    return pc.if_else(null_idx, None, pc.cast(total_ns, pa.duration("ns")))
 
-    # Re-apply nulls and cast to the final time64[ns] type
-    return pc.if_else(null_idx, None, pc.cast(total_ns, pa.time64('ns')))
-
-def convert_time_strings_to_time64(time_cols: List[str], table: pa.Table) -> pa.Table:
-    """Applies `time64[ns]` conversion to multiple time columns in a table.
+def convert_time_strings_to_duration_ns(time_cols: List[str], table: pa.Table) -> pa.Table:
+    """Applies `duration[ns]` conversion to multiple time columns in a table.
 
     Args:
         time_cols: List of column names to convert.
@@ -127,9 +120,9 @@ def convert_time_strings_to_time64(time_cols: List[str], table: pa.Table) -> pa.
     Returns:
         The table with converted time columns.
     """
-    logging.info("    Converting some string columns to time64 columns")
+    logging.info("    Converting some string columns to duration columns")
     for col_name in time_cols:
-        time_col = convert_time_string_array_to_time64(table[col_name])
+        time_col = convert_time_string_array_to_duration_ns(table[col_name])
         table = table.set_column(table.schema.get_field_index(col_name), col_name, time_col)
     return table
 
