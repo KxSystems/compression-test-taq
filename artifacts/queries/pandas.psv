@@ -1,0 +1,51 @@
+idx|tags|query|parameter
+1||quote[quote["time"] < timedelta(hours=8)]|
+2||trade.query("seq == 0")|
+3||trade[(trade["seq"] > 0) & (trade["price"] > 0) & trade["time"].between(timedelta(), timedelta(days=1)) & (trade["size"] < 2147483647)]|
+4||trade[trade["time"].between(timedelta(hours=10), timedelta(hours=10, seconds=10))]|
+5||quote[(quote["sym"] == anInfreqInstr) &(quote["time"] >= timedelta(hours=8, minutes=30)) &(quote["time"] <= timedelta(hours=16, minutes=30))]|
+6||quote[(quote["sym"].isin(hundredInstrs)) & (quote["time"] >= timedelta(hours=8, minutes=30)) & (quote["time"] <= timedelta(hours=8, minutes=35))]|
+7||trade.query("source == 'N'")[["sym", "time", "price", "size", "stop", "cond", "ex"]]|
+8||quote.query("sym == @mostFreqInstr").assign(mid=(quote['bid'] + quote['ask']) / 2)[["time", "mid"]]|
+9||quote.query("sym == @mostFreqInstr").assign(mid=(quote['bid'] + quote['ask']) / 2)[quote.columns.to_list() + ["mid"]][["time", "mid"]]|
+10||quote.query("sym == @mostFreqInstr").assign(mid=(quote['bid'] + quote['ask']) / 2)[["time", "mid"]].sort_values("mid", ascending=False)|
+11||quote.query("sym == @aFreqInstr")[["sym", "time", "bid", "ask", "bsize", "asize", "cond", "ex"]]|
+12||quote.query("sym in @fivehundredInfreqInstrs and (bsize + asize > 2000)")[["sym", "time", "bid", "ask", "bsize", "asize", "cond", "ex"]]|
+13||pd.DataFrame({'avgLiqWMid': [quote.query("sym == @anInfreqInstr").eval("(bsize * bid + asize * ask) / (asize + bsize)").dropna().mean()]})|
+14||quote.query("sym == @anInfreqInstr").eval("LiqWMid=(bsize * bid + asize * ask) / (asize + bsize)").groupby([pd.Grouper(key='time', freq='10min'), "ex"])[['LiqWMid']].mean()|
+15||quote.query("sym == @anInfreqInstr").eval("LiqWMid=(bsize * bid + asize * ask) / (asize + bsize)").groupby([pd.Grouper(key='time', freq='10min'), "ex"])[['LiqWMid']].mean().pivot_table(index="time", columns="ex", values="LiqWMid")|
+16||quote.query("sym in @fivehundredInfreqInstrs").eval("LiqWMid=(bsize * bid + asize * ask) / (asize + bsize)").groupby([pd.Grouper(key='time', freq='10min'), "sym"])[['LiqWMid']].mean().pivot_table(index="time", columns="sym", values="LiqWMid")|
+17||quote.query("sym in @fivehundredInfreqInstrs").eval("LiqWMid=(bsize * bid + asize * ask) / (asize + bsize)").groupby([pd.Grouper(key='time', freq='10min'), "sym"])[['LiqWMid']].mean().pivot_table(index="time", columns="sym", values="LiqWMid").ffill()|
+18||quote.query("sym == @aFreqInstr").eval("spread=ask - bid").resample('10min', on='time')[['spread']].mean()|
+19||quote.query("sym in @hundredInstrs").eval("spread=ask - bid").groupby(["sym", pd.Grouper(key='time', freq='10min')])[['spread']].mean()|
+20|||
+21|||
+22|||
+23|||
+24|||
+25|||
+26|||
+27|||
+28|||
+29|||
+30|||
+31|||
+32|||
+33|||
+34|||
+35|||
+36|||
+37|||
+38|||
+39|||
+40|||
+41|||
+42|||
+43|||
+44|||
+45|||
+46|||
+47|||
+48|||
+49|||
+50|||

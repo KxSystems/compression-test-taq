@@ -339,6 +339,69 @@ class QueryExecutorPolarsInMemory:
         res.write_csv(outFile)
 
 
+class QueryExecutorPandas:
+    """
+    Handles the setup, execution of Pandas queries
+    on NYSE TAQ hive-partitioned parquet files.
+    """
+
+    def __init__(self, param: Dict[str, Any]) -> None:
+        # Dataframes
+        self.master: Optional[pd.DataFrame] = None
+        self.trade: Optional[pd.DataFrame] = None
+        self.quote: Optional[pd.DataFrame] = None
+
+        # Parameters available for queries
+
+        self.params: Dict[str, Any] = param
+
+    def load_resources(self, db_path: Path) -> None:
+        """Loads database schemas."""
+        logger.info("loading hive-partitioned tables at %s", db_path)
+
+        import pyarrow.dataset as ds
+        master_ds=ds.dataset(db_path / "master", format="parquet", partitioning="hive")
+        datadate = master_ds.head(1).column("date")[0].as_py()
+        master = master_ds.to_table(filter=(ds.field("date") == datadate)).drop("date")
+        master = master.set_column(master.schema.get_field_index("sym"), "sym", master.column("sym").dictionary_encode())
+        self.master = master.to_pandas()
+
+        exnames = pd.read_parquet(db_path / "exnames.parquet")
+        self.params["exnames"] = dict(zip(exnames["ex"], exnames["name"]))
+
+        logger.info("loading trade as a pyarrow dataset")
+        trade_ds=ds.dataset(db_path / "trade", format="parquet", partitioning="hive")
+        trade = trade_ds.to_table(filter=(ds.field("date") == datadate)).drop("date")
+        trade = trade.set_column(trade.schema.get_field_index("sym"), "sym", trade.column("sym").dictionary_encode())
+        logger.info("converting to pandas")
+        self.trade = trade.to_pandas().sort_values(by="time")
+
+        logger.info("loading quote as a pyarrow dataset")
+        quote_ds=ds.dataset(db_path / "quote", format="parquet", partitioning="hive")
+        quote = quote_ds.to_table(filter=(ds.field("date") == datadate)).drop("date")
+        quote = quote.set_column(quote.schema.get_field_index("sym"), "sym", quote.column("sym").dictionary_encode())
+        logger.info("converting to pandas")
+        self.quote = quote.to_pandas().sort_values(by="time")
+
+    def execute_query(self, idx: int, tags: Set, query_str: str, runidx: int) -> int:
+        """
+        Safely executes the query string using the loaded data and parameters.
+        """
+        # Create a restricted execution context
+        eval_context = {
+            "pd": pd,
+            "timedelta": timedelta,
+            "master": self.master,
+            "trade": self.trade,
+            "quote": self.quote,
+            **self.params
+        }
+        return eval(query_str, eval_context)
+
+    def write_csv(self, res, outFile: Path) -> None:
+        res.to_csv(outFile, index=False)
+
+
 def main(args) -> None:
     start_time: datetime = datetime.now()
     if not args.db.exists():
@@ -385,6 +448,12 @@ def main(args) -> None:
         globals()['kx'] = kx
         runner = QueryExecutorPyKXQ(args.paramdir)
         threadnr = kx.q.system.num_threads
+    elif engine == "pandas":
+        import pandas as pd
+        globals()['pd'] = pd
+        params = load_parameters(args.paramdir)
+        runner = QueryExecutorPandas(params)
+        threadnr = 1  # Pandas does not use threads by default
     else:
         raise ValueError(f"Invalid engine parameter: {args.engine}")
 
@@ -462,7 +531,8 @@ parser = argparse.ArgumentParser(
 
 
 parser.add_argument('-db', type=Path, required=True, help="Path to hive-partitioned parquet DB root")
-parser.add_argument('-engine', type=str, choices=["polars", "polars_inmemory", "pykx", "pykx_inmemory", "pykxq"], required=True, help="Query engine. Currently supported polars and PyKX")
+parser.add_argument('-engine', type=str, choices=["polars", "polars_inmemory", "pykx", "pykx_inmemory", "pykxq", "pandas"],
+    required=True, help="Query engine. Currently supported polars and PyKX")
 parser.add_argument('-queryfile', type=Path, required=True, help="PSV file containing queries")
 parser.add_argument('-querymeta', type=Path, required=True, help="PSV file containing the query metas")
 parser.add_argument('-paramdir', type=Path, required=True, help="Directory containing parameter txt files")
