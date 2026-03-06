@@ -13,7 +13,7 @@ from dataclasses import dataclass
 import psutil
 import subprocess
 import sys
-from datetime import datetime,time, timedelta # time is used in queries
+from datetime import datetime, time, timedelta # time is used in queries
 import time as time_mod   # alias to avoid naming conflict
 
 from pathlib import Path
@@ -98,12 +98,12 @@ def run_query(runner, db_path: Path, device: str, idx: str, tags: Set, query: st
             subprocess.run([os.getenv('FLUSH'), db_path], check=True,capture_output=True)
         gc.collect()
         # Execute and Time
-        io_Start = get_io_stat(device)
+        io_start = get_io_stat(device)
         t_start = time_mod.perf_counter_ns()
         try:
             res = runner.execute_query(idx, tags, query, runidx)
             t_end = time_mod.perf_counter_ns()
-            io_End = get_io_stat(device)
+            io_end = get_io_stat(device)
         except Exception as e:
             logger.error("Query %s failed: %s", idx, e)
             # Return 0.0 or -1.0 to indicate failure in results
@@ -114,7 +114,7 @@ def run_query(runner, db_path: Path, device: str, idx: str, tags: Set, query: st
                 outFile = queryoutput / f"queryoutput_{idx}.csv"
                 runner.write_csv(res, outFile)
         times.append(t_end - t_start)
-        ios.append(io_End-io_Start)
+        ios.append(io_end-io_start)
 
     return QueryResult(query, "success", *times, *ios)
 
@@ -140,7 +140,7 @@ class QueryExecutorPyKX:
         # Create a restricted execution context
         eval_context = {
             "kx":kx,
-            "time": time,
+            "timedelta": timedelta,
             "db": self.db,
             **self.params
         }
@@ -179,7 +179,7 @@ class QueryExecutorPyKXInMemory:
         # Create a restricted execution context
         eval_context = {
             "kx":kx,
-            "time": time,
+            "timedelta": timedelta,
             "master": self.master,
             "trade": self.trade,
             "quote": self.quote,
@@ -263,7 +263,7 @@ class QueryExecutorPolars:
         # Create a restricted execution context
         eval_context = {
             "pl": pl,
-            "time": time,
+            "timedelta": timedelta,
             "master": self.master,
             "trade": self.trade,
             "quote": self.quote,
@@ -312,8 +312,10 @@ class QueryExecutorPolarsInMemory:
         exnames = pl.scan_parquet(db_path / "exnames.parquet").collect()
         self.params["exnames"] = dict(zip(exnames["ex"], exnames["name"]))
 
+        logger.info("loading trade")
         self.trade = pl.scan_parquet(db_path / "trade/date=*/*.parquet",
             hive_partitioning=True).filter(pl.col("date") == self.datadate).drop("date").with_columns(pl.col("sym").cast(pl.Categorical)).sort("time").collect()
+        logger.info("loading quote")
         self.quote = pl.scan_parquet(db_path / "quote/date=*/*.parquet",
             hive_partitioning=True).filter(pl.col("date") == self.datadate).drop("date").with_columns(pl.col("sym").cast(pl.Categorical)).sort("time").collect()
 
@@ -324,7 +326,7 @@ class QueryExecutorPolarsInMemory:
         # Create a restricted execution context
         eval_context = {
             "pl": pl,
-            "time": time,
+            "timedelta": timedelta,
             "datadate": self.datadate,
             "master": self.master,
             "trade": self.trade,
@@ -387,11 +389,11 @@ def main(args) -> None:
         raise ValueError(f"Invalid engine parameter: {args.engine}")
 
     # Load DB and Params (Time this operation for the first CSV row)
-    io_load_Start = get_io_stat(device)
+    io_load_start = get_io_stat(device)
     t_load_start = time_mod.perf_counter_ns()
     runner.load_resources(args.db)
     t_load_elapsed = time_mod.perf_counter_ns() - t_load_start
-    io_load_End = get_io_stat(device)
+    io_load_end = get_io_stat(device)
 
     # Initialize Result File
     headers: List[str] = [
@@ -408,7 +410,7 @@ def main(args) -> None:
 
         # Log DB Load time as idx 0
         writer.writerow(row_start +[0, "nyi", "loaddb", "success", t_load_elapsed, None, None,
-                         None, io_load_End - io_load_Start, None, None])
+                         None, io_load_end - io_load_start, None, None])
         f_out.flush() # Ensure header is written
 
         # Process Queries
