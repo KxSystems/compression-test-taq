@@ -60,12 +60,12 @@ compare: {[idx: `j; tags: `C]
 
     t2: cols[t1] xcols t2; / reorder columns to match t1
 
-    if[not any "sortedoutput*" like/: "," vs tags;
+    if[not any ("," vs tags) like "sortedoutput*";
         / sort based on some columns if they exist
-        $[all `sym`ex`time in cols t1; [
-          .qlog.info "Sorting by sym, ex, time";
-          t1: `sym`ex`time xasc t1;
-          t2: `sym`ex`time xasc t2];
+        $[all `time`seq in cols t1; [
+          .qlog.info "Sorting by time, seq";
+          t1: `time`seq xasc t1;
+          t2: `time`seq xasc t2];
           all `sym`timeBucket in cols t1; [
             .qlog.info "Sorting by sym, timeBucket";
             t1: `sym`timeBucket xasc t1;
