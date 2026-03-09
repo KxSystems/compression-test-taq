@@ -2,23 +2,23 @@ idx|tags|description|comment
 1|simple|select all data from quote before 8am|
 2|simple,emptyresult|query with a single filter that does not filter out anything|
 3|simple,manydummyfilters|query contains many filters that do not filter out anything|
-4|simple||
-5|simple,singleinstrument||
-6|simple,fewinstruments||
-7|simple||
-8|simple,singleinstrument||
-9|simple,singleinstrument,unnecessarycolumnfetch||We fetch columns that we immediately throw away
-10|simple,singleinstrument,sort,sortedoutput_mid||
-11|simple,singleinstrument||
-12|simple,fewinstruments||
-13|simple,singleinstrument||
-14|simple,singleinstrument,sortedoutput_time_ex||
-15|advanced,singleinstrument,pivot,sortedoutput_time||
-16|advanced,fewinstruments,pivot,sortedoutput_time||
-17|advanced,fewinstruments,pivot,fillforward,sortedoutput_time||
-18|simple,singleinstrument||
-19|simple,fewinstruments||
-20|advanced,singleinstrument||
+4|simple|filter trades within a 10-second window at 10:00am|
+5|simple,singleinstrument|filter quotes for an infrequent instrument during regular trading hours (8:30–16:30)|
+6|simple,fewinstruments|filter quotes for 100 instruments in the first 5 minutes of trading (8:30–8:35)|
+7|simple|filter trades from source "N" and select key columns|
+8|simple,singleinstrument|calculate mid quote for the most frequent instrument (provided as a parameter)|
+9|simple,singleinstrument,unnecessarycolumnfetch|calculate mid quote for the most frequent instrument (provided as a parameter), fetching all columns first|We fetch columns that we immediately throw away
+10|simple,singleinstrument,sort,sortedoutput_mid|calculate and sort mid quotes descending for the most frequent instrument (provided as a parameter)|
+11|simple,singleinstrument|select key quote columns for a frequent instrument|
+12|simple,fewinstruments|select key quote columns for 500 infrequent instruments where combined bid+ask size exceeds 2000|
+13|simple,singleinstrument|calculate overall average liquidity-weighted mid quote for an infrequent instrument|
+14|simple,singleinstrument,sortedoutput_time_ex|calculate 10-minute average liquidity-weighted mid quote by exchange for an infrequent instrument|
+15|advanced,singleinstrument,pivot,sortedoutput_time|pivot 10-minute average liquidity-weighted mid quote by exchange for an infrequent instrument|
+16|advanced,fewinstruments,pivot,sortedoutput_time|pivot 10-minute average liquidity-weighted mid quote by symbol for 500 infrequent instruments|
+17|advanced,fewinstruments,pivot,fillforward,sortedoutput_time|pivot 10-minute average liquidity-weighted mid quote by symbol for 500 infrequent instruments with forward fill for missing values|
+18|simple,singleinstrument|calculate average bid-ask spread in 10-minute buckets for a frequent instrument|
+19|simple,fewinstruments|calculate average bid-ask spread in 10-minute buckets per instrument for 100 instruments|
+20|advanced,singleinstrument|calculate size-weighted average spread for an infrequent instrument|
 21|advanced,singleinstrument,sortedoutput_ex|calculate weighted average spread, deviation/max/min of spread by exchange names|
 22|advanced,singleinstrument,sortedoutput_ex|calculate weighted average spread, deviation/max/min of spread by exchange names|same as query 13 but measures impact of manual optimization (calculate spread once)
 23|advanced,fewinstruments,sortedoutput_sym_ex|calculate weighted average spread and deviation of spread by exchange names and instrument|
