@@ -8,7 +8,7 @@ idx|tags|description|comment
 7|simple|filter trades from source "N" and select key columns|
 8|simple,singleinstrument|calculate mid quote for the most frequent instrument (provided as a parameter)|
 9|simple,singleinstrument,unnecessarycolumnfetch|calculate mid quote for the most frequent instrument (provided as a parameter), fetching all columns first|We fetch columns that we immediately throw away
-10|simple,singleinstrument,sort,sortedoutput_mid|calculate and sort mid quotes descending for the most frequent instrument (provided as a parameter)|
+10|simple,singleinstrument,sort,sortedoutput_mid|calculate and sort mid quotes descending for the most frequent instrument (provided as a parameter). Sorting must be stable, i.e. keep time ordering for the same values|
 11|simple,singleinstrument|select key quote columns for a frequent instrument|
 12|simple,fewinstruments|select key quote columns for 500 infrequent instruments where combined bid+ask size exceeds 2000|
 13|simple,singleinstrument|calculate overall average liquidity-weighted mid quote for an infrequent instrument|
