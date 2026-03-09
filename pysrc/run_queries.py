@@ -410,7 +410,7 @@ class QueryExecutorPandas:
         for col in res.select_dtypes(include=['timedelta64']).columns:
             res[col] = res[col].apply(lambda td: "" if pd.isnull(td) else f"{td.days}D{td.seconds//3600:02}:{(td.seconds%3600)//60:02}:{td.seconds%60:02}.{td.microseconds:06}{td.nanoseconds:03}")
         for col in res.select_dtypes(include=['bool']).columns:
-            res[col] = res[col].map({True: '1b', False: '0b'})
+            res[col] = res[col].map({True: '1', False: '0'})
         res.to_csv(outFile, index=False)
 
 
