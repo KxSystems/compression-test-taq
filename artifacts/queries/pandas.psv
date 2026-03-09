@@ -23,7 +23,7 @@ idx|tags|query|parameter
 22|||
 23|||
 24|||
-25|||
+25||trade[trade["size"] > 700000][["sym", "ex"]].drop_duplicates()|
 26|||
 27|||
 28|||
@@ -31,9 +31,9 @@ idx|tags|query|parameter
 30|||
 31|||
 32|||
-33|||
+33||trade[trade["size"] == trade.groupby("ex", observed=True)["size"].transform("max")]|
 34|||
-35|||
+35||trade[trade["size"] == trade.groupby(["ex", "sym"], observed=True)["size"].transform("min")]|
 36|||
 37|||
 38|||
@@ -44,8 +44,8 @@ idx|tags|query|parameter
 43|||
 44|||
 45|||
-46|||
+46||pd.DataFrame({'medMidSize': [quote.query("sym == @anInfreqInstr").eval("bsize + asize").median()]})|
 47|||
 48|||
-49|||
+49||pd.merge_asof(trade.query("sym == @aFreqInstr")[["time", "price", "size", "stop", "cond", "ex"]], quote.query("sym == @aFreqInstr")[["time", "bid", "ask", "bsize", "asize", "cond", "ex"]].rename(columns={"cond": "quotecond", "ex": "quoteex"}), on="time")|
 50|||
