@@ -37,15 +37,15 @@ idx|tags|description|comment
 36|advanced|select the indices of all rows in which the sequence number decreases for the instrument|
 37|complex,sortedoutput_ex_timeBucket|custom time bucket (e.g. before 9:00 is preopen), sort result by instrumentID and time bucket|
 38|complex,sortedoutput_sym|custom time bucket (e.g. before 9:00 is preopen)|
-39|simple,fewinstruments,sortedoutput_sym||
-40|simple,singleinstrument||
-41|advanced,fewinstruments,sortedoutput_sym||
+39|simple,fewinstruments,sortedoutput_sym|calculate 5-minute open/high/low/close/volume bars for 100 instruments filtered to non-UTP trades (field stop is not null)|
+40|simple,singleinstrument|calculate 1-minute first bid/ask sizes with order imbalance for an infrequent instrument|
+41|advanced,fewinstruments,sortedoutput_sym|calculate size weighted ask/bid quotes, size standard deviations, and price/size correlations for 500 infrequent instruments|
 42|advanced|trades with the smallest price for all instruments|
 43|complex,singleinstrument|We want to calculate how much volume was transacted at each price. Whenever the price changes, we want to restart the count. We only want to consider prices for the same instrument|
 44|complex,fewinstruments|We want to calculate how much volume was transacted at each price. Whenever the price changes, we want to restart the count. We only want to consider prices for the same instrument|
 45|complex,sortedoutput_sym_pricegroup|We want to calculate how much volume was transacted at each price. Whenever the price changes, we want to restart the count. We only want to consider prices for the same instrument|
-46|simple,singleinstrument||
-47|simple,sortedoutput_ex||
-48|advanced,fewinstruments,asofjoin||
-49|advanced,singleinstrument,asofjoin||
-50|advanced,asofjoin||
+46|simple,singleinstrument|calculate median bid+ask size for an infrequent instrument|
+47|simple,sortedoutput_ex|calculate median trade size by exchange|
+48|advanced,fewinstruments,asofjoin|as-of join trades with quotes for 20 instruments to get prevailing quote at trade time|
+49|advanced,singleinstrument,asofjoin|as-of join trades with quotes for a frequent instrument to get prevailing quote at trade time|
+50|advanced,asofjoin|as-of join large trades (size > 500,000) with quotes by sym+exchange to get prevailing quote at trade time|
