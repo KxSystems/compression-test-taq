@@ -16,7 +16,7 @@ idx|tags|query|parameter
 15||quote.query("sym == @anInfreqInstr").eval("LiqWMid=(bsize * bid + asize * ask) / (asize + bsize)").groupby([quote["time"].dt.floor('10min'), "ex"], observed=True).agg(avgLiqWMid=("LiqWMid", "mean")).pivot_table(index="time", columns="ex", values="avgLiqWMid").reset_index()|
 16||quote.query("sym in @fivehundredInfreqInstrs").eval("LiqWMid=(bsize * bid + asize * ask) / (asize + bsize)").groupby([quote["time"].dt.floor('10min'), "sym"], observed=True).agg(avgLiqWMid=("LiqWMid", "mean")).pivot_table(index="time", columns="sym", values="avgLiqWMid").reset_index()|
 17||quote.query("sym in @fivehundredInfreqInstrs").eval("LiqWMid=(bsize * bid + asize * ask) / (asize + bsize)").groupby([quote["time"].dt.floor('10min'), "sym"], observed=True).agg(avgLiqWMid=("LiqWMid", "mean")).pivot_table(index="time", columns="sym", values="avgLiqWMid").ffill().reset_index()|
-18||quote.query("sym == @aFreqInstr").eval("spread=ask - bid").resample('10min', on='time')[['spread']].mean()|
+18||quote.query("sym == @aFreqInstr").eval("spread=ask - bid").groupby(quote["time"].dt.floor('10min'), observed=True).agg(avgSpread=("spread", "mean")).reset_index()|
 19||quote.query("sym in @hundredInstrs").eval("spread=ask - bid").groupby(["sym", quote["time"].dt.floor('10min')], observed=True).agg(avgSpread=("spread", "mean")).reset_index()|
 20|||
 21|||
