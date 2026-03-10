@@ -6,9 +6,9 @@ idx|tags|query|parameter
 5||quote[(quote["sym"] == anInfreqInstr) &(quote["time"] >= timedelta(hours=8, minutes=30)) &(quote["time"] <= timedelta(hours=16, minutes=30))]|
 6||quote[(quote["sym"].isin(hundredInstrs)) & (quote["time"] >= timedelta(hours=8, minutes=30)) & (quote["time"] <= timedelta(hours=8, minutes=35))]|
 7||trade.query("source == 'N'")[["sym", "time", "price", "size", "stop", "cond", "ex"]]|
-8||quote.query("sym == @mostFreqInstr").assign(mid=(quote['bid'] + quote['ask']) / 2)[["time", "mid"]]|
-9||quote.query("sym == @mostFreqInstr").assign(mid=(quote['bid'] + quote['ask']) / 2)[quote.columns.to_list() + ["mid"]][["time", "mid"]]|
-10||quote.query("sym == @mostFreqInstr").assign(mid=(quote['bid'] + quote['ask']) / 2)[["time", "mid"]].sort_values("mid", ascending=False, kind='stable')|
+8||quote.query("sym == @mostFreqInstr").eval("mid=(bid + ask) / 2")[["time", "mid"]]|
+9||quote.query("sym == @mostFreqInstr").eval("mid=(bid + ask) / 2")[quote.columns.to_list() + ["mid"]][["time", "mid"]]|
+10||quote.query("sym == @mostFreqInstr").eval("mid=(bid + ask) / 2")[["time", "mid"]].sort_values("mid", ascending=False, kind='stable')|
 11||quote.query("sym == @aFreqInstr")[["sym", "time", "bid", "ask", "bsize", "asize", "cond", "ex"]]|
 12||quote.query("sym in @fivehundredInfreqInstrs and (bsize + asize > 2000)")[["sym", "time", "bid", "ask", "bsize", "asize", "cond", "ex"]]|
 13||pd.DataFrame({'avgLiqWMid': [quote.query("sym == @anInfreqInstr").eval("(bsize * bid + asize * ask) / (asize + bsize)").dropna().mean()]})|
