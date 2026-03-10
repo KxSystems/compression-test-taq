@@ -18,7 +18,7 @@ idx|tags|query|parameter
 17||quote.query("sym in @fivehundredInfreqInstrs").eval("LiqWMid=(bsize * bid + asize * ask) / (asize + bsize)").groupby([quote["time"].dt.floor('10min'), "sym"], observed=True).agg(avgLiqWMid=("LiqWMid", "mean")).pivot_table(index="time", columns="sym", values="avgLiqWMid").ffill().reset_index()|
 18||quote.query("sym == @aFreqInstr").eval("spread=ask - bid").groupby(quote["time"].dt.floor('10min'), observed=True).agg(avgSpread=("spread", "mean")).reset_index()|
 19||quote.query("sym in @hundredInstrs").eval("spread=ask - bid").groupby(["sym", quote["time"].dt.floor('10min')], observed=True).agg(avgSpread=("spread", "mean")).reset_index()|
-20|||
+20||quote.query("sym == @anInfreqInstr").pipe(lambda df: pd.DataFrame({'avgWeightedSpread': [np.average(df['ask'] - df['bid'], weights=df['asize'] + df['bsize'])]}))|
 21|||
 22|||
 23|||
@@ -38,7 +38,7 @@ idx|tags|query|parameter
 37|||
 38|||
 39|||
-40||quote.query("sym == @anInfreqInstr").groupby(quote["time"].dt.floor("1min").rename("minute"), observed=True).agg(asize=("asize", "first"), bsize=("bsize", "first")).reset_index().assign(inbal=lambda df: (df["bsize"] - df["asize"]) / (df["bsize"] + df["asize"]))|
+40||quote.query("sym == @anInfreqInstr").groupby(quote["time"].dt.floor("1min").rename("minute"), observed=True).agg(asize=("asize", "first"), bsize=("bsize", "first")).reset_index().eval("inbal=(bsize - asize) / (bsize + asize)")|
 41|||
 42||trade[trade["price"] == trade.groupby("sym", observed=True)["price"].transform("min")]|
 43|||
