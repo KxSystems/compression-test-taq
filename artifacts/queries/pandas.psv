@@ -36,7 +36,7 @@ idx|tags|query|parameter
 35||trade[trade["size"] == trade.groupby(["ex", "sym"], observed=True)["size"].transform("min")]|
 36||trade.assign(seq_delta=lambda df: df.groupby("sym", observed=True)["seq"].diff()).query("seq_delta < 0")[["sym", "seq"]].rename(columns={"seq": "seqDecr"}).sort_values("sym")|
 37|||
-38|||
+38||trade.query("corr != 0").assign(timeBucket=lambda x: pd.cut(x['time'], bins=list(timeBuckets.values()) + [timedelta(days=1)], labels=timeBuckets.keys(), right=False)).groupby(["sym", "timeBucket"], observed=True).agg(cnt=('size', 'count'), size=('size', 'sum')).reset_index()|
 39||trade.query("sym in @hundredInstrs and stop != ''").groupby(["sym", trade["time"].dt.floor("5min")], observed=True).agg(o=("price", "first"), h=("price", "max"), l=("price", "min"), c=("price", "last"), s=("size", "sum")).reset_index()|
 40||quote.query("sym == @anInfreqInstr").groupby(quote["time"].dt.floor("1min").rename("minute"), observed=True).agg(asize=("asize", "first"), bsize=("bsize", "first")).reset_index().eval("inbal=(bsize - asize) / (bsize + asize)")|
 41||quote.query("sym in @fivehundredInfreqInstrs").groupby("sym", observed=True).apply(lambda g: pd.Series({"wsumAsk": (g["ask"] * g["asize"]).sum(), "wsumBid": (g["bid"] * g["bsize"]).sum(), "sdevasksize": g["asize"].std(), "sdevbid": g["bid"].std(), "corPrice": g["ask"].corr(g["bid"]), "corSize": g["asize"].corr(g["bsize"])}), include_groups=False).reset_index()|
