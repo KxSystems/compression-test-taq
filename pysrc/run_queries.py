@@ -369,7 +369,7 @@ class QueryExecutorPandas:
         master = master.set_column(master.schema.get_field_index("sym"), "sym", master.column("sym").dictionary_encode())
         self.master = master.to_pandas()
         logger.info("Shape of master: %s x %s", self.master.shape[0], self.master.shape[1])
-
+        self.master['ex'] = pd.Categorical(self.master['ex'], categories=sorted(self.master['ex'].unique()), ordered=True)
         exnames = pd.read_parquet(db_path / "exnames.parquet")
         self.params["exnames"] = dict(zip(exnames["ex"], exnames["name"]))
 
@@ -379,6 +379,7 @@ class QueryExecutorPandas:
         trade = trade.set_column(trade.schema.get_field_index("sym"), "sym", trade.column("sym").dictionary_encode())
         logger.info("converting to pandas")
         self.trade = trade.to_pandas().sort_values(by="time", kind='stable')
+        self.trade['ex'] = pd.Categorical(self.trade['ex'], categories=sorted(self.trade['ex'].unique()), ordered=True)
         logger.info("Shape of trade: %s x %s", self.trade.shape[0], self.trade.shape[1])
 
         logger.info("loading quote as a pyarrow dataset")
@@ -387,6 +388,7 @@ class QueryExecutorPandas:
         quote = quote.set_column(quote.schema.get_field_index("sym"), "sym", quote.column("sym").dictionary_encode())
         logger.info("converting to pandas")
         self.quote = quote.to_pandas().sort_values(by="time", kind='stable')
+        self.quote['ex'] = pd.Categorical(self.quote['ex'], categories=sorted(self.quote['ex'].unique()), ordered=True)
         logger.info("Shape of quote: %s x %s", self.quote.shape[0], self.quote.shape[1])
 
     def execute_query(self, idx: int, tags: Set, query_str: str, runidx: int) -> int:
@@ -408,7 +410,10 @@ class QueryExecutorPandas:
         if isinstance(res.index, pd.MultiIndex):
             res.reset_index(inplace=True)
         for col in res.select_dtypes(include=['timedelta64']).columns:
-            res = res.assign(**{col: res[col].apply(lambda td: "" if pd.isnull(td) else f"{td.days}D{td.seconds//3600:02}:{(td.seconds%3600)//60:02}:{td.seconds%60:02}.{td.microseconds:06}{td.nanoseconds:03}")})
+            if col == 'minute':
+                res = res.assign(**{col: res[col].apply(lambda td: "" if pd.isnull(td) else f"{td.seconds//3600:02}:{(td.seconds%3600)//60:02}")})
+            else:
+                res = res.assign(**{col: res[col].apply(lambda td: "" if pd.isnull(td) else f"{td.days}D{td.seconds//3600:02}:{(td.seconds%3600)//60:02}:{td.seconds%60:02}.{td.microseconds:06}{td.nanoseconds:03}")})
         for col in res.select_dtypes(include=['bool']).columns:
             res = res.assign(**{col: np.where(res[col], '1', '0')}) # Convert boolean to '1'/'0' strings for better kdb+ compatibility
 
