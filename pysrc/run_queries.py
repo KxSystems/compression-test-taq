@@ -57,9 +57,13 @@ def load_parameters(param_dir: Path) -> Dict[str, Any]:
         "fivehundredInfreqInstrs": read_list("fivehundredInfreqInstrs.txt"),
     })
 
+    def _to_timedelta(s: str) -> timedelta:
+        t = datetime.strptime(s[2:], "%H:%M:%S.%f")
+        return timedelta(hours=t.hour, minutes=t.minute, seconds=t.second, microseconds=t.microsecond)
+
     with open(param_dir / "timeBuckets.txt", "r", encoding="utf-8") as f:
         params["timeBuckets"] = {line.split("=")[0].strip():
-                                 datetime.strptime(line.split("=")[1].strip()[2:], "%H:%M:%S.%f").time()
+                                 _to_timedelta(line.split("=")[1].strip())
                                  for line in f}
 
     return params
@@ -398,6 +402,7 @@ class QueryExecutorPandas:
         # Create a restricted execution context
         eval_context = {
             "pd": pd,
+            "np": np,
             "timedelta": timedelta,
             "master": self.master,
             "trade": self.trade,
@@ -473,7 +478,7 @@ def main(args) -> None:
         globals()['pd'] = pd
         params = load_parameters(args.paramdir)
         runner = QueryExecutorPandas(params)
-        threadnr = 1  # Pandas does not use threads by default
+        threadnr = os.environ['NUMEXPR_NUM_THREADS']
     else:
         raise ValueError(f"Invalid engine parameter: {args.engine}")
 
