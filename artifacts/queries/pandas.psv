@@ -32,14 +32,14 @@ idx|tags|query|parameter
 31|||
 32||trade[trade["ex"] == "T"][["time", "size"]].assign(size=lambda df: df["size"].cumsum())|
 33||trade[trade["size"] == trade.groupby("ex", observed=True)["size"].transform("max")]|
-34|||
+34||pd.concat([quote.query("sym == @mostFreqInstr").pipe(lambda df: df[df["bid"]  == df.groupby("ex")["bid"].transform("max")]).pipe(lambda df: df[df["time"] == df.groupby("ex")["time"].transform("min")]).assign(tag="maxbid"), quote.query("sym == @mostFreqInstr").pipe(lambda df: df[df["ask"]  == df.groupby("ex")["ask"].transform("min")]).pipe(lambda df: df[df["time"] == df.groupby("ex")["time"].transform("min")]).assign(tag="minask")])|
 35||trade[trade["size"] == trade.groupby(["ex", "sym"], observed=True)["size"].transform("min")]|
-36|||
+36||trade.assign(seq_delta=lambda df: df.groupby("sym", observed=True)["seq"].diff()).query("seq_delta < 0")[["sym", "seq"]].rename(columns={"seq": "seqDecr"}).sort_values("sym")|
 37|||
 38|||
-39|||
+39||trade.query("sym in @hundredInstrs and stop != ''").groupby(["sym", trade["time"].dt.floor("5min")], observed=True).agg(o=("price", "first"), h=("price", "max"), l=("price", "min"), c=("price", "last"), s=("size", "sum")).reset_index()|
 40||quote.query("sym == @anInfreqInstr").groupby(quote["time"].dt.floor("1min").rename("minute"), observed=True).agg(asize=("asize", "first"), bsize=("bsize", "first")).reset_index().eval("inbal=(bsize - asize) / (bsize + asize)")|
-41|||
+41||quote.query("sym in @fivehundredInfreqInstrs").groupby("sym", observed=True).apply(lambda g: pd.Series({"wsumAsk": (g["ask"] * g["asize"]).sum(), "wsumBid": (g["bid"] * g["bsize"]).sum(), "sdevasksize": g["asize"].std(), "sdevbid": g["bid"].std(), "corPrice": g["ask"].corr(g["bid"]), "corSize": g["asize"].corr(g["bsize"])}), include_groups=False).reset_index()|
 42||trade[trade["price"] == trade.groupby("sym", observed=True)["price"].transform("min")]|
 43|||
 44|||
