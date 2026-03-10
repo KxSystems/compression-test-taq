@@ -38,14 +38,14 @@ idx|tags|query|parameter
 37|||
 38|||
 39|||
-40|||
+40||quote.query("sym == @anInfreqInstr").groupby(quote["time"].dt.floor("1min").rename("minute"), observed=True).agg(asize=("asize", "first"), bsize=("bsize", "first")).reset_index().assign(inbal=lambda df: (df["bsize"] - df["asize"]) / (df["bsize"] + df["asize"]))|
 41|||
-42|||
+42||trade[trade["price"] == trade.groupby("sym", observed=True)["price"].transform("min")]|
 43|||
 44|||
 45|||
 46||pd.DataFrame({'medMidSize': [quote.query("sym == @anInfreqInstr").eval("bsize + asize").median()]})|
-47||trade.groupby("ex")["size"].median().rename("medSize").reset_index()|
+47||trade.groupby("ex", observed=True)["size"].median().rename("medSize").reset_index()|
 48||pd.merge_asof(trade.query("sym in @twentyInstrs")[["sym", "time", "price", "size", "stop", "cond", "ex"]].assign(sym=lambda df: df["sym"].astype(str)), quote.query("sym in @twentyInstrs")[["sym", "time", "bid", "ask", "bsize", "asize", "cond", "ex"]].rename(columns={"cond": "quotecond", "ex": "quoteex"}).assign(sym=lambda df: df["sym"].astype(str)), on="time", by="sym")|
 49||pd.merge_asof(trade.query("sym == @aFreqInstr")[["time", "price", "size", "stop", "cond", "ex"]], quote.query("sym == @aFreqInstr")[["time", "bid", "ask", "bsize", "asize", "cond", "ex"]].rename(columns={"cond": "quotecond", "ex": "quoteex"}), on="time")|
 50||pd.merge_asof(trade[trade["size"] > 500000][["sym", "time", "price", "size", "stop", "cond", "ex"]].assign(sym=lambda df: df["sym"].astype(str), ex=lambda df: df["ex"].astype(str)), quote[["sym", "time", "bid", "ask", "bsize", "asize", "cond", "ex"]].rename(columns={"cond": "quotecond"}).assign(sym=lambda df: df["sym"].astype(str), ex=lambda df: df["ex"].astype(str)), by=["sym", "ex"], on="time")|
