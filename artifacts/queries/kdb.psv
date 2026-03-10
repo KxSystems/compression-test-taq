@@ -35,7 +35,7 @@ idx|tags|query|parameter
 34||(update tag:`maxbid from select from quote where sym=mostFreqInstr, bid=(max; bid) fby ex, time=(min;time) fby ex), update tag: `minask from select from quote where sym=mostFreqInstr, ask=(min; ask) fby ex, time=(min;time) fby ex|
 35||select from trade where size = (min;size) fby ([] ex;sym)|
 36||ungroup select from (select seqDecr: seq where (<) prior seq by sym from trade) where 0 < count each seqDecr|
-37||update key[timeBuckets] timeBucket from `ex`timeBucket xasc select cnt: count i, sum size by ex, timeBucket: value[timeBuckets] bin time from trade where date=min date|
+37||update key[timeBuckets] timeBucket from select cnt: count i, sum size by ex, timeBucket: value[timeBuckets] bin time from trade where date=min date|
 38||select cnt: count i, sum size by sym, timeBucket: timeBucketsStep time from trade where date=min date, not corr=0|
 39||select o: first price, h: max price, l: min price, c: last price, s: sum size by sym, 0D00:05 xbar time from trade where sym in hundredInstrs, not null stop|
 40||update inbal: (bsize - asize) % bsize + asize from select first asize, first bsize by time.minute from quote where sym = anInfreqInstr|

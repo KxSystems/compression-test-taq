@@ -35,7 +35,7 @@ idx|tags|query|parameter
 34||(update tag:`maxbid, sym: mostFreqInstr from select from quote[mostFreqInstr] where bid=(max; bid) fby ex, time=(min;time) fby ex), update tag: `minask, sym: mostFreqInstr from select from quote[mostFreqInstr] where ask=(min; ask) fby ex, time=(min;time) fby ex|
 35||normalize EACHPEACH[{select from x where size = (min;size) fby ex}; trade]|
 36||normalize EACHPEACH[{select from (select seqDecr: seq where (<) prior seq from x) where 0 < count each seqDecr}; trade]|
-37||update key[timeBuckets] timeBucket from `ex`timeBucket xasc select sum cnt, sum size by ex, timeBucket from normalize EACHPEACH[{0!select cnt: count i, sum size by ex, timeBucket: value[timeBuckets] bin time from x}; trade]|
+37||update key[timeBuckets] timeBucket from select sum cnt, sum size by ex, timeBucket from normalize EACHPEACH[{0!select cnt: count i, sum size by ex, timeBucket: value[timeBuckets] bin time from x}; trade]|
 38||normalize EACHPEACH[{0!select cnt: count i, sum size by timeBucket: timeBucketsStep time from x where not corr=0}; trade]|
 39||normalize EACHPEACH[{0!select o: first price, h: max price, l: min price, c: last price, s: sum size by 0D00:05 xbar time from x where not null stop}; (hundredInstrs inter key trade)#trade]|
 40||update inbal: (bsize - asize) % bsize + asize from select first asize, first bsize by time.minute from quote anInfreqInstr|
