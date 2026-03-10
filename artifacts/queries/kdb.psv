@@ -24,7 +24,7 @@ idx|tags|query|parameter
 23||select avgWeightedSpread: (asize + bsize) wavg ask - bid, devSpread: dev ask - bid, maxSpread: max ask - bid, minSpread: min ask - bid by sym, exnames ex from quote where date=min date, sym in hundredInstrs|
 24||select avgWeightedSpread: (asize + bsize) wavg ask - bid, devSpread: dev ask - bid, maxSpread: max ask - bid, minSpread: min ask - bid by exnames ex from quote where date=min date, shortSaleRestrictionIndicator="0"|
 25||distinct select sym, ex from trade where size > 700000|
-26||select weightedBidPice: bsize wavg bid, weightedOfferPice: asize wavg ask by sym from quote where sym in twentyInstrs|
+26||select weightedBidPrice: bsize wavg bid, weightedOfferPrice: asize wavg ask by sym from quote where sym in twentyInstrs|
 27||select time, 20 mavg price from trade where sym = mostFreqInstr|
 28||ungroup select time, movingLiqWMid: 5 mavg ((bsize * bid) + asize * ask) % bsize + asize, movingsize: 5 mavg asize + bsize by sym from quote where sym in twentyInstrs|
 29||select time, sums size from trade where sym = aFreqInstr|

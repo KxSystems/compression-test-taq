@@ -24,7 +24,7 @@ idx|tags|query|parameter
 23|manualparallelization|raze {select first mysym, avgWeightedSpread: (asize + bsize) wavg ask - bid, devSpread: dev ask - bid, maxSpread: max ask - bid, minSpread: min ask- bid by exnames ex from quote where date=min date, mysym=x} peach hundredInstrs|
 24|||
 25|||
-26|manualparallelization|raze {select first mysym, weightedBidPice: bsize wavg bid, weightedOfferPice: asize wavg ask from quote where mysym = x} peach twentyInstrs|
+26|manualparallelization|raze {select first mysym, weightedBidPrice: bsize wavg bid, weightedOfferPrice: asize wavg ask from quote where mysym = x} peach twentyInstrs|
 27|||
 28|manualparallelization|raze {select mysym, time, movingLiqWMid: 5 mavg ((bsize * bid) + asize * ask) % bsize + asize, movingsize: 5 mavg asize + bsize from quote where mysym = x} peach twentyInstrs|
 29|||

@@ -24,7 +24,7 @@ idx|tags|query|parameter
 23||quote.query("sym in @hundredInstrs").assign(ex=lambda df: df["ex"].map(exnames).fillna("")).groupby(["sym", "ex"], observed=True).apply(lambda g: pd.Series({"avgWeightedSpread": np.where((denom := (g["asize"] + g["bsize"]).sum()) == 0, np.nan, ((g["ask"] - g["bid"]) * (g["asize"] + g["bsize"])).sum() / denom), "devSpread": (g["ask"] - g["bid"]).std(ddof=0), "maxSpread": (g["ask"] - g["bid"]).max(), "minSpread": (g["ask"] - g["bid"]).min()}), include_groups=False).reset_index()|
 24||quote.query('shortSaleRestrictionIndicator == "0"').assign(ex=lambda df: df["ex"].map(exnames).fillna("")).groupby("ex", observed=True).apply(lambda g: pd.Series({"avgWeightedSpread": ((g["ask"] - g["bid"]) * (g["asize"] + g["bsize"])).sum() / (g["asize"] + g["bsize"]).sum(), "devSpread": (g["ask"] - g["bid"]).std(ddof=0), "maxSpread": (g["ask"] - g["bid"]).max(), "minSpread": (g["ask"] - g["bid"]).min()}), include_groups=False).reset_index()|
 25||trade[trade["size"] > 700000][["sym", "ex"]].drop_duplicates()|
-26|||
+26||quote.query("sym in @twentyInstrs").groupby("sym", observed=True).apply(lambda g: pd.Series({"weightedBidPrice": (g["bsize"] * g["bid"]).sum() / g["bsize"].sum(), "weightedOfferPrice": (g["asize"] * g["ask"]).sum() / g["asize"].sum()}), include_groups=False).reset_index()|
 27|||
 28|||
 29|||
