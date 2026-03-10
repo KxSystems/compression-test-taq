@@ -26,11 +26,11 @@ idx|tags|query|parameter
 25||trade[trade["size"] > 700000][["sym", "ex"]].drop_duplicates()|
 26||quote.query("sym in @twentyInstrs").groupby("sym", observed=True).apply(lambda g: pd.Series({"weightedBidPrice": (g["bsize"] * g["bid"]).sum() / g["bsize"].sum(), "weightedOfferPrice": (g["asize"] * g["ask"]).sum() / g["asize"].sum()}), include_groups=False).reset_index()|
 27||trade.query("sym == @mostFreqInstr")[["time", "price"]].assign(price=lambda df: df["price"].rolling(20).mean())|
-28|||
-29|||
-30|||
+28||quote.query("sym in @twentyInstrs").assign(LiqWMid=lambda df: (df["bsize"] * df["bid"] + df["asize"] * df["ask"]) / (df["asize"] + df["bsize"]), sizes=lambda df: df["asize"] + df["bsize"]).assign(movingLiqWMid=lambda df: df.groupby("sym", observed=True)["LiqWMid"].transform(lambda x: x.rolling(5, min_periods=1).mean()), movingsize=lambda df: df.groupby("sym", observed=True)["sizes"].transform(lambda x: x.rolling(5, min_periods=1).mean()))[["sym", "time", "movingLiqWMid", "movingsize"]].sort_values(["sym","time"])|
+29||trade.query("sym == @aFreqInstr")[["time", "size"]].assign(size=lambda df: df["size"].cumsum())|
+30||trade[trade["ex"] == "L"][["time", "size"]].assign(size=lambda df: df["size"].cumsum())|
 31|||
-32|||
+32||trade[trade["ex"] == "T"][["time", "size"]].assign(size=lambda df: df["size"].cumsum())|
 33||trade[trade["size"] == trade.groupby("ex", observed=True)["size"].transform("max")]|
 34|||
 35||trade[trade["size"] == trade.groupby(["ex", "sym"], observed=True)["size"].transform("min")]|
