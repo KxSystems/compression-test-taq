@@ -88,7 +88,7 @@ class QueryResult:
             self.run1_io_KB, self.run2_io_KB, self.run3_io_KB
         ]
 
-def run_query(runner, db_path: Path, device: str, idx: str, tags: Set, query: str, queryoutput: Path) -> QueryResult:
+def run_query(runner, db_path: Path, device: str, idx: str, tags: Set, query: str, parameter: str, queryoutput: Path) -> QueryResult:
     """
     Runs a specific query 3 times (Cold, Warm, Warm) and records timing.
     """
@@ -105,7 +105,7 @@ def run_query(runner, db_path: Path, device: str, idx: str, tags: Set, query: st
         io_start = get_io_stat(device)
         t_start = time_mod.perf_counter_ns()
         try:
-            res = runner.execute_query(idx, tags, query, runidx)
+            res = runner.execute_query(idx, tags, query, parameter, runidx)
             t_end = time_mod.perf_counter_ns()
             io_end = get_io_stat(device)
         except Exception as e:
@@ -137,7 +137,7 @@ class QueryExecutorPyKX:
         logger.info("loading kdb DB %s", db_path)
         self.db = kx.DB(path=db_path, change_dir=False)
 
-    def execute_query(self, idx: int, tags: Set, query_str: str, runidx: int) -> int:
+    def execute_query(self, idx: int, tags: Set, query_str: str, parameter: str, runidx: int) -> int:
         """
         Safely executes the query string using the loaded data and parameters.
         """
@@ -176,7 +176,7 @@ class QueryExecutorPyKXInMemory:
         self.trade = db.trade.select(where=kx.Column('date') == kx.Column('date').min()).delete(columns=kx.Column('date')).select(where=kx.Column('i') > -1)
         self.trade = self.trade.sort_values(by='time').grouped('sym')
 
-    def execute_query(self, idx: int, tags: Set, query_str: str, runidx: int) -> int:
+    def execute_query(self, idx: int, tags: Set, query_str: str, parameter: str, runidx: int) -> int:
         """
         Safely executes the query string using the loaded data and parameters.
         """
@@ -211,7 +211,7 @@ class QueryExecutorPyKXQ:
         kx.q.system.load("src/getQueryParameters.q")
         kx.q('getQueryParameters', kx.q.hsym(kx.SymbolAtom(self.paramdir)))
 
-    def execute_query(self, idx: int, tags: Set, query_str: str, runidx: int) -> int:
+    def execute_query(self, idx: int, tags: Set, query_str: str, parameter: str, runidx: int) -> int:
         """
         Safely executes the query string using the loaded data and parameters.
         """
@@ -260,7 +260,7 @@ class QueryExecutorPolars:
         self.trade = pl.scan_parquet(db_path / "trade/date=*/*.parquet", hive_partitioning=True)
         self.quote = pl.scan_parquet(db_path / "quote/date=*/*.parquet", hive_partitioning=True)
 
-    def execute_query(self, idx: int, tags: Set, query_str: str, runidx: int) -> int:
+    def execute_query(self, idx: int, tags: Set, query_str: str, parameter: str, runidx: int) -> int:
         """
         Safely executes the query string using the loaded data and parameters.
         """
@@ -280,8 +280,7 @@ class QueryExecutorPolars:
 
 class QueryExecutorPolarsInMemory:
     """
-    Handles the setup, execution of Polars queries
-    on NYSE TAQ hive-partitioned parquet files.
+    Handles the setup, execution of Polars in-memory queries
     """
 
     def __init__(self, param:Dict[str, Any]) -> None:
@@ -326,7 +325,7 @@ class QueryExecutorPolarsInMemory:
             hive_partitioning=True).filter(pl.col("date") == self.datadate).drop("date").with_columns(pl.col("sym").cast(pl.Categorical)).sort("time").collect()
         logger.info("Shape of quote: %s x %s", self.quote.shape[0], self.quote.shape[1])
 
-    def execute_query(self, idx: int, tags: Set, query_str: str, runidx: int) -> int:
+    def execute_query(self, idx: int, tags: Set, query_str: str, parameter: str, runidx: int) -> int:
         """
         Safely executes the query string using the loaded data and parameters.
         """
@@ -345,6 +344,60 @@ class QueryExecutorPolarsInMemory:
     def write_csv(self, res, outFile: Path) -> None:
         res.write_csv(outFile)
 
+
+class QueryExecutorDuckDBInMemory:
+    """
+    Handles the setup, execution of DuckDB in-memory queries.
+    """
+
+    def __init__(self, param:Dict[str, Any]) -> None:
+        self.datadate: Optional[datetime.date] = None
+        self.master: Optional[duckdb.DuckDBPyRelation] = None
+        self.trade: Optional[duckdb.DuckDBPyRelation] = None
+        self.quote: Optional[duckdb.DuckDBPyRelation] = None
+
+        self.params: Dict[str, Any] = param
+
+    def load_resources(self, db_path: Path) -> None:
+        """Loads database schemas."""
+        logger.info("loading first partition of hive-partitioned tables at %s into memory", db_path)
+        master = duckdb.read_parquet(str(db_path / "master/date=*/*.parquet"), hive_partitioning=True)
+        self.datadate = master['date'].fetchone()[0]
+        self.master = duckdb.sql("select * EXCLUDE (date) from master where date=$1", params=[self.datadate])
+        logger.info("Shape of master: %s x %s", self.master.shape[0], self.master.shape[1])
+
+        exnames = duckdb.read_parquet(str(db_path / "exnames.parquet"))
+        self.params["exnames"] = dict(zip(exnames["ex"].fetchall(), exnames["name"].fetchall()))
+
+        logger.info("loading trade")
+        trade = duckdb.read_parquet(str(db_path / "trade/date=*/*.parquet"),
+            hive_partitioning=True)
+        self.trade = duckdb.sql("SELECT * EXCLUDE (date) FROM trade WHERE date = $1 ORDER BY time", params=[self.datadate])
+        logger.info("Shape of trade: %s x %s", self.trade.shape[0], self.trade.shape[1])
+
+        logger.info("loading quote")
+        quote = duckdb.read_parquet(str(db_path / "quote/date=*/*.parquet"),
+            hive_partitioning=True)
+        self.quote = duckdb.sql("SELECT * EXCLUDE (date) FROM quote WHERE date = $1 ORDER BY time", params=[self.datadate])
+        logger.info("Shape of quote: %s x %s", self.quote.shape[0], self.quote.shape[1])
+
+    def execute_query(self, idx: int, tags: Set, query_str: str, parameter: str, runidx: int) -> int:
+        """
+        Safely executes the query string using the loaded data and parameters.
+        """
+        # Create a restricted execution context
+        eval_context = {
+            "duckdb": duckdb,
+            "timedelta": timedelta,
+            "master": self.master,
+            "trade": self.trade,
+            "quote": self.quote,
+            **self.params
+        }
+        return eval(f"duckdb.sql('{query_str}', params=[{parameter}])", eval_context)
+
+    def write_csv(self, res, outFile: Path) -> None:
+        res.write_csv(outFile)
 
 class QueryExecutorPandas:
     """
@@ -395,7 +448,7 @@ class QueryExecutorPandas:
         self.quote['ex'] = pd.Categorical(self.quote['ex'], categories=sorted(self.quote['ex'].unique()), ordered=True)
         logger.info("Shape of quote: %s x %s", self.quote.shape[0], self.quote.shape[1])
 
-    def execute_query(self, idx: int, tags: Set, query_str: str, runidx: int) -> int:
+    def execute_query(self, idx: int, tags: Set, query_str: str, parameter: str, runidx: int) -> int:
         """
         Safely executes the query string using the loaded data and parameters.
         """
@@ -451,6 +504,13 @@ def main(args) -> None:
         params = load_parameters(args.paramdir)
         runner = QueryExecutorPolarsInMemory(params)
         threadnr = pl.thread_pool_size()
+    elif engine == "duckdb_inmemory":
+        import duckdb
+        globals()['duckdb'] = duckdb
+        params = load_parameters(args.paramdir)
+        runner = QueryExecutorDuckDBInMemory(params)
+        threadnr = os.environ['DUCKDB_THREADS']
+        duckdb.execute(f"SET threads = {threadnr}")
     elif engine == "pykx":
         os.environ['PYKX_4_1_ENABLED'] = 'True'  # needed for change_dir parameter below
         import pykx as kx
@@ -536,7 +596,7 @@ def main(args) -> None:
                 elif len(tags) > 0 and len(tags & querytags) == 0:
                     result = QueryResult(query, "tagfiltered")
                 else:
-                    result = run_query(runner, args.db, device, idx, querytags, query, args.queryoutput)
+                    result = run_query(runner, args.db, device, idx, querytags, query, row['parameter'].strip(), args.queryoutput)
 
                 writer.writerow(row_start + [idx, ",".join(querytags)] + result.to_csv_row())
                 f_out.flush() # Write immediately to disk
@@ -556,7 +616,7 @@ parser = argparse.ArgumentParser(
 
 
 parser.add_argument('-db', type=Path, required=True, help="Path to hive-partitioned parquet DB root")
-parser.add_argument('-engine', type=str, choices=["polars", "polars_inmemory", "pykx", "pykx_inmemory", "pykxq", "pandas"],
+parser.add_argument('-engine', type=str, choices=["polars", "polars_inmemory", "duckdb_inmemory", "pykx", "pykx_inmemory", "pykxq", "pandas"],
     required=True, help="Query engine. Currently supported polars and PyKX")
 parser.add_argument('-queryfile', type=Path, required=True, help="PSV file containing queries")
 parser.add_argument('-querymeta', type=Path, required=True, help="PSV file containing the query metas")
