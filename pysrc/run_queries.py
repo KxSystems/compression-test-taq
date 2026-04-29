@@ -363,7 +363,7 @@ class QueryExecutorDuckDBInMemory:
         logger.info("loading first partition of hive-partitioned tables at %s into memory", db_path)
         master = duckdb.read_parquet(str(db_path / "master/date=*/*.parquet"), hive_partitioning=True)
         self.datadate = master['date'].fetchone()[0]
-        self.master = duckdb.sql("select * EXCLUDE (date) from master where date=$1", params=[self.datadate])
+        self.master = duckdb.sql("SELECT * EXCLUDE (date) FROM master WHERE date=$1", params=[self.datadate])
         logger.info("Shape of master: %s x %s", self.master.shape[0], self.master.shape[1])
 
         exnames = duckdb.read_parquet(str(db_path / "exnames.parquet"))
@@ -372,13 +372,13 @@ class QueryExecutorDuckDBInMemory:
         logger.info("loading trade")
         trade = duckdb.read_parquet(str(db_path / "trade/date=*/*.parquet"),
             hive_partitioning=True)
-        self.trade = duckdb.sql("SELECT * EXCLUDE (date) FROM trade WHERE date = $1 ORDER BY time", params=[self.datadate])
+        self.trade = duckdb.sql("SELECT make_timestamp_ns(epoch_ns(date)+time) AS time, * EXCLUDE (date, time) FROM trade WHERE date = $1 ORDER BY time", params=[self.datadate])
         logger.info("Shape of trade: %s x %s", self.trade.shape[0], self.trade.shape[1])
 
         logger.info("loading quote")
         quote = duckdb.read_parquet(str(db_path / "quote/date=*/*.parquet"),
             hive_partitioning=True)
-        self.quote = duckdb.sql("SELECT * EXCLUDE (date) FROM quote WHERE date = $1 ORDER BY time", params=[self.datadate])
+        self.quote = duckdb.sql("SELECT make_timestamp_ns(epoch_ns(date)+time) AS time, * EXCLUDE (date, time) FROM quote WHERE date = $1 ORDER BY time", params=[self.datadate])
         logger.info("Shape of quote: %s x %s", self.quote.shape[0], self.quote.shape[1])
 
     def execute_query(self, idx: int, tags: Set, query_str: str, parameter: str, runidx: int) -> int:
@@ -394,7 +394,7 @@ class QueryExecutorDuckDBInMemory:
             "quote": self.quote,
             **self.params
         }
-        return eval(f"duckdb.sql('{query_str}', params=[{parameter}])", eval_context)
+        return eval(f"duckdb.sql(\"{query_str}\", params=[{parameter}])", eval_context)
 
     def write_csv(self, res, outFile: Path) -> None:
         res.write_csv(outFile)
