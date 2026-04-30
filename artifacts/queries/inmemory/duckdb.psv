@@ -1,8 +1,8 @@
 idx|tags|query|parameter
 1||SELECT * FROM quote WHERE time::TIME < '08:00'|
 2||SELECT * FROM trade WHERE seq=0|
-3|||
-4|||
+3||SELECT * FROM trade WHERE 0 < seq AND 0 < price AND time BETWEEN '-infinity'::TIMESTAMP AND 'infinity'::TIMESTAMP AND size < 2147483647|
+4||SELECT * FROM trade WHERE time::TIME BETWEEN '10:00' AND '10:00:10'|
 5||SELECT * FROM quote WHERE sym = $1 AND time::TIME BETWEEN '08:30' AND '16:30'|anInfreqInstr
 6||SELECT * FROM quote WHERE sym IN $1 AND time::TIME BETWEEN '08:30' AND '08:35'|hundredInstrs
 7||SELECT sym, time, price, size, stop, cond, ex FROM trade WHERE source = 'N'|
