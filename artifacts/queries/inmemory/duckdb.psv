@@ -16,8 +16,8 @@ idx|tags|query|parameter
 15||PIVOT (SELECT time_bucket(INTERVAL '10 minutes', time)::TIME AS time, ex, (bsize * bid + asize * ask) / (bsize + asize) AS liqWMid FROM quote WHERE sym = $1) ON ex USING AVG(liqWMid) AS avgLiqWMid GROUP BY time|anInfreqInstr
 16||PIVOT (SELECT time_bucket(INTERVAL '10 minutes', time)::TIME AS time, sym, (bsize * bid + asize * ask) / (bsize + asize) AS liqWMid FROM quote WHERE sym in $1) ON sym USING AVG(liqWMid) AS avgLiqWMid GROUP BY time|fivehundredInfreqInstrs
 17|||
-18|||aFreqInstr
-19|||hundredInstrs
+18||SELECT time_bucket(INTERVAL '10 minutes', time)::TIME AS time, AVG(ask - bid) AS avgSpread FROM quote WHERE sym = $1 GROUP BY time|aFreqInstr
+19||SELECT sym, time_bucket(INTERVAL '10 minutes', time)::TIME AS time, AVG(ask - bid) AS avgSpread FROM quote WHERE sym IN $1 GROUP BY sym, time|hundredInstrs
 20||SELECT SUM((asize + bsize) * (ask - bid)) / SUM(asize + bsize) AS avgWeightedSpread FROM quote WHERE sym=$1|anInfreqInstr
 21||SELECT SUM((asize + bsize) * (ask - bid)) / SUM(asize + bsize) AS avgWeightedSpread, STDDEV_POP(ask - bid) AS devSpread, MAX(ask - bid) AS maxSpread, MIN(ask - bid) AS minSpread FROM quote WHERE sym=$1 GROUP BY exnames(ex)|mostFreqInstr
 22||SELECT SUM(sizes * spread) / SUM(sizes) AS avgWeightedSpread, STDDEV_POP(spread) AS devSpread, MAX(spread) AS maxSpread, MIN(spread) AS minSpread FROM (SELECT ex, asize + bsize AS sizes, ask - bid AS spread FROM quote WHERE sym=$1) GROUP BY exnames(ex)|mostFreqInstr
