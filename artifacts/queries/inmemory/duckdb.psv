@@ -25,10 +25,10 @@ idx|tags|query|parameter
 24||SELECT SUM((asize + bsize) * (ask - bid)) / SUM(asize + bsize) AS avgWeightedSpread, STDDEV_POP(ask - bid) AS devSpread, MAX(ask - bid) AS maxSpread, MIN(ask - bid) AS minSpread FROM quote WHERE shortSaleRestrictionIndicator='0' GROUP BY exnames(ex)|
 25||SELECT DISTINCT sym, ex FROM trade WHERE size>700000|
 26||SELECT sum(bsize * bid) / sum(bsize) AS weightedBidPrice, sum(asize * ask) / sum(asize) AS weightedOfferPrice FROM quote WHERE sym IN $1 GROUP BY sym|twentyInstrs
-27|||
+27||SELECT time, AVG(price) OVER (ORDER BY time ROWS BETWEEN 19 PRECEDING AND CURRENT ROW) AS price FROM trade WHERE sym = $1|mostFreqInstr
 28|||
-29|||
-30|||
+29||SELECT time, SUM(size) OVER (ORDER BY time ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS size FROM trade WHERE sym = $1|aFreqInstr
+30||SELECT time, SUM(size) OVER (ORDER BY time ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS size FROM trade WHERE ex = 'L'|
 31|||
 32|||
 33|||
