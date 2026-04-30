@@ -31,16 +31,16 @@ idx|tags|query|parameter
 30||SELECT time, SUM(size) OVER (ORDER BY time ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS size FROM trade WHERE ex = 'L'|
 31|||
 32||SELECT time, SUM(size) OVER (ORDER BY time ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS size FROM trade WHERE ex = 'T'|
-33|||
+33||SELECT * FROM (SELECT *, MAX(size) OVER (PARTITION BY ex) AS max_size FROM trade) WHERE size = max_size|
 34|||
-35|||
+35||SELECT * FROM (SELECT *, MIN(size) OVER (PARTITION BY ex, sym) AS min_size FROM trade) WHERE size = min_size|
 36|||
 37|||
 38|||
-39|||hundredInstrs
-40|||anInfreqInstr
+39||SELECT sym, time_bucket(INTERVAL '5 minutes', time)::TIME AS time, FIRST(price) AS o, MAX(price) AS h, MIN(price) AS l, LAST(price) AS c, SUM(size) AS s FROM trade WHERE sym IN $1 AND stop != '' GROUP BY sym, time|hundredInstrs
+40||SELECT *, (bsize - asize) / (bsize + asize) AS inbal FROM (SELECT time_bucket(INTERVAL '1 minute', time)::TIME AS time, FIRST(asize) AS asize, FIRST(bsize) AS bsize FROM quote WHERE sym = $1 GROUP BY time)|anInfreqInstr
 41||SELECT SUM(asize * ask) AS wsumAsk, SUM(bid * bsize) AS wsumBid, STDDEV(asize) AS sdevasksize, STDDEV(bid) AS sdevbid, CORR(ask, bid) AS corPrice, CORR(asize, bsize) AS corSize FROM quote WHERE sym IN $1 GROUP BY sym|fivehundredInfreqInstrs
-42|||
+42||SELECT * FROM (SELECT *, MIN(price) OVER (PARTITION BY sym) AS min_price FROM trade) WHERE price = min_price|
 43|||
 44|||
 45|||
