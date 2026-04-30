@@ -46,6 +46,6 @@ idx|tags|query|parameter
 45|||
 46||SELECT MEDIAN(bsize + asize) AS medMidSize FROM quote WHERE sym=$1|anInfreqInstr
 47||SELECT MEDIAN(size) AS medSize FROM trade GROUP BY ex|
-48|||
-49|||
-50|||
+48||SELECT t.sym, t.time, t.price, t.size, t.stop, t.cond, t.ex, q.bid, q.ask, q.bsize, q.asize, q.cond AS quotecond, q.ex AS quoteex FROM (SELECT sym, time, price, size, stop, cond, ex FROM trade WHERE sym IN $1) t ASOF JOIN (SELECT sym, time, bid, ask, bsize, asize, cond, ex FROM quote WHERE sym IN $1) q ON t.sym = q.sym AND t.time >= q.time|twentyInstrs
+49||SELECT t.time, t.price, t.size, t.stop, t.cond, t.ex, q.bid, q.ask, q.bsize, q.asize, q.cond AS quotecond, q.ex AS quoteex FROM (SELECT time, price, size, stop, cond, ex FROM trade WHERE sym = $1) t ASOF JOIN (SELECT time, bid, ask, bsize, asize, cond, ex FROM quote WHERE sym = $1) q ON t.time >= q.time|aFreqInstr
+50||SELECT t.sym, t.time, t.price, t.size, t.stop, t.cond, t.ex, q.bid, q.ask, q.bsize, q.asize, q.cond AS quotecond FROM (SELECT sym, time, price, size, stop, cond, ex FROM trade WHERE size > 500000) t ASOF JOIN (SELECT sym, time, bid, ask, bsize, asize, cond, ex FROM quote) q ON t.sym = q.sym AND t.ex = q.ex AND t.time >= q.time|
