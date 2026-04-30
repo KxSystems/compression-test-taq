@@ -13,8 +13,8 @@ idx|tags|query|parameter
 12||SELECT sym, time, bid, ask, bsize, asize, cond, ex FROM quote WHERE sym IN $1 AND 2000<bsize+asize|fivehundredInfreqInstrs
 13||SELECT AVG((bsize * bid + asize * ask) / (bsize + asize)) AS avgLiqWMid FROM quote WHERE sym = $1|anInfreqInstr
 14||SELECT time_bucket(INTERVAL '10 minutes', time)::TIME AS time, ex, AVG((bsize * bid + asize * ask) / (bsize + asize)) AS avgLiqWMid FROM quote WHERE sym = $1 GROUP BY time, ex|anInfreqInstr
-15|||
-16|||
+15||PIVOT (SELECT time_bucket(INTERVAL '10 minutes', time)::TIME AS time, ex, (bsize * bid + asize * ask) / (bsize + asize) AS liqWMid FROM quote WHERE sym = $1) ON ex USING AVG(liqWMid) AS avgLiqWMid GROUP BY time|anInfreqInstr
+16||PIVOT (SELECT time_bucket(INTERVAL '10 minutes', time)::TIME AS time, sym, (bsize * bid + asize * ask) / (bsize + asize) AS liqWMid FROM quote WHERE sym in $1) ON sym USING AVG(liqWMid) AS avgLiqWMid GROUP BY time|fivehundredInfreqInstrs
 17|||
 18|||aFreqInstr
 19|||hundredInstrs
