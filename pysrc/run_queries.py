@@ -366,8 +366,7 @@ class QueryExecutorDuckDBInMemory:
         self.master = duckdb.sql("SELECT * EXCLUDE (date) FROM master WHERE date=$1", params=[self.datadate])
         logger.info("Shape of master: %s x %s", self.master.shape[0], self.master.shape[1])
 
-        exnames = duckdb.read_parquet(str(db_path / "exnames.parquet"))
-        self.params["exnames"] = dict(zip(exnames["ex"].fetchall(), exnames["name"].fetchall()))
+        self.params["exnames"] = pd.read_parquet(db_path / "exnames.parquet")
 
         logger.info("loading trade")
         trade = duckdb.read_parquet(str(db_path / "trade/date=*/*.parquet"),
@@ -506,7 +505,9 @@ def main(args) -> None:
         threadnr = pl.thread_pool_size()
     elif engine == "duckdb_inmemory":
         import duckdb
+        import pandas as pd
         globals()['duckdb'] = duckdb
+        globals()['pd'] = pd
         params = load_parameters(args.paramdir)
         runner = QueryExecutorDuckDBInMemory(params)
         threadnr = os.environ['DUCKDB_THREADS']
