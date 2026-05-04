@@ -29,7 +29,7 @@ idx|tags|query|parameter
 28||SELECT sym, time, AVG((bsize * bid + asize * ask) / (bsize + asize)) OVER (PARTITION BY sym ORDER BY time ROWS BETWEEN 4 PRECEDING AND CURRENT ROW) AS movingLiqWMid, AVG(asize + bsize) OVER (PARTITION BY sym ORDER BY time ROWS BETWEEN 4 PRECEDING AND CURRENT ROW) AS movingsize FROM quote WHERE sym IN $1 ORDER BY sym|twentyInstrs
 29||SELECT time, SUM(size) OVER (ORDER BY time ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS size FROM trade WHERE sym = $1|aFreqInstr
 30||SELECT time, SUM(size) OVER (ORDER BY time ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS size FROM trade WHERE ex = 'L'|
-31|||
+31||SELECT sym, time, price, size, SUM(price * size) OVER (PARTITION BY sym ORDER BY time ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) / SUM(size) OVER (PARTITION BY sym ORDER BY time ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS movingvwap FROM trade WHERE time::TIME BETWEEN '08:00' AND '08:15' ORDER BY sym, time|
 32||SELECT time, SUM(size) OVER (ORDER BY time ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS size FROM trade WHERE ex = 'T'|
 33||SELECT * FROM (SELECT *, MAX(size) OVER (PARTITION BY ex) AS max_size FROM trade) WHERE size = max_size|
 34||WITH b AS (SELECT *, MAX(bid) OVER (PARTITION BY ex) AS max_bid, MIN(ask) OVER (PARTITION BY ex) AS min_ask FROM quote WHERE sym=$1) SELECT * EXCLUDE (max_bid, min_ask, min_time), 'maxbid' AS tag FROM (SELECT *, MIN(time) OVER (PARTITION BY ex) AS min_time FROM b WHERE bid = max_bid) WHERE time = min_time UNION ALL SELECT * EXCLUDE (max_bid, min_ask, min_time), 'minask' AS tag FROM (SELECT *, MIN(time) OVER (PARTITION BY ex) AS min_time FROM b WHERE ask = min_ask) WHERE time = min_time ORDER BY tag, time|mostFreqInstr
