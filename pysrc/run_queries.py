@@ -357,6 +357,7 @@ class QueryExecutorDuckDBInMemory:
         self.quote: Optional[duckdb.DuckDBPyRelation] = None
 
         self.params: Dict[str, Any] = param
+        self.params['timeBuckets'] = pd.DataFrame(list(params['timeBuckets'].items()), columns=['bucket', 'bound'])
 
     def load_resources(self, db_path: Path) -> None:
         """Loads database schemas."""
@@ -371,13 +372,13 @@ class QueryExecutorDuckDBInMemory:
         logger.info("loading trade")
         trade = duckdb.read_parquet(str(db_path / "trade/date=*/*.parquet"),
             hive_partitioning=True)
-        self.trade = duckdb.sql("SELECT make_timestamp_ns(epoch_ns(date)+time) AS time, * EXCLUDE (date, time) FROM trade WHERE date = $1 ORDER BY time", params=[self.datadate])
+        self.trade = duckdb.sql("SELECT * EXCLUDE (rn) FROM (SELECT make_timestamp_ns(epoch_ns(date)+time) AS time, row_number() OVER () AS rn, * EXCLUDE (date, time) FROM trade WHERE date = $1 ORDER BY time, rn)", params=[self.datadate]) # rowid is used to ensure stable sorting for same timestamp records
         logger.info("Shape of trade: %s x %s", self.trade.shape[0], self.trade.shape[1])
 
         logger.info("loading quote")
         quote = duckdb.read_parquet(str(db_path / "quote/date=*/*.parquet"),
             hive_partitioning=True)
-        self.quote = duckdb.sql("SELECT make_timestamp_ns(epoch_ns(date)+time) AS time, * EXCLUDE (date, time) FROM quote WHERE date = $1 ORDER BY time", params=[self.datadate])
+        self.quote = duckdb.sql("SELECT * EXCLUDE (rn) FROM (SELECT make_timestamp_ns(epoch_ns(date)+time) AS time, row_number() OVER () AS rn, * EXCLUDE (date, time) FROM quote WHERE date = $1 ORDER BY time, rn)", params=[self.datadate]) # rowid is used to ensure stable sorting for same timestamp records
         logger.info("Shape of quote: %s x %s", self.quote.shape[0], self.quote.shape[1])
 
     def execute_query(self, idx: int, tags: Set, query_str: str, parameter: str, runidx: int) -> int:
