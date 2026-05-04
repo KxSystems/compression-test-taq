@@ -53,4 +53,4 @@ class QueryExecutorDuckDBInMemory:
         return eval(f"duckdb.sql(\"{query_str}\", params=[{parameter}])", eval_context)
 
     def write_csv(self, res, outFile: Path) -> None:
-        res.write_csv(outFile)
+        res.write_csv(str(outFile))
