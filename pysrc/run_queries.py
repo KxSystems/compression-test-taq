@@ -357,7 +357,7 @@ class QueryExecutorDuckDBInMemory:
         self.quote: Optional[duckdb.DuckDBPyRelation] = None
 
         self.params: Dict[str, Any] = param
-        self.params['timeBuckets'] = pd.DataFrame(list(params['timeBuckets'].items()), columns=['bucket', 'bound'])
+        self.params['timeBuckets'] = pd.DataFrame(list(self.params['timeBuckets'].items()), columns=['bucket', 'bound'])
 
     def load_resources(self, db_path: Path) -> None:
         """Loads database schemas."""
