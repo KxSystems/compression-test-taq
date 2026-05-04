@@ -34,7 +34,7 @@ idx|tags|query|parameter
 33||SELECT * FROM (SELECT *, MAX(size) OVER (PARTITION BY ex) AS max_size FROM trade) WHERE size = max_size|
 34||WITH b AS (SELECT *, MAX(bid) OVER (PARTITION BY ex) AS max_bid, MIN(ask) OVER (PARTITION BY ex) AS min_ask FROM quote WHERE sym=$1) SELECT * EXCLUDE (max_bid, min_ask, min_time), 'maxbid' AS tag FROM (SELECT *, MIN(time) OVER (PARTITION BY ex) AS min_time FROM b WHERE bid = max_bid) WHERE time = min_time UNION ALL SELECT * EXCLUDE (max_bid, min_ask, min_time), 'minask' AS tag FROM (SELECT *, MIN(time) OVER (PARTITION BY ex) AS min_time FROM b WHERE ask = min_ask) WHERE time = min_time ORDER BY tag, time|mostFreqInstr
 35||SELECT * FROM (SELECT *, MIN(size) OVER (PARTITION BY ex, sym) AS min_size FROM trade) WHERE size = min_size|
-36||SELECT sym, seq AS seqDecr FROM (SELECT sym, seq, seq - LAG(seq) OVER (PARTITION BY sym ORDER BY time) AS seq_delta FROM trade) WHERE seq_delta < 0 ORDER BY sym|
+36||SELECT sym, seq AS seqDecr FROM (SELECT sym, seq, seq - LAG(seq) OVER (PARTITION BY sym ORDER BY time, rn) AS seq_delta FROM (SELECT *, ROW_NUMBER() OVER () AS rn FROM trade)) WHERE seq_delta < 0 ORDER BY sym|
 37|||
 38|||
 39||SELECT sym, time_bucket(INTERVAL '5 minutes', time)::TIME AS time, FIRST(price) AS o, MAX(price) AS h, MIN(price) AS l, LAST(price) AS c, SUM(size) AS s FROM trade WHERE sym IN $1 AND stop != '' GROUP BY sym, time|hundredInstrs
