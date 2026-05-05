@@ -62,4 +62,8 @@ class QueryExecutorDuckDBInMemory:
         tscols = [row[0] for row in duckdb.sql("SELECT column_name FROM (DESCRIBE res) WHERE column_type = 'TIMESTAMP_NS'").fetchall()]
         for col in tscols:
             res=duckdb.sql(f"SELECT * REPLACE (format('0D{{:02d}}:{{:02d}}:{{:02d}}.{{:09d}}', hour({col}), minute({col}), second({col}), (epoch_ns({col}) % 1000000000)) AS {col}) FROM res")
+
+        bcols = [row[0] for row in duckdb.sql("SELECT column_name FROM (DESCRIBE res) WHERE column_type = 'BOOLEAN'").fetchall()]
+        for col in bcols:
+            res=duckdb.sql(f"SELECT * REPLACE ({col}::INTEGER AS {col}) FROM res")
         res.write_csv(str(outFile))
