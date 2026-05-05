@@ -53,4 +53,7 @@ class QueryExecutorDuckDBInMemory:
         return eval(f"duckdb.sql(\"{query_str}\", params=[{parameter}])", eval_context)
 
     def write_csv(self, res, outFile: Path) -> None:
+        tscols = [row[0] for row in duckdb.sql("SELECT column_name FROM (DESCRIBE res) WHERE column_type = 'TIMESTAMP_NS'").fetchall()]
+        for col in tscols:
+            res=duckdb.sql(f"SELECT * EXCLUDE ({col}), strftime({col}, '0D%H:%M:%S.%f') AS {col} FROM res")
         res.write_csv(str(outFile))
