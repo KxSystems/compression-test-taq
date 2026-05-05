@@ -43,12 +43,15 @@ compare: {[idx: `j; tags: `C]
     t2: ("f"^types t2cols; enlist csv) 0: srct2;
 
     if[ not count[t1] = count t2;
-        .qlog.error "Different number of rows: ", string[count t1], " vs ", string count t2;
-        'STOP];
+        .qlog.error "Different number of rows: ", string[count t1], " vs ", string count t2];
     .qlog.info "Number of rows: \tOK";
 
     if[ not count[cols t1] = count cols t2;
         .qlog.error "Different number of columns: ", string[count cols t1], " vs ", string count cols t2;
+        if[count missing: cols[t1] except cols t2;
+            .qlog.error "Columns in ", (1_string srct1), " not in ", (1_string srct2), ": ", "," sv string missing];
+        if[count missing: cols[t2] except cols t1;
+            .qlog.error "Columns in ", (1_string srct2), " not in ", (1_string srct1), ": ", "," sv string missing];
         :()];
     .qlog.info "Number of columns: \tOK";
 

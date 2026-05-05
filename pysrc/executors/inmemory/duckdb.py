@@ -33,12 +33,18 @@ class QueryExecutorDuckDBInMemory:
 
         logger.info("loading trade")
         trade = duckdb.read_parquet(str(db_path / "trade/date=*/*.parquet"), hive_partitioning=True)
-        self.trade = duckdb.sql("SELECT * EXCLUDE (rn) FROM (SELECT make_timestamp_ns(epoch_ns(date)+time) AS time, row_number() OVER () AS rn, * EXCLUDE (date, time) FROM trade WHERE date = $1 ORDER BY time, rn)", params=[self.datadate])  # rowid ensures stable sorting for same-timestamp records
+        self.trade = duckdb.sql("SELECT * EXCLUDE (rn) FROM (SELECT make_timestamp_ns(epoch_ns(date)+time) AS time, " +
+            "make_timestamp_ns(epoch_ns(date)+participantTimestamp) AS participantTimestamp, " +
+            "make_timestamp_ns(epoch_ns(date)+tradeReportingFacilityTRFTimestamp) AS tradeReportingFacilityTRFTimestamp, " +
+            "row_number() OVER () AS rn, * EXCLUDE (date, time, participantTimestamp, tradeReportingFacilityTRFTimestamp) FROM trade WHERE date = $1 ORDER BY time, rn)", params=[self.datadate])  # rowid ensures stable sorting for same-timestamp records
         logger.info("Shape of trade: %s x %s", self.trade.shape[0], self.trade.shape[1])
 
         logger.info("loading quote")
         quote = duckdb.read_parquet(str(db_path / "quote/date=*/*.parquet"), hive_partitioning=True)
-        self.quote = duckdb.sql("SELECT * EXCLUDE (rn) FROM (SELECT make_timestamp_ns(epoch_ns(date)+time) AS time, row_number() OVER () AS rn, * EXCLUDE (date, time) FROM quote WHERE date = $1 ORDER BY time, rn)", params=[self.datadate])  # rowid ensures stable sorting for same-timestamp records
+        self.quote = duckdb.sql("SELECT * EXCLUDE (rn) FROM (SELECT make_timestamp_ns(epoch_ns(date)+time) AS time, " +
+            "make_timestamp_ns(epoch_ns(date)+participantTimestamp) AS participantTimestamp, " +
+            "make_timestamp_ns(epoch_ns(date)+FINRAADFTimestamp) AS FINRAADFTimestamp, " +
+            "row_number() OVER () AS rn, * EXCLUDE (date, time, participantTimestamp, FINRAADFTimestamp) FROM quote WHERE date = $1 ORDER BY time, rn)", params=[self.datadate])  # rowid ensures stable sorting for same-timestamp records
         logger.info("Shape of quote: %s x %s", self.quote.shape[0], self.quote.shape[1])
 
     def execute_query(self, idx: int, tags: Set, query_str: str, parameter: str, runidx: int):
@@ -55,5 +61,5 @@ class QueryExecutorDuckDBInMemory:
     def write_csv(self, res, outFile: Path) -> None:
         tscols = [row[0] for row in duckdb.sql("SELECT column_name FROM (DESCRIBE res) WHERE column_type = 'TIMESTAMP_NS'").fetchall()]
         for col in tscols:
-            res=duckdb.sql(f"SELECT * EXCLUDE ({col}), strftime({col}, '0D%H:%M:%S.%f') AS {col} FROM res")
+            res=duckdb.sql(f"SELECT * REPLACE (format('0D{{:02d}}:{{:02d}}:{{:02d}}.{{:09d}}', hour({col}), minute({col}), second({col}), (epoch_ns({col}) % 1000000000)) AS {col}) FROM res")
         res.write_csv(str(outFile))
