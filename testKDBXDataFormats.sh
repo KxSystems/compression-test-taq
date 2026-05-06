@@ -85,15 +85,15 @@ function execute_queries () {
             $(get_numa_config) $QEXEC ./src/runQueries.q ${COMMONPARAMS} -db ${DB_DIR}/kdb -format kdbinmemorytabledict -queryfile ./artifacts/queries/inmemory/kdb_tabledict.psv -result ${RESULT_DIR}/kdbInMemoryTableDict_${s}Threads.psv -s ${s}
             $(get_numa_config) $QEXEC ./src/runQueries.q ${COMMONPARAMS} -db ${DB_DIR}/kdb -format kdbinmemorygrouped -engine sql -queryfile ./artifacts/queries/inmemory/sql.psv -result ${RESULT_DIR}/sqlInMemoryGrouped_${s}Threads.psv -s ${s}
             EACHPEACH=peach $(get_numa_config) $QEXEC ./src/runQueries.q ${COMMONPARAMS} -db ${DB_DIR}/kdb -format kdbinmemorytabledict -queryfile ./artifacts/queries/inmemory/kdb_tabledict.psv -result ${RESULT_DIR}/kdbInMemoryTableDictPeach_${s}Threads.psv -s ${s}
+            DUCKDB_THREADS=$(( s > 1 ? s : 1 )) $(get_numa_config) python3 pysrc/run_queries.py ${COMMONPARAMS} -db ${DB_DIR}/parquet/rowgroup -engine duckdb_inmemory -queryfile ./artifacts/queries/inmemory/duckdb.psv -result ${RESULT_DIR}/duckdbInMemory_${s}Threads.psv
             POLARS_MAX_THREADS=$(( s > 1 ? s : 1 )) $(get_numa_config) python3 pysrc/run_queries.py ${COMMONPARAMS} -db ${DB_DIR}/parquet/rowgroup -engine polars_inmemory -queryfile ./artifacts/queries/inmemory/polars.psv -result ${RESULT_DIR}/polarsInMemory_${s}Threads.psv
-            QARGS="-s ${s}" $(get_numa_config) python3 pysrc/run_queries.py -engine pykx_inmemory -db ${DB_DIR}/kdb -queryfile ./artifacts/queries/inmemory/pykx.psv ${COMMONPARAMS} -result ${RESULT_DIR}/pykx_kdb_${s}Threads.psv
-            OMP_NUM_THREADS="${s}" NUMEXPR_NUM_THREADS="${s}" MKL_NUM_THREADS="${s}" $(get_numa_config) python3 pysrc/run_queries.py -engine pandas -db ${DB_DIR}/parquet/rowgroup -queryfile ./artifacts/queries/inmemory/pandas.psv ${COMMONPARAMS} -result ${RESULT_DIR}/pandasInMemory_${s}Threads.psv
-            DUCKDB_THREADS="${s}" $(get_numa_config) python3 pysrc/run_queries.py -engine duckdb_inmemory -db ${DB_DIR}/parquet/rowgroup -queryfile ./artifacts/queries/inmemory/duckdb.psv ${COMMONPARAMS} -result ${RESULT_DIR}/duckdbInMemory_${s}Threads.psv
+            QARGS="-s ${s}" $(get_numa_config) python3 pysrc/run_queries.py ${COMMONPARAMS} -db ${DB_DIR}/kdb -engine pykx_inmemory -queryfile ./artifacts/queries/inmemory/pykx.psv-result ${RESULT_DIR}/pykx_kdb_${s}Threads.psv
+            OMP_NUM_THREADS=$(( s > 1 ? s : 1 )) NUMEXPR_NUM_THREADS=$(( s > 1 ? s : 1 )) MKL_NUM_THREADS=$(( s > 1 ? s : 1 )) $(get_numa_config) python3 pysrc/run_queries.py -engine pandas -db ${DB_DIR}/parquet/rowgroup -queryfile ./artifacts/queries/inmemory/pandas.psv ${COMMONPARAMS} -result ${RESULT_DIR}/pandasInMemory_${s}Threads.psv
         fi
     done
 }
 
-generate_data
+#generate_data
 execute_queries
 
 echo "Benchmark suite complete."
