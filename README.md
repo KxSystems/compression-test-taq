@@ -2,26 +2,25 @@
 
 ## Background
 
-This benchmark uses public [NYSE TAQ data](https://ftp.nyse.com/Historical%20Data%20Samples/DAILY%20TAQ/) to compare:
-* **Query performance** of engines including KDB-X, Polars, and KDB-X Python (PyKX) using kdb+ and parquet data formats.
-* **Query performance** of KDB-X using kdb+ and various parquet data formats.
-* **kdb+ compression algorithms** (see [KX FSI case study](https://code.kx.com/q/kb/compression/fsicasestudy/) for background), specifically measuring:
-    1.  **Compression ratio** (storage efficiency)
-    2.  **Write performance** (`set` and `sync` operations)
-    3.  **Query execution times**
+This benchmark uses public [NYSE TAQ data](https://ftp.nyse.com/Historical%20Data%20Samples/DAILY%20TAQ/) and representative queries. The benchmark can be used to compare
 
-The benchmark uses Pyarrow to persist data into parquet format.
+* query engines (KDB-X, PyKX Polars, Pandas and DuckDB),
+* data formats (parquet vs kdb+),
+* hardware (storage, CPU, memory),
+* data layout and other settings (compression, attributes, .Q.MAP, etc).
 
-The following engines and formats are currently supported
+The following engines and formats are currently supported:
 
-| data format | KDB-X | KDB-X Python | KDB-X SQL | Polars |
-| --- | ---: | ---: | ---: | ---: |
-| in memory | ✅ | | ✅ | ✅
-| in memory, table dicitonary | ✅ | | ❌ | TODO
-| kdb+ on disk | ✅ | In Progress | ✅ | ❌
-| hive partitioned parquet | ✅ | | ❌ | ✅
-| parquet rowgroup partitioned | ✅ | | ❌ | ✅
-| parquet rowgroup partitioned max row group | ✅ | | ❌ | ✅
+| data format | KDB-X | PyKX | KDB-X SQL | Polars | DuckDB | Pandas |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| in memory | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅
+| in memory, table dictionary | ✅ | NYI | ❌ | In Progress | ❌ | ❌ |
+| kdb+ on disk | ✅ | In Progress | ✅ | ❌ | ❌ | ❌ | ❌
+| hive partitioned parquet | ✅ | NYI | ❌ | ✅ | NYI | ❌
+| parquet rowgroup partitioned | ✅ | NYI | ❌ | ✅ | NYI | ❌
+| parquet rowgroup partitioned max row group | ✅ | NYI | ❌ | ✅ | NYI | ❌
+
+The benchmark uses PyArrow to persist data into parquet format.
 
 ## Prerequisites
 
@@ -32,10 +31,11 @@ source ./config/kdbenv
 ```
 
 The bash and q scripts require
-   * `curl`: To download zipped CSV files from the NYSE TAQ server.
-   * `iostat` (from the `sysstat` package): For disk I/O metrics during query tests.
 
-You need Python to generate Parquet data and test the Polars and KDB-X Python query engines. Install the required libraries via:
+* `curl`: To download zipped CSV files from the NYSE TAQ server.
+* `iostat` (from the `sysstat` package): For disk I/O metrics during query tests.
+
+You need Python to generate Parquet data and test the Polars and KDB-X Python query engines. Install the required libraries by:
 
 ```bash
 pip3 install -r ./requirements.txt
@@ -46,8 +46,9 @@ pip3 install -r ./requirements.txt
 A single day of NYSE TAQ files contain a large amount of data. You can speed up the test if only a part of the BBO split CSV files (source of table `quote`) are considered.
 
 Set the `SIZE` environment variable in `config/ingestenv` (or pass it to `./generateDB.sh`) to balance test execution time and accuracy.
-   * In all modes except `full`, only a subset of the BBO split CSV files are downloaded.
-   * Only the corresponding trades will be converted into the HDB (e.g., only symbols starting with 'Z').
+
+* In all modes except `full`, only a subset of the BBO split CSV files are downloaded.
+* Only the corresponding trades will be converted into the HDB (e.g., only symbols starting with 'Z').
 
 Statistics based on data from 2025.01.02:
 
@@ -79,6 +80,7 @@ The script `getCSVs.sh`:
    1. Removes the trailing lines of the CSVs.
 
 ## Query Engine Benchmark
+
 Set environment variables in `config/queryenv`.
 
 ```bash
@@ -88,9 +90,8 @@ testQueryEngines.sh --csv-dir ${NYSEBENCHMARKDIR}/csv --db-dir ${NYSEBENCHMARKDI
    --threads "1 4" --result-dir ./results/engines
 ```
 
-TODO: add more details
-
 ## KDB-X Data Format Benchmark
+
 Set environment variables in `config/queryenv`.
 
 ```bash
@@ -134,9 +135,9 @@ source config/queryenv
 
 The scripts generate pipe-separated values (PSV) files in a sudirectory `results`. For all compression parameters
 
-   * `diskusage.psv`: Storage requirements per column
-   * `writetimes.psv`: Contains the execution time of `set` and `sync` for all `trade` columns
-   * `query_summary.psv`: Stores the execution time, memory need and the disk read of all queries
+* `diskusage.psv`: Storage requirements per column
+* `writetimes.psv`: Contains the execution time of `set` and `sync` for all `trade` columns
+* `query_summary.psv`: Stores the execution time, memory need and the disk read of all queries
 
 Furthermore, `columnStatUncompressed.psv` stores basic statistical information (e.g. [entropy](https://en.wikipedia.org/wiki/Entropy_(information_theory))) of all columns.
 
