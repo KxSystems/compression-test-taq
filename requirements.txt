@@ -1,8 +1,8 @@
-pyarrow>=21.0
+pyarrow>=21.0   # to convert CSV to Parquet
 toolz>=1.1
-polars>=1.35
+polars>=1.35    # if you evaluate Polars
 psutil>=7.1
-pykx>=4.0
-pandas>=2.3
+pykx>=4.0       # if you evaluate PyKX
+pandas>=2.3     # if you evaluate Pandas or DuckDB
 numpy>=1.26
-duckdb>=1.4
+duckdb>=1.4     # if you evaluate DuckDB
