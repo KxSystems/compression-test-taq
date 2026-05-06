@@ -150,8 +150,10 @@ def main(args) -> None:
         import duckdb
         params = load_parameters(args.paramdir)
         runner = QueryExecutorDuckDBInMemory(params)
-        threadnr = os.environ['DUCKDB_THREADS']
-        duckdb.execute(f"SET threads = {threadnr}")
+        if 'DUCKDB_THREADS' in os.environ:
+            duckdb.execute(f"SET threads = {os.environ['DUCKDB_THREADS']}")
+        threadnr = duckdb.sql("SELECT current_setting('threads')").fetchall()[0][0]
+        logger.info("Using DuckDB with %s threads", threadnr)
     elif engine == "pykx":
         from executors.ondisk.pykx import QueryExecutorPyKX
         import pykx as kx
