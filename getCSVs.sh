@@ -52,16 +52,27 @@ function get_CSVs () {
 
   wait
 
+  OS=$(uname)
+  if [[ "$OS" == "Linux" ]]; then
+    SEDOPTION="-i"
+  elif [[ "$OS" == "Darwin" ]]; then
+    SEDOPTION="-i ''"
+  else
+    echo "Unsupported OS: $OS"
+    exit 1
+  fi
+
   # TODO: add check if last line starts with 'END'
   echo "Removing last lines and adding proper extension"
-  head -n -1 ${tfname%.*} > ${tfname%.*}.psv
-  rm ${tfname%.*}
-  head -n -1 ${mfname%.*} > ${mfname%.*}.psv
-  rm ${mfname%.*}
+  sed ${SEDOPTION} '$d' ${tfname%.*}
+  mv ${tfname%.*} ${tfname%.*}.psv
+
+  sed ${SEDOPTION} '$d' ${mfname%.*}
+  mv ${mfname%.*} ${mfname%.*}.psv
   for letter in ${LETTERARRAY[@]}; do
     qfname=$(getFilename "SPLITS" "BBO_${letter}")
-    head -n -1 ${qfname%.*} > ${qfname%.*}.psv
-    rm ${qfname%.*}
+    sed ${SEDOPTION} '$d' ${qfname%.*}
+    mv ${qfname%.*} ${qfname%.*}.psv
   done
 
   popd
