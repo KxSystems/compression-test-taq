@@ -9,7 +9,7 @@ from typing import Any, Dict, Optional, Set
 logger = logging.getLogger(__name__)
 
 
-class QueryExecutorDuckDBInMemory:
+class QueryExecutorDuckDBRelation:
     """
     Handles the setup, execution of DuckDB in-memory queries.
     """

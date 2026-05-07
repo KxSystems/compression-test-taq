@@ -145,14 +145,24 @@ def main(args) -> None:
         params = load_parameters(args.paramdir)
         runner = QueryExecutorPolarsInMemory(params)
         threadnr = pl.thread_pool_size()
-    elif engine == "duckdb_inmemory":
-        from executors.inmemory.duckdb import QueryExecutorDuckDBInMemory
+    elif engine == "duckdb_relation_inmemory":
+        from executors.inmemory.duckdb_relation import QueryExecutorDuckDBRelation
         import duckdb
         params = load_parameters(args.paramdir)
-        runner = QueryExecutorDuckDBInMemory(params)
+        runner = QueryExecutorDuckDBRelation(params)
         if 'DUCKDB_THREADS' in os.environ:
             duckdb.execute(f"SET threads = {os.environ['DUCKDB_THREADS']}")
         threadnr = duckdb.sql("SELECT current_setting('threads')").fetchall()[0][0]
+        logger.info("Using DuckDB with %s threads", threadnr)
+    elif engine == "duckdb_con_inmemory":
+        from executors.inmemory.duckdb_con import QueryExecutorDuckDBCon
+        import duckdb
+        con = duckdb.connect()
+        params = load_parameters(args.paramdir)
+        runner = QueryExecutorDuckDBCon(con, params)
+        if 'DUCKDB_THREADS' in os.environ:
+            con.execute(f"SET threads = {os.environ['DUCKDB_THREADS']}")
+        threadnr = con.sql("SELECT current_setting('threads')").fetchall()[0][0]
         logger.info("Using DuckDB with %s threads", threadnr)
     elif engine == "pykx":
         from executors.ondisk.pykx import QueryExecutorPyKX
@@ -246,7 +256,7 @@ parser = argparse.ArgumentParser(
     )
 
 parser.add_argument('-db', type=Path, required=True, help="Path to hive-partitioned parquet DB root")
-parser.add_argument('-engine', type=str, choices=["polars", "polars_inmemory", "duckdb_inmemory", "pykx", "pykx_inmemory", "pykxq", "pandas"],
+parser.add_argument('-engine', type=str, choices=["polars", "polars_inmemory", "duckdb_con_inmemory", "duckdb_relation_inmemory", "pykx", "pykx_inmemory", "pykxq", "pandas"],
     required=True, help="Query engine. Currently supported polars and PyKX")
 parser.add_argument('-queryfile', type=Path, required=True, help="PSV file containing queries")
 parser.add_argument('-querymeta', type=Path, required=True, help="PSV file containing the query metas")
