@@ -24,6 +24,8 @@ class QueryExecutorDuckDBCon:
         self.con.execute("CREATE TABLE master AS SELECT * FROM read_parquet($1, hive_partitioning=True)", parameters=[str(db_path / "master/date=*/*.parquet")])
         datadate = self.con.execute("SELECT DISTINCT date FROM master").fetchone()[0]    # first date only
         self.con.execute("SELECT * EXCLUDE (date) FROM master WHERE date=$1", parameters=[datadate])
+        self.con.execute("CREATE TYPE sym_master_enum AS ENUM (SELECT DISTINCT sym FROM master)")
+        self.con.execute("ALTER TABLE master ALTER sym TYPE sym_master_enum")
         master=self.con.table("master")
         logger.info("Shape of master: %s x %s", master.shape[0], master.shape[1])
 
@@ -36,6 +38,8 @@ class QueryExecutorDuckDBCon:
             "make_timestamp_ns(epoch_ns(date)+participantTimestamp) AS participantTimestamp, " +
             "make_timestamp_ns(epoch_ns(date)+tradeReportingFacilityTRFTimestamp) AS tradeReportingFacilityTRFTimestamp, " +
             "row_number() OVER () AS rn, * EXCLUDE (date, time, participantTimestamp, tradeReportingFacilityTRFTimestamp) FROM trade")  # rowid ensures stable sorting for same-timestamp records
+        self.con.execute("CREATE TYPE sym_trade_enum AS ENUM (SELECT DISTINCT sym FROM trade)") # master might not contain all syms in trade
+        self.con.execute("ALTER TABLE trade ALTER sym TYPE sym_trade_enum")
         logger.info("ordering by time and row number")
         self.con.execute("CREATE OR REPLACE TABLE trade AS SELECT * EXCLUDE (rn) FROM trade ORDER BY time, rn")
         trade=self.con.table("trade")
@@ -48,6 +52,8 @@ class QueryExecutorDuckDBCon:
             "make_timestamp_ns(epoch_ns(date)+participantTimestamp) AS participantTimestamp, " +
             "make_timestamp_ns(epoch_ns(date)+FINRAADFTimestamp) AS FINRAADFTimestamp, " +
             "row_number() OVER () AS rn, * EXCLUDE (date, time, participantTimestamp, FINRAADFTimestamp) FROM quote WHERE date = $1", parameters=[datadate])  # rowid ensures stable sorting for same-timestamp records
+        self.con.execute("CREATE TYPE sym_quote_enum AS ENUM (SELECT DISTINCT sym FROM quote)")
+        self.con.execute("ALTER TABLE quote ALTER sym TYPE sym_quote_enum")
         logger.info("ordering by time and row number")
         self.con.execute("CREATE OR REPLACE TABLE quote AS SELECT * EXCLUDE (rn) FROM quote ORDER BY time, rn")
         quote=self.con.table("quote")
