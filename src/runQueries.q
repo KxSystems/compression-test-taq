@@ -80,7 +80,7 @@ loadParquetDB: {[db: `C; rowgroup: `b; device: `C; writerFN]
 /////////////////// functions for in-memory tests ///////////////////
 
 captureTableStats: {[tableStatsDir:`s; tName]
-  tableStatsFile: .Q.dd[tableStatsDir; tName];
+  tableStatsFile: .Q.dd[tableStatsDir; `$string[tName], ".json"];
   if[not ()~key tableStatsFile; hdel tableStatsFile];
 
   h: hopen tableStatsFile;
