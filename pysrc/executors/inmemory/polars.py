@@ -83,6 +83,23 @@ class QueryExecutorPolarsInMemory:
         writer.writerow(row_start + [-2, "load", "sort by time", "success", t_load_elapsed, None, None,
                          None, io_load_end - io_load_start, None, None])
 
+    def getTableStats(self) -> Dict[str, Any]:
+        table_stats_dict = {}
+        for tNames in ["master", "trade", "quote"]:
+            df = getattr(self, tNames)
+            table_stats = {
+                "name": tNames,
+                "rowCount": df.shape[0],
+                "columnCount": df.shape[1],
+                "columns": [
+                    {"name": col, "type": str(df.schema[col])}
+                    for col in df.columns
+                ],
+            }
+            table_stats_dict[tNames] = table_stats
+        return table_stats_dict
+
+
 
     def execute_query(self, idx: int, tags: Set, query_str: str, parameter: str, runidx: int):
         eval_context = {

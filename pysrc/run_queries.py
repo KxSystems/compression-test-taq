@@ -18,6 +18,7 @@ import time as time_mod   # alias to avoid naming conflict
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set
 from iostat import IOStat
+import yaml
 
 # Configure Logging
 logging.basicConfig(
@@ -187,8 +188,15 @@ def main(args) -> None:
         writer = csv.writer(f_out, delimiter='|')
         writer.writerow(headers)
 
-        runner.load_resources(args.db, args.date, writer, row_start, ios)
+        runner.load_resources(db_path=args.db, datadate=args.date, writer=writer, row_start=row_start, ios=ios)
         f_out.flush()
+        if args.tableStatsDir is not None:
+            logger.info("Saving table statistics to %s", args.tableStatsDir)
+            args.tableStatsDir.mkdir(parents=True, exist_ok=True)
+            table_stats_dict = runner.getTableStats()
+            for tName, table_stats in table_stats_dict.items():
+                with open(args.tableStatsDir / f"{tName}.yaml", 'w') as f:
+                    yaml.dump(table_stats, f, indent=2, sort_keys=False)
 
         if not args.queryfile.exists():
             logger.error("Query file not found: %s", args.queryfile)
@@ -244,6 +252,7 @@ parser.add_argument('-querymeta', type=Path, required=True, help="PSV file conta
 parser.add_argument('-paramdir', type=Path, required=True, help="Directory containing parameter txt files")
 parser.add_argument('-tags', type=str, required=False, help="Comma separated tags for filtering queries.")
 parser.add_argument('-queryoutput', type=Path, required=False, help="Directory to save query results.")
+parser.add_argument('-tableStatsDir', type=Path, required=False, help="Directory to save master/trade/quote table statistics YAML files.")
 parser.add_argument('-date', type=lambda s: datetime.strptime(s, '%Y%m%d').date(), help='Date in YYYYMMDD format')
 
 default_result = Path(f"results/nysetaq_query_results.psv")
