@@ -46,14 +46,16 @@ getKBReadLinux: {[device:`C]
 
 getKBRead: $["false" ~ lower getenv `IOSTAT; {[x] IOStatError}; .z.o ~ `m64; getKBReadMac; getKBReadLinux]
 
-writeRes: {[h; compparm:`C; idx:`C; tags; query:`C; (status:`C; ts:`N; memusage:`j; io:`J)]
+getIdx: {[idx] $[10h ~ type idx; idx; string idx]}
+
+writeRes: {[h; compparm:`C; idx:getIdx; tags; query:`C; (status:`C; ts:`N; memusage:`j; io:`J)]
   if[not 3 = count ts;
     .qlog.error "Three elapsed times are expected";
     ts: 3#ts];
   if[not 4 = count io;
     .qlog.error "Four IO numbers are expected";
     io: 4#io];
-  h ,[;"\n"] SEP sv (compparm; string system "s"; idx except "#"; "," sv tags; query; status), string (`long$ts), (memusage div 1000), 1 _ deltas io;
+  h ,[;"\n"] SEP sv (compparm; string system "s"; idx; "," sv tags; query; status), string (`long$ts), (memusage div 1000), 1 _ deltas io;
   }
 
 loadParquetDB: {[db: `C; rowgroup: `b; device: `C; writerFN]
@@ -67,82 +69,108 @@ loadParquetDB: {[db: `C; rowgroup: `b; device: `C; writerFN]
   .qlog.info "loading parquet dataset at ", db;
   io,: getKBRead[device]`kB_read;
   s: .z.p;
-  memusage: last system "ts loadHiveDataset[", .Q.s1[db], "; ", .Q.s1[rowgroup], "]";
+  memusage: last first .Q.ts[loadHiveDataset; (db; rowgroup)];
   ts: .z.p-s;
   io,: getKBRead[device]`kB_read;
-  writerFN[string 0; enlist ""; "load/mmap DB"; ("success"; ts, 2#0Nn; memusage; io, 2#0Nj)];
+  writerFN[0; enlist ""; "load/mmap DB"; ("success"; ts, 2#0Nn; memusage; io, 2#0Nj)];
 
   exnames:: exec ex!`$name from exnames; / convert back to a map
   }
 
-loadKDBDBIntoMemoryTableDict: {[db: `s]
+/////////////////// functions for in-memory tests ///////////////////
+
+loadRootObjectsIntoMemory: {[db: `s]
+  .qlog.info "loading root objects into memory ";
   c: key db;
   files: c where ({x ~ key x} .Q.dd[db]@) each c;
   db {[db; f]
     .qlog.info "loading object ", string[f], " into memory";
     f set (get[.Q.dd[db;f]] ::)}' files;
-  dpath: .Q.dd[db] d: first c except files; / extract the first date's data only
-  .qlog.info "loading tables in partition ", string[d], " into memory";
-
-  .Q.dd[dpath] {[getPath; tName]
-    .qlog.info "loading table ", string[tName], " into memory in table dictionary format";
-    mappedT: get getPath tName;
-    syms: exec asc distinct sym from mappedT;
-    tName set $[1000000 < count mappedT;
-       (`u#syms)!mappedT {[t;s] delete sym from update `s#time from select from t where sym=s}/: syms;
-       select from mappedT where i>-1]}' key dpath;
   }
 
-loadKDBDBIntoMemory: {[db: `s]
-  tablesBefore: tables[];
-  c: key db;
-  files: c where ({x ~ key x} .Q.dd[db]@) each c;
-  db {[db; f]
-    .qlog.info "loading object ", string[f], " into memory";
-    f set (get[.Q.dd[db;f]] ::)}' files;
-  dpath: .Q.dd[db] d: first c except files; / extract the first date's data only
+loadKDBDBIntoMemory: ('[{[params]
+  (db: `s; d: `d): 2#params;
+  tbls: `master`trade`quote;
+  if[3=count params; tbls: params 2];
+
+  loadRootObjectsIntoMemory[db];
+  dpath: .Q.dd[db; d];
   .qlog.info "loading tables in partition ", string[d], " into memory";
   .Q.dd[dpath] {[getPath; tName]
       .qlog.info "loading table ", string[tName], " into memory";
       tName set select from get[getPath tName] where i>-1;
-      .qlog.info "Shape of ", string[tName], ": ", string[count value tName], " x ", string count cols tName; }' key dpath;
+      .qlog.info "Shape of ", string[tName], ": ", string[count value tName], " x ", string count cols tName; }' tbls;
+  }; enlist])
 
-  newTables: tables[] except tablesBefore;
+sortTradeQuoteTables: {[]
   {[tName]
     .qlog.info "sorting ", string[tName], " by time";
     `time xasc tName
-    } each newTables where `time in' cols each newTables;
+    } each `trade`quote;
   }
 
-loadKDBDBIntoMemoryGrouped: {[db: `s]
-  loadKDBDBIntoMemory db;
+addGrouped: {[]
   {[tName]
     .qlog.info "Adding grouped attribute to ", string[tName];
     update `g#sym from tName
     } each `quote`trade;
   }
 
-loadInMemKDBDB: {[db: `C; loader: `C; device: `C; writerFN]
-  io: ();
-  .qlog.info "loading kdb DB into memory from ", db;
-  loadcmd: "ts ", loader, " `$\":", db, "\"";
-  io,: getKBRead[device]`kB_read;
+loadKDBDBIntoMemoryTableDict: {[db: `s; d: `d]
+  loadKDBDBIntoMemory[db;d;`master];
+
+  .Q.dd[db;d] {[dpath; tName]
+    .qlog.info "loading table ", string[tName], " into memory in table dictionary format";
+    mappedT: get .Q.dd[dpath; tName];
+    syms: exec asc distinct sym from mappedT;
+    tName set (`u#syms)!mappedT {[t;s] delete sym from update `s#time from select from t where sym=s}/: syms}' `trade`quote;
+  }
+
+loadKDBPartitionIntoMemory: {[db: `s; device: `C; writerFN; d: `d; addGroupedAttr: `b]
+  .qlog.info "Loading kdb+ partition ", string[d], " into memory";
+  io: (), getKBRead[device]`kB_read;
   s: .z.p;
-  memusage: last system loadcmd;
+  memusage: last first .Q.ts[loadKDBDBIntoMemory; (db;d)];
   ts: .z.p-s;
   io,: getKBRead[device]`kB_read;
+  writerFN[0; enlist "load"; "load first partition into memory"; ("success"; ts, 2#0Nn; memusage; io, 2#0Nj)];
 
-  writerFN[string 0; enlist ""; "load/mmap DB"; ("success"; ts, 2#0Nn; memusage; io, 2#0Nj)];
+  io: (), getKBRead[device]`kB_read;
+  s: .z.p;
+  memusage: last first .Q.ts[sortTradeQuoteTables; enlist ()];
+  ts: .z.p-s;
+  io,: getKBRead[device]`kB_read;
+  writerFN[-2; enlist "load"; "sort by time"; ("success"; ts, 2#0Nn; memusage; io, 2#0Nj)];
+
+  if[addGroupedAttr;
+    io: (), getKBRead[device]`kB_read;
+    s: .z.p;
+    memusage: last first .Q.ts[addGrouped; enlist ()];
+    ts: .z.p-s;
+    io,: getKBRead[device]`kB_read;
+    writerFN[-3; enlist "load"; "prepare"; ("success"; ts, 2#0Nn; memusage; io, 2#0Nj)];
+    ];
   }
+
+loadKDBPartitionIntoMemoryTableDict: {[db: `s; device: `C; writerFN; d: `d]
+  .qlog.info "Loading kdb+ partition ", string[d], " into memory";
+  io: (), getKBRead[device]`kB_read;
+  s: .z.p;
+  memusage: last first .Q.ts[loadKDBDBIntoMemoryTableDict; (db; d)];
+  ts: .z.p-s;
+  io,: getKBRead[device]`kB_read;
+  writerFN[0; enlist "load"; "load first partition into memory"; ("success"; ts, 2#0Nn; memusage; io, 2#0Nj)];
+  }
+
+/////////////////////////////////////////////////////////
 
 loadKDBDB: {[db: `C; device: `C; writerFN]
   io: ();
   .qlog.info "loading kdb DB ", db;
-  loadcmd: "ts .Q.lo[`$\"", db, "\";0b;0]";
   if["true" ~ lower getenv `QMAP; loadcmd,:";.Q.MAP[]"];
   io,: getKBRead[device]`kB_read;
   s: .z.p;
-  memusage: last system loadcmd;
+  memusage: last first .Q.ts[.Q.lo; (db; 0b; 0)];
   ts: .z.p-s;
   io,: getKBRead[device]`kB_read;
 
@@ -150,7 +178,7 @@ loadKDBDB: {[db: `C; device: `C; writerFN]
     .qlog.info "Loading encryption file ", o`encr;
     -36!@[; 0; hsym `$] ":" vs o`encr];
 
-  writerFN[string 0; enlist ""; "load/mmap DB"; ("success"; ts, 2#0Nn; memusage; io, 2#0Nj)];
+  writerFN[0; enlist "load"; "load/mmap DB"; ("success"; ts, 2#0Nn; memusage; io, 2#0Nj)];
   }
 
 queryWrapper: $[ENGINE ~ `SQL;
@@ -181,7 +209,7 @@ runQuery: {[db: `C; device: `C; writerFN; tags; idx:`C; querytags; query:`C; par
     writerFN[1_idx; querytags; query; ("skip"; 3#0Nn; 0Nj; 4#0Nj)];
     :()];
   if[count[tags] and 0 = count querytags inter tags;
-    writerFN[1_idx; querytags; query; ("tagfiltered"; 3#0Nn; 0Nj; 4#0Nj)];
+    writerFN[idx; querytags; query; ("tagfiltered"; 3#0Nn; 0Nj; 4#0Nj)];
     :()];
 
   ts: io: ();
@@ -245,17 +273,26 @@ $[FORMAT like "PARQUET*"; [
     WriterFN:: writeRes[resultH; compparm];
     loadParquetDB[DB; FORMAT ~ `PARQUET_ROWGROUP; Device; WriterFN]
   ]; FORMAT = `KDBINMEMORYGROUPED; [
+    if[not `date in ko;
+      .qlog.error "Date column is required for KDBINMEMORYGROUPED format";
+      exit 5];
     compparm: "0_0_0"; / data is not compressed in memory
     WriterFN:: writeRes[resultH; compparm];
-    loadInMemKDBDB[DB; "loadKDBDBIntoMemoryGrouped"; Device; WriterFN]
+    loadKDBPartitionIntoMemory[hsym `$DB; Device; WriterFN; "D"$o `date; 1b];
   ]; FORMAT = `KDBINMEMORY; [
+    if[not `date in ko;
+      .qlog.error "Date column is required for KDBINMEMORY format";
+      exit 5];
     compparm: "0_0_0"; / data is not compressed in memory
     WriterFN:: writeRes[resultH; compparm];
-    loadInMemKDBDB[DB; "loadKDBDBIntoMemory"; Device; WriterFN]
+    loadKDBPartitionIntoMemory[hsym `$DB; Device; WriterFN; "D"$o `date; 0b];
   ]; FORMAT = `KDBINMEMORYTABLEDICT; [
+    if[not `date in ko;
+      .qlog.error "Date column is required for KDBINMEMORYTABLEDICT format";
+      exit 5];
     compparm: "0_0_0"; / data is not compressed in memory
     WriterFN:: writeRes[resultH; compparm];
-    loadInMemKDBDB[DB; "loadKDBDBIntoMemoryTableDict"; Device; WriterFN]
+    loadKDBPartitionIntoMemoryTableDict[hsym `$DB; Device; WriterFN; "D"$o `date];
     normalize: {cnt: count each x; ([] sym: where cnt) ,' raze x}; / convert table dictionary to normal table
   ]; FORMAT = `KDB; [
     compparmall: -21!hsym `$DB,"/",string[first key hsym `$DB],"/quote/sym";   // or assume that db dir name reflects compression
