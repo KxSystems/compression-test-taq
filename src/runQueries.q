@@ -79,6 +79,24 @@ loadParquetDB: {[db: `C; rowgroup: `b; device: `C; writerFN]
 
 /////////////////// functions for in-memory tests ///////////////////
 
+captureTableStats: {[tableStatsDir:`s; tName]
+  tableStatsFile: .Q.dd[tableStatsDir; tName];
+  if[not ()~key tableStatsFile; hdel tableStatsFile];
+
+  h: hopen tableStatsFile;
+  h "name: ", (string tName), "\n";
+  h "rowCount: ", (string count value tName), "\n";
+  h "columnCount: ", (string count cols tName), "\n";
+  h "columns: \n";
+  {[h;tName;c]
+    t: $[0h ~ type tName c; `string; key tName c];
+    h "  - name: ", (string c), "\n";
+    h "    type: ", (string t), "\n";
+    h "    attr: ", (string meta[tName][c;`a]), "\n";
+    }[h; tName] each cols tName;
+  hclose h
+  }
+
 loadRootObjectsIntoMemory: {[db: `s]
   .qlog.info "loading root objects into memory ";
   c: key db;
@@ -300,7 +318,8 @@ $[FORMAT like "PARQUET*"; [
     WriterFN:: writeRes[resultH; compparm];
     loadKDBDB[DB; Device; WriterFN]
   ]; [.qlog.error "Unknown format ", FORMAT; exit 1]]
-
+if[not FORMAT ~ `KDBINMEMORYTABLEDICT;
+  if[`tablestats in ko; captureTableStats[hsym `$o `tablestats] each `master`trade`quote]];
 if[ENGINE ~ `SQL;
   .s.init[];
   .s.F[`stddev_pop]:.s.fx dev;
