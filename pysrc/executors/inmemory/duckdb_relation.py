@@ -2,9 +2,10 @@ import duckdb
 import pandas as pd
 
 import logging
-from datetime import timedelta
+from datetime import timedelta, datetime
 from pathlib import Path
 from typing import Any, Dict, Optional, Set
+import time
 
 logger = logging.getLogger(__name__)
 
@@ -22,36 +23,62 @@ class QueryExecutorDuckDBRelation:
         self.params: Dict[str, Any] = param
         self.params['timeBuckets'] = pd.DataFrame(list(self.params['timeBuckets'].items()), columns=['bucket', 'bound'])
 
-    def load_resources(self, db_path: Path) -> None:
-        logger.info("loading first partition of hive-partitioned tables at %s into memory", db_path)
-        master = duckdb.read_parquet(str(db_path / "master/date=*/*.parquet"), hive_partitioning=True)
-        self.datadate = master['date'].fetchone()[0]
-        self.master = duckdb.sql("SELECT * EXCLUDE (date) FROM master WHERE date=$1", params=[self.datadate])
-        logger.info("Shape of master: %s x %s", self.master.shape[0], self.master.shape[1])
+    def load_resources(self, db_path: Path, datadate: datetime.date, writer, row_start, ios) -> None:
+        logger.info("loading hive-partitioned tables at %s", db_path)
 
+        io_load_start = ios.get_io_stat()
+        t_load_start = time.perf_counter_ns()
         self.params["exnames"] = pd.read_parquet(db_path / "exnames.parquet")
+        master = duckdb.read_parquet(str(db_path / "master/date=*/*.parquet"), hive_partitioning=True)
+        self.master = duckdb.sql("SELECT * EXCLUDE (date) FROM master WHERE date=$1", params=[datadate])
+        logger.info("Shape of master: %s x %s", self.master.shape[0], self.master.shape[1])
 
         logger.info("loading trade")
         trade = duckdb.read_parquet(str(db_path / "trade/date=*/*.parquet"), hive_partitioning=True)
+        self.trade = duckdb.sql("SELECT * EXCLUDE (date) FROM trade WHERE date=$1", params=[datadate])
+
+        logger.info("loading quote")
+        quote = duckdb.read_parquet(str(db_path / "quote/date=*/*.parquet"), hive_partitioning=True)
+        self.quote = duckdb.sql("SELECT * EXCLUDE (date) FROM quote WHERE date=$1", params=[datadate])
+        t_load_elapsed = time.perf_counter_ns() - t_load_start
+        io_load_end = ios.get_io_stat()
+        writer.writerow(row_start + [0, "load", "load a partition into memory", "success", t_load_elapsed, None, None,
+                         None, io_load_end - io_load_start, None, None])
+
+
+        io_load_start = ios.get_io_stat()
+        t_load_start = time.perf_counter_ns()
         logger.info("applying transformations")
         trade = duckdb.sql("SELECT make_timestamp_ns(epoch_ns(date)+time) AS time, " +
             "make_timestamp_ns(epoch_ns(date)+participantTimestamp) AS participantTimestamp, " +
             "make_timestamp_ns(epoch_ns(date)+tradeReportingFacilityTRFTimestamp) AS tradeReportingFacilityTRFTimestamp, " +
-            "row_number() OVER () AS rn, * EXCLUDE (date, time, participantTimestamp, tradeReportingFacilityTRFTimestamp) FROM trade WHERE date = $1", params=[self.datadate])  # rowid ensures stable sorting for same-timestamp records
-        logger.info("ordering by time and row number")
-        self.trade = duckdb.sql("SELECT * EXCLUDE (rn) FROM trade ORDER BY time, rn")
+            "row_number() OVER () AS rn, * EXCLUDE (date, time, participantTimestamp, tradeReportingFacilityTRFTimestamp) FROM trade")  # rowid ensures stable sorting for same-timestamp records
         logger.info("Shape of trade: %s x %s", self.trade.shape[0], self.trade.shape[1])
 
-        logger.info("loading quote")
-        quote = duckdb.read_parquet(str(db_path / "quote/date=*/*.parquet"), hive_partitioning=True)
         logger.info("applying transformations")
         quote = duckdb.sql("SELECT make_timestamp_ns(epoch_ns(date)+time) AS time, " +
             "make_timestamp_ns(epoch_ns(date)+participantTimestamp) AS participantTimestamp, " +
             "make_timestamp_ns(epoch_ns(date)+FINRAADFTimestamp) AS FINRAADFTimestamp, " +
-            "row_number() OVER () AS rn, * EXCLUDE (date, time, participantTimestamp, FINRAADFTimestamp) FROM quote WHERE date = $1", params=[self.datadate])  # rowid ensures stable sorting for same-timestamp records
+            "row_number() OVER () AS rn, * EXCLUDE (date, time, participantTimestamp, FINRAADFTimestamp) FROM quote")  # rowid ensures stable sorting for same-timestamp records
+        logger.info("Shape of quote: %s x %s", self.quote.shape[0], self.quote.shape[1])
+
+        t_load_elapsed = time.perf_counter_ns() - t_load_start
+        io_load_end = ios.get_io_stat()
+        writer.writerow(row_start + [-1, "load", "transform", "success", t_load_elapsed, None, None,
+                         None, io_load_end - io_load_start, None, None])
+
+
+        io_load_start = ios.get_io_stat()
+        t_load_start = time.perf_counter_ns()
+        logger.info("ordering by time and row number")
+        self.trade = duckdb.sql("SELECT * EXCLUDE (rn) FROM trade ORDER BY time, rn")
         logger.info("ordering by time and row number")
         self.quote = duckdb.sql("SELECT * EXCLUDE (rn) FROM quote ORDER BY time, rn")
-        logger.info("Shape of quote: %s x %s", self.quote.shape[0], self.quote.shape[1])
+        t_load_elapsed = time.perf_counter_ns() - t_load_start
+        io_load_end = ios.get_io_stat()
+        writer.writerow(row_start + [-2, "load", "sort by time", "success", t_load_elapsed, None, None,
+                         None, io_load_end - io_load_start, None, None])
+
 
     def execute_query(self, idx: int, tags: Set, query_str: str, parameter: str, runidx: int):
         eval_context = {

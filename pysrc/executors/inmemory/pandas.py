@@ -1,10 +1,13 @@
 import numpy as np
 import pandas as pd
 
+import pyarrow.dataset as ds
+
 import logging
-from datetime import timedelta
+from datetime import timedelta, datetime
 from pathlib import Path
 from typing import Any, Dict, Optional, Set
+import time
 
 logger = logging.getLogger(__name__)
 
@@ -21,37 +24,69 @@ class QueryExecutorPandas:
         self.quote: Optional[pd.DataFrame] = None
         self.params: Dict[str, Any] = param
 
-    def load_resources(self, db_path: Path) -> None:
-        import pyarrow.dataset as ds
+    def load_resources(self, db_path: Path, datadate: datetime.date, writer, row_start, ios) -> None:
         logger.info("loading hive-partitioned tables at %s", db_path)
+        d= datadate.strftime('%Y-%m-%d')
 
+        io_load_start = ios.get_io_stat()
+        t_load_start = time.perf_counter_ns()
+        logger.info("loading root objects into memory")
+        exnames = pd.read_parquet(db_path / "exnames.parquet")
+        logger.info("loading master")
         master_ds = ds.dataset(db_path / "master", format="parquet", partitioning="hive")
-        datadate = master_ds.head(1).column("date")[0].as_py()
-        master = master_ds.to_table(filter=(ds.field("date") == datadate)).drop("date")
-        master = master.set_column(master.schema.get_field_index("sym"), "sym", master.column("sym").dictionary_encode())
+        master = master_ds.to_table(filter=(ds.field("date") == d))
+        del master_ds
+        master = master.drop("date").set_column(master.schema.get_field_index("sym"), "sym", master.column("sym").dictionary_encode())
         self.master = master.to_pandas()
+        del master
+
+        logger.info("loading trade")
+        trade_ds = ds.dataset(db_path / "trade", format="parquet", partitioning="hive")
+        trade = trade_ds.to_table(filter=(ds.field("date") == d))
+        del trade_ds
+        trade = trade.drop("date").set_column(trade.schema.get_field_index("sym"), "sym", trade.column("sym").dictionary_encode())
+        logger.info("converting to pandas")
+        self.trade = trade.to_pandas()
+        del trade
+
+        logger.info("loading quote")
+        quote_ds = ds.dataset(db_path / "quote", format="parquet", partitioning="hive")
+        quote = quote_ds.to_table(filter=(ds.field("date") == d))
+        del quote_ds
+        quote = quote.drop("date").set_column(quote.schema.get_field_index("sym"), "sym", quote.column("sym").dictionary_encode())
+        logger.info("converting to pandas")
+        self.quote = quote.to_pandas()
+        del quote
+        t_load_elapsed = time.perf_counter_ns() - t_load_start
+        io_load_end = ios.get_io_stat()
+        writer.writerow(row_start + [0, "load", "load a partition into memory", "success", t_load_elapsed, None, None,
+                         None, io_load_end - io_load_start, None, None])
+
+
+        io_load_start = ios.get_io_stat()
+        t_load_start = time.perf_counter_ns()
         logger.info("Shape of master: %s x %s", self.master.shape[0], self.master.shape[1])
         self.master['ex'] = pd.Categorical(self.master['ex'], categories=sorted(self.master['ex'].unique()), ordered=True)
-        exnames = pd.read_parquet(db_path / "exnames.parquet")
         self.params["exnames"] = dict(zip(exnames["ex"], exnames["name"]))
-
-        logger.info("loading trade as a pyarrow dataset")
-        trade_ds = ds.dataset(db_path / "trade", format="parquet", partitioning="hive")
-        trade = trade_ds.to_table(filter=(ds.field("date") == datadate)).drop("date")
-        trade = trade.set_column(trade.schema.get_field_index("sym"), "sym", trade.column("sym").dictionary_encode())
-        logger.info("converting to pandas")
-        self.trade = trade.to_pandas().sort_values(by="time", kind='stable')
         self.trade['ex'] = pd.Categorical(self.trade['ex'], categories=sorted(self.trade['ex'].unique()), ordered=True)
-        logger.info("Shape of trade: %s x %s", self.trade.shape[0], self.trade.shape[1])
-
-        logger.info("loading quote as a pyarrow dataset")
-        quote_ds = ds.dataset(db_path / "quote", format="parquet", partitioning="hive")
-        quote = quote_ds.to_table(filter=(ds.field("date") == datadate)).drop("date")
-        quote = quote.set_column(quote.schema.get_field_index("sym"), "sym", quote.column("sym").dictionary_encode())
-        logger.info("converting to pandas")
-        self.quote = quote.to_pandas().sort_values(by="time", kind='stable')
         self.quote['ex'] = pd.Categorical(self.quote['ex'], categories=sorted(self.quote['ex'].unique()), ordered=True)
+        t_load_elapsed = time.perf_counter_ns() - t_load_start
+        io_load_end = ios.get_io_stat()
+        writer.writerow(row_start + [-1, "load", "transform", "success", t_load_elapsed, None, None,
+                         None, io_load_end - io_load_start, None, None])
+        logger.info("Shape of trade: %s x %s", self.trade.shape[0], self.trade.shape[1])
         logger.info("Shape of quote: %s x %s", self.quote.shape[0], self.quote.shape[1])
+
+
+        io_load_start = ios.get_io_stat()
+        t_load_start = time.perf_counter_ns()
+        self.trade = self.trade.sort_values(by="time", kind='stable')
+        self.quote = self.quote.sort_values(by="time", kind='stable')
+        t_load_elapsed = time.perf_counter_ns() - t_load_start
+        io_load_end = ios.get_io_stat()
+        writer.writerow(row_start + [-2, "load", "sort by time", "success", t_load_elapsed, None, None,
+                         None, io_load_end - io_load_start, None, None])
+
 
     def execute_query(self, idx: int, tags: Set, query_str: str, parameter: str, runidx: int):
         eval_context = {

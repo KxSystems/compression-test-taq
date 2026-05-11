@@ -10,7 +10,6 @@ import os
 import logging
 from dataclasses import dataclass
 
-import psutil
 import subprocess
 import sys
 from datetime import datetime, time, timedelta  # time is used in queries
@@ -18,6 +17,7 @@ import time as time_mod   # alias to avoid naming conflict
 
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set
+from iostat import IOStat
 
 # Configure Logging
 logging.basicConfig(
@@ -26,19 +26,6 @@ logging.basicConfig(
     handlers=[logging.StreamHandler(sys.stdout)]
 )
 logger: logging.Logger = logging.getLogger(__name__)
-
-def get_device(db: str) -> str:
-    resolve_device: subprocess.CompletedProcess[str] = subprocess.run(["./src/resolve_device.sh", db],
-                                    capture_output=True, text=True, check=False)
-    if resolve_device.returncode != 0:
-        logger.error("Error occurred while mapping DB dir to a device: %s", resolve_device.stderr)
-        logger.error("IO statistics will not be captured")
-        return None
-    else:
-        return resolve_device.stdout.split('\n')[0].strip()
-
-def get_io_stat(device: str) -> int:
-    return None if device is None else psutil.disk_io_counters(perdisk=True)[device].read_bytes // 1000
 
 def load_parameters(param_dir: Path) -> Dict[str, Any]:
     """Reads parameter text files into the params dictionary."""
@@ -88,24 +75,24 @@ class QueryResult:
             self.run1_io_KB, self.run2_io_KB, self.run3_io_KB
         ]
 
-def run_query(runner, db_path: Path, device: str, idx: str, tags: Set, query: str, parameter: str, queryoutput: Path) -> QueryResult:
+def run_query(runner, db_path: Path, ios: IOStat, idx: str, tags: Set, query: str, parameter: str, queryoutput: Path) -> QueryResult:
     """
     Runs a specific query 3 times (Cold, Warm, Warm) and records timing.
     """
     times: List[float] = []
-    ios: List[float] = []
+    iostats: List[float] = []
     for runidx in range(3):
         iteration_label = "Cold" if runidx == 0 else f"Warm-{runidx}"
         logger.info("[%s] Run %s/3 (%s): %s ...", idx, runidx+1, iteration_label, query[:50])
         if runidx == 0:
             subprocess.run([os.getenv('FLUSH'), db_path], check=True, capture_output=True)
         gc.collect()
-        io_start = get_io_stat(device)
+        io_start = ios.get_io_stat()
         t_start = time_mod.perf_counter_ns()
         try:
             res = runner.execute_query(idx, tags, query, parameter, runidx)
             t_end = time_mod.perf_counter_ns()
-            io_end = get_io_stat(device)
+            io_end = ios.get_io_stat()
         except Exception as e:
             logger.error("Query %s failed: %s", idx, e)
             return QueryResult(query, "error")
@@ -115,9 +102,9 @@ def run_query(runner, db_path: Path, device: str, idx: str, tags: Set, query: st
                 outFile = queryoutput / f"queryoutput_{idx}.csv"
                 runner.write_csv(res, outFile)
         times.append(t_end - t_start)
-        ios.append(io_end - io_start)
+        iostats.append(io_end - io_start)
 
-    return QueryResult(query, "success", *times, *ios)
+    return QueryResult(query, "success", *times, *iostats)
 
 
 def main(args) -> None:
@@ -129,7 +116,6 @@ def main(args) -> None:
     tags = {} if args.tags is None else set(args.tags.strip().split(","))
     args.result.parent.mkdir(parents=True, exist_ok=True)
 
-    device = get_device(args.db)
     logger.info("Loading parameter files...")
     engine = args.engine.lower()
 
@@ -143,7 +129,7 @@ def main(args) -> None:
         from executors.inmemory.polars import QueryExecutorPolarsInMemory
         import polars as pl
         params = load_parameters(args.paramdir)
-        runner = QueryExecutorPolarsInMemory(params)
+        runner = QueryExecutorPolarsInMemory(params, args.date)
         threadnr = pl.thread_pool_size()
     elif engine == "duckdb_relation_inmemory":
         from executors.inmemory.duckdb_relation import QueryExecutorDuckDBRelation
@@ -189,12 +175,6 @@ def main(args) -> None:
     else:
         raise ValueError(f"Invalid engine parameter: {args.engine}")
 
-    io_load_start = get_io_stat(device)
-    t_load_start = time_mod.perf_counter_ns()
-    runner.load_resources(args.db)
-    t_load_elapsed = time_mod.perf_counter_ns() - t_load_start
-    io_load_end = get_io_stat(device)
-
     headers: List[str] = [
         "compparam", "threadcount", "idx", "tags", "query", "status",
         "run1timeNS", "run2timeNS", "run3timeNS",
@@ -202,11 +182,12 @@ def main(args) -> None:
         "run1ioKB", "run2ioKB", "run3ioKB"
     ]
     row_start = ["nyi", threadnr]
+    ios = IOStat(args.db)
     with open(args.result, 'w', newline='', encoding='utf-8') as f_out:
         writer = csv.writer(f_out, delimiter='|')
         writer.writerow(headers)
-        writer.writerow(row_start + [0, "nyi", "loaddb", "success", t_load_elapsed, None, None,
-                         None, io_load_end - io_load_start, None, None])
+
+        runner.load_resources(args.db, args.date, writer, row_start, ios)
         f_out.flush()
 
         if not args.queryfile.exists():
@@ -237,7 +218,7 @@ def main(args) -> None:
                 elif len(tags) > 0 and len(tags & querytags) == 0:
                     result = QueryResult(query, "tagfiltered")
                 else:
-                    result = run_query(runner, args.db, device, idx, querytags, query, row['parameter'].strip(), args.queryoutput)
+                    result = run_query(runner, args.db, ios, idx, querytags, query, row['parameter'].strip(), args.queryoutput)
 
                 writer.writerow(row_start + [idx, ",".join(querytags)] + result.to_csv_row())
                 f_out.flush()
@@ -263,6 +244,7 @@ parser.add_argument('-querymeta', type=Path, required=True, help="PSV file conta
 parser.add_argument('-paramdir', type=Path, required=True, help="Directory containing parameter txt files")
 parser.add_argument('-tags', type=str, required=False, help="Comma separated tags for filtering queries.")
 parser.add_argument('-queryoutput', type=Path, required=False, help="Directory to save query results.")
+parser.add_argument('-date', type=lambda s: datetime.strptime(s, '%Y%m%d').date(), help='Date in YYYYMMDD format')
 
 default_result = Path(f"results/nysetaq_query_results.psv")
 parser.add_argument('-result', type=Path, default=default_result, help="Output PSV file path")

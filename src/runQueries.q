@@ -133,7 +133,7 @@ loadKDBPartitionIntoMemory: {[db: `s; device: `C; writerFN; d: `d; addGroupedAtt
   memusage: last first .Q.ts[loadKDBDBIntoMemory; (db;d)];
   ts: .z.p-s;
   io,: getKBRead[device]`kB_read;
-  writerFN[0; enlist "load"; "load first partition into memory"; ("success"; ts, 2#0Nn; memusage; io, 2#0Nj)];
+  writerFN[0; enlist "load"; "load a partition into memory"; ("success"; ts, 2#0Nn; memusage; io, 2#0Nj)];
 
   io: (), getKBRead[device]`kB_read;
   s: .z.p;
@@ -148,7 +148,7 @@ loadKDBPartitionIntoMemory: {[db: `s; device: `C; writerFN; d: `d; addGroupedAtt
     memusage: last first .Q.ts[addGrouped; enlist ()];
     ts: .z.p-s;
     io,: getKBRead[device]`kB_read;
-    writerFN[-3; enlist "load"; "prepare"; ("success"; ts, 2#0Nn; memusage; io, 2#0Nj)];
+    writerFN[-1; enlist "load"; "transform"; ("success"; ts, 2#0Nn; memusage; io, 2#0Nj)];
     ];
   }
 

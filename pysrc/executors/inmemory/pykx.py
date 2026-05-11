@@ -3,9 +3,10 @@ os.environ['PYKX_4_1_ENABLED'] = 'True'  # must be set before importing pykx
 import pykx as kx
 
 import logging
-from datetime import timedelta
+from datetime import timedelta, datetime
 from pathlib import Path
 from typing import Any, Dict, Set
+import time
 
 logger = logging.getLogger(__name__)
 
@@ -22,14 +23,43 @@ class QueryExecutorPyKXInMemory:
         self.params: Dict[str, Any] = param
         kx.q['timeBucketsStep'] = kx.q('{`s#value[x]!key x}', param['timeBuckets'])
 
-    def load_resources(self, db_path: Path) -> None:
-        logger.info("loading first partition's tables of the kdb+ database at %s into memory", db_path)
+    def load_resources(self, db_path: Path, datadate: datetime.date, writer, row_start, ios) -> None:
+        logger.info("loading hive-partitioned tables at %s", db_path)
+
+        io_load_start = ios.get_io_stat()
+        t_load_start = time.perf_counter_ns()
         db = kx.DB(path=db_path, change_dir=False)
-        self.master = db.master.select(where=kx.Column('date') == kx.Column('date').min()).delete(columns=kx.Column('date')).select(where=kx.Column('i') > -1)
-        self.quote = db.quote.select(where=kx.Column('date') == kx.Column('date').min()).delete(columns=kx.Column('date')).select(where=kx.Column('i') > -1)
-        self.quote = self.quote.sort_values(by='time').grouped('sym')
-        self.trade = db.trade.select(where=kx.Column('date') == kx.Column('date').min()).delete(columns=kx.Column('date')).select(where=kx.Column('i') > -1)
-        self.trade = self.trade.sort_values(by='time').grouped('sym')
+        self.master = db.master.select(where=kx.Column('date') == datadate).delete(columns=kx.Column('date')).select(where=kx.Column('i') > -1)
+        logger.info("Shape of master: %s x %s", self.master.shape[0], self.master.shape[1])
+        self.trade = db.trade.select(where=kx.Column('date') == datadate).delete(columns=kx.Column('date')).select(where=kx.Column('i') > -1)
+        logger.info("Shape of trade: %s x %s", self.trade.shape[0], self.trade.shape[1])
+        self.quote = db.quote.select(where=kx.Column('date') == datadate).delete(columns=kx.Column('date')).select(where=kx.Column('i') > -1)
+        logger.info("Shape of quote: %s x %s", self.quote.shape[0], self.quote.shape[1])
+        t_load_elapsed = time.perf_counter_ns() - t_load_start
+        io_load_end = ios.get_io_stat()
+        writer.writerow(row_start + [0, "load", "load a partition into memory", "success", t_load_elapsed, None, None,
+                         None, io_load_end - io_load_start, None, None])
+
+
+        io_load_start = ios.get_io_stat()
+        t_load_start = time.perf_counter_ns()
+        self.trade = self.trade.sort_values(by='time')
+        self.quote = self.quote.sort_values(by='time')
+        t_load_elapsed = time.perf_counter_ns() - t_load_start
+        io_load_end = ios.get_io_stat()
+        writer.writerow(row_start + [-2, "load", "sort by time", "success", t_load_elapsed, None, None,
+                         None, io_load_end - io_load_start, None, None])
+
+
+        io_load_start = ios.get_io_stat()
+        t_load_start = time.perf_counter_ns()
+        self.trade = self.trade.grouped('sym')
+        self.quote = self.quote.grouped('sym')
+        t_load_elapsed = time.perf_counter_ns() - t_load_start
+        io_load_end = ios.get_io_stat()
+        writer.writerow(row_start + [-1, "load", "transform", "success", t_load_elapsed, None, None,
+                         None, io_load_end - io_load_start, None, None])
+
 
     def execute_query(self, idx: int, tags: Set, query_str: str, parameter: str, runidx: int):
         eval_context = {
