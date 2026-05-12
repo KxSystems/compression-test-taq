@@ -67,12 +67,9 @@ class QueryExecutorPyKXInMemory:
             df = getattr(self, tNames)
             table_stats = {
                 "name": tNames,
-                "rowCount": df.shape[0],
-                "columnCount": df.shape[1],
-                "columns": [
-                    {"name": col, "type": kx.q.meta(df)["t"]}
-                    for col in df.columns
-                ],
+                "rowCount": df.size.py(),
+                "columnCount": df.shape[1].py(),
+                "columns": [{"name": n.py(), "type": t.py().decode()} for n, t in zip(df.dtypes["columns"], df.dtypes["datatypes"])],
             }
             table_stats_dict[tNames] = table_stats
         return table_stats_dict
