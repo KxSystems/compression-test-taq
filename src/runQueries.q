@@ -166,7 +166,7 @@ loadKDBPartitionIntoMemory: {[db: `s; device: `C; writerFN; d: `d; addGroupedAtt
     memusage: last first .Q.ts[addGrouped; enlist ()];
     ts: .z.p-s;
     io,: getKBRead[device]`kB_read;
-    writerFN[-1; enlist "load"; "transform"; ("success"; ts, 2#0Nn; memusage; io, 2#0Nj)];
+    writerFN[-3; enlist "load"; "index"; ("success"; ts, 2#0Nn; memusage; io, 2#0Nj)];
     ];
   }
 

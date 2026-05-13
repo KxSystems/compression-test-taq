@@ -15,10 +15,11 @@ class QueryExecutorDuckDBCon:
     Handles the setup, execution of DuckDB in-memory queries.
     """
 
-    def __init__(self, con, param: Dict[str, Any]) -> None:
+    def __init__(self, con, param: Dict[str, Any], indexOnsym: bool=False) -> None:
         self.con: duckdb.DuckDBPyConnection = con
         self.params: Dict[str, Any] = param
         self.params['timeBuckets'] = pd.DataFrame(list(self.params['timeBuckets'].items()), columns=['bucket', 'bound'])
+        self.indexOnsym: bool = indexOnsym
 
     def load_resources(self, db_path: Path, datadate: datetime.date, writer, row_start, ios) -> None:
         logger.info("loading hive-partitioned tables at %s", db_path)
@@ -87,6 +88,19 @@ class QueryExecutorDuckDBCon:
         io_load_end = ios.get_io_stat()
         writer.writerow(row_start + [-2, "load", "sort by time", "success", t_load_elapsed, None, None,
                          None, io_load_end - io_load_start, None, None])
+
+        if self.indexOnsym:
+            io_load_start = ios.get_io_stat()
+            t_load_start = time.perf_counter_ns()
+            logger.info("adding index on sym")
+            self.con.execute("CREATE INDEX IF NOT EXISTS idx_trade_sym ON trade (sym)")
+            logger.info("adding index on sym")
+            self.con.execute("CREATE INDEX IF NOT EXISTS idx_quote_sym ON quote (sym)")
+
+            t_load_elapsed = time.perf_counter_ns() - t_load_start
+            io_load_end = ios.get_io_stat()
+            writer.writerow(row_start + [-3, "load", "index", "success", t_load_elapsed, None, None,
+                             None, io_load_end - io_load_start, None, None])
 
     def getTableStats(self) -> Dict[str, Any]:
         table_stats_dict = {}

@@ -151,6 +151,16 @@ def main(args) -> None:
             con.execute(f"SET threads = {os.environ['DUCKDB_THREADS']}")
         threadnr = con.sql("SELECT current_setting('threads')").fetchall()[0][0]
         logger.info("Using DuckDB with %s threads", threadnr)
+    elif engine == "duckdb_con_inmemory_index":
+        from executors.inmemory.duckdb_con import QueryExecutorDuckDBCon
+        import duckdb
+        con = duckdb.connect()
+        params = load_parameters(args.paramdir)
+        runner = QueryExecutorDuckDBCon(con, params, indexOnsym=True)
+        if 'DUCKDB_THREADS' in os.environ:
+            con.execute(f"SET threads = {os.environ['DUCKDB_THREADS']}")
+        threadnr = con.sql("SELECT current_setting('threads')").fetchall()[0][0]
+        logger.info("Using DuckDB with %s threads", threadnr)
     elif engine == "pykx":
         from executors.ondisk.pykx import QueryExecutorPyKX
         import pykx as kx
