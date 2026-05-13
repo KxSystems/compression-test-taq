@@ -80,7 +80,7 @@ loadParquetDB: {[db: `C; rowgroup: `b; device: `C; writerFN]
 /////////////////// functions for in-memory tests ///////////////////
 
 captureTableStats: {[tableStatsDir:`s; tName]
-  tableStatsFile: .Q.dd[tableStatsDir; `$string[tName], ".jaml"];
+  tableStatsFile: .Q.dd[tableStatsDir; `$string[tName], ".yaml"];
   if[not ()~key tableStatsFile; hdel tableStatsFile];
 
   h: hopen tableStatsFile;
