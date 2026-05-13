@@ -10,20 +10,6 @@ import time
 logger = logging.getLogger(__name__)
 
 
-def _build_time_bucket_exprs(param: Dict[str, Any]) -> None:
-    """Adds time_bucket_expr and time_bucket_idx_expr to param in-place."""
-    time_bucket_expr = pl.lit(None)
-    for bucket, bound in param['timeBuckets'].items():
-        time_bucket_expr = pl.when(pl.col("time") >= bound).then(
-            pl.lit(bucket)).otherwise(time_bucket_expr)
-    param['time_bucket_expr'] = time_bucket_expr
-
-    time_bucket_idx_expr = pl.lit(None)
-    for index, bound in enumerate(param['timeBuckets'].values()):
-        time_bucket_idx_expr = pl.when(pl.col("time") >= bound).then(
-            pl.lit(index)).otherwise(time_bucket_idx_expr)
-    param['time_bucket_idx_expr'] = time_bucket_idx_expr
-
 
 class QueryExecutorPolarsInMemory:
     """
@@ -36,8 +22,9 @@ class QueryExecutorPolarsInMemory:
         self.master: Optional[pl.DataFrame] = None
         self.trade: Optional[pl.DataFrame] = None
         self.quote: Optional[pl.DataFrame] = None
-        _build_time_bucket_exprs(param)
         self.params: Dict[str, Any] = param
+        self.params['timeBuckets'] = pl.DataFrame(list(self.params['timeBuckets'].items()), schema=['bucket', 'bound'])
+        self.params['timeBuckets'] = self.params['timeBuckets'].with_columns(pl.col('bound').cast(pl.Duration('ns')))
 
     def load_resources(self, db_path: Path, datadate: datetime.date, writer, row_start, ios) -> None:
         logger.info("loading hive-partitioned tables at %s", db_path)
