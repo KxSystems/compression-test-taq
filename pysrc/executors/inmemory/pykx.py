@@ -57,7 +57,7 @@ class QueryExecutorPyKXInMemory:
         self.quote = self.quote.grouped('sym')
         t_load_elapsed = time.perf_counter_ns() - t_load_start
         io_load_end = ios.get_io_stat()
-        writer.writerow(row_start + [-1, "load", "transform", "success", t_load_elapsed, None, None,
+        writer.writerow(row_start + [-3, "load", "index", "success", t_load_elapsed, None, None,
                          None, io_load_end - io_load_start, None, None])
 
 
