@@ -120,18 +120,17 @@ loadKDBDBIntoMemory: ('[{[params]
       .qlog.info "Shape of ", string[tName], ": ", string[count value tName], " x ", string count cols tName; }' tbls;
   }; enlist])
 
-sortTradeQuoteTables: {[]
-  {[tName]
-    .qlog.info "sorting ", string[tName], " by time";
-    `time xasc tName
-    } each `trade`quote;
+sortTradeQuoteTables: {[sortCols]
+  sortCols {[sortCols; tName]
+    .qlog.info "sorting ", string[tName], " by ", $[0<type sortCols; "," sv ;] string sortCols;
+    sortCols xasc tName
+    }/: `trade`quote;
   }
 
-addGrouped: {[]
-  {[tName]
-    .qlog.info "Adding grouped attribute to ", string[tName];
-    update `g#sym from tName
-    } each `quote`trade;
+addAttr: {[a]
+  a {[a; tName]
+    .qlog.info "Adding attribute ", string[a], " to sym of ", string[tName];
+    update a#sym from tName }/: `quote`trade;
   }
 
 loadKDBDBIntoMemoryTableDict: {[db: `s; d: `d]
@@ -144,7 +143,7 @@ loadKDBDBIntoMemoryTableDict: {[db: `s; d: `d]
     tName set (`u#syms)!mappedT {[t;s] delete sym from update `s#time from select from t where sym=s}/: syms}' `trade`quote;
   }
 
-loadKDBPartitionIntoMemory: {[db: `s; device: `C; writerFN; d: `d; addGroupedAttr: `b]
+loadKDBPartitionIntoMemory: {[db: `s; device: `C; writerFN; d: `d; sortCols; attrOnSym:`s]
   .qlog.info "Loading kdb+ partition ", string[d], " into memory";
   io: (), getKBRead[device]`kB_read;
   s: .z.p;
@@ -153,22 +152,23 @@ loadKDBPartitionIntoMemory: {[db: `s; device: `C; writerFN; d: `d; addGroupedAtt
   io,: getKBRead[device]`kB_read;
   writerFN[0; enlist "load"; "load a partition into memory"; ("success"; ts, 2#0Nn; memusage; io, 2#0Nj)];
 
-  io: (), getKBRead[device]`kB_read;
-  s: .z.p;
-  memusage: last first .Q.ts[sortTradeQuoteTables; enlist ()];
-  ts: .z.p-s;
-  io,: getKBRead[device]`kB_read;
-  writerFN[-2; enlist "load"; "sort by time"; ("success"; ts, 2#0Nn; memusage; io, 2#0Nj)];
-
-  if[addGroupedAttr;
+  if[count sortCols;
     io: (), getKBRead[device]`kB_read;
     s: .z.p;
-    memusage: last first .Q.ts[addGrouped; enlist ()];
+    memusage: last first .Q.ts[sortTradeQuoteTables; enlist sortCols];
+    ts: .z.p-s;
+    io,: getKBRead[device]`kB_read;
+    writerFN[-2; enlist "load"; "sort by time"; ("success"; ts, 2#0Nn; memusage; io, 2#0Nj)]];
+
+  if[not null attrOnSym;
+    io: (), getKBRead[device]`kB_read;
+    s: .z.p;
+    memusage: last first .Q.ts[addAttr; enlist attrOnSym];
     ts: .z.p-s;
     io,: getKBRead[device]`kB_read;
     writerFN[-3; enlist "load"; "index"; ("success"; ts, 2#0Nn; memusage; io, 2#0Nj)];
     ];
-  }
+  };
 
 loadKDBPartitionIntoMemoryTableDict: {[db: `s; device: `C; writerFN; d: `d]
   .qlog.info "Loading kdb+ partition ", string[d], " into memory";
@@ -290,20 +290,27 @@ $[FORMAT like "PARQUET*"; [
     compparm: "nyi_nyi_nyi";
     WriterFN:: writeRes[resultH; compparm];
     loadParquetDB[DB; FORMAT ~ `PARQUET_ROWGROUP; Device; WriterFN]
-  ]; FORMAT = `KDBINMEMORYGROUPED; [
-    if[not `date in ko;
-      .qlog.error "Date column is required for KDBINMEMORYGROUPED format";
-      exit 5];
-    compparm: "0_0_0"; / data is not compressed in memory
-    WriterFN:: writeRes[resultH; compparm];
-    loadKDBPartitionIntoMemory[hsym `$DB; Device; WriterFN; "D"$o `date; 1b];
   ]; FORMAT = `KDBINMEMORY; [
     if[not `date in ko;
       .qlog.error "Date column is required for KDBINMEMORY format";
       exit 5];
     compparm: "0_0_0"; / data is not compressed in memory
     WriterFN:: writeRes[resultH; compparm];
-    loadKDBPartitionIntoMemory[hsym `$DB; Device; WriterFN; "D"$o `date; 0b];
+    loadKDBPartitionIntoMemory[hsym `$DB; Device; WriterFN; "D"$o `date; `time; `];
+  ]; FORMAT = `KDBINMEMORYGROUPED; [
+    if[not `date in ko;
+      .qlog.error "Date column is required for KDBINMEMORYGROUPED format";
+      exit 5];
+    compparm: "0_0_0"; / data is not compressed in memory
+    WriterFN:: writeRes[resultH; compparm];
+    loadKDBPartitionIntoMemory[hsym `$DB; Device; WriterFN; "D"$o `date; `time; `g];
+  ]; FORMAT = `KDBINMEMORYPARTED; [
+    if[not `date in ko;
+      .qlog.error "Date column is required for KDBINMEMORYPARTED format";
+      exit 5];
+    compparm: "0_0_0"; / data is not compressed in memory
+    WriterFN:: writeRes[resultH; compparm];
+    loadKDBPartitionIntoMemory[hsym `$DB; Device; WriterFN; "D"$o `date; (); `p];
   ]; FORMAT = `KDBINMEMORYTABLEDICT; [
     if[not `date in ko;
       .qlog.error "Date column is required for KDBINMEMORYTABLEDICT format";
