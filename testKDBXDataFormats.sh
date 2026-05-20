@@ -95,7 +95,7 @@ function execute_queries () {
     done
 }
 
-#generate_data
+generate_data
 execute_queries
 
 echo "Benchmark suite complete."

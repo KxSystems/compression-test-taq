@@ -48,14 +48,14 @@ getKBRead: $["false" ~ lower getenv `IOSTAT; {[x] IOStatError}; .z.o ~ `m64; get
 
 getIdx: {[idx] $[10h ~ type idx; idx; string idx]}
 
-writeRes: {[h; compparm:`C; idx:getIdx; tags; query:`C; (status:`C; ts:`N; memusage:`j; io:`J)]
+writeRes: {[h; compparm:`C; engineversion:`C; idx:getIdx; tags; query:`C; (status:`C; ts:`N; memusage:`j; io:`J)]
   if[not 3 = count ts;
     .qlog.error "Three elapsed times are expected";
     ts: 3#ts];
   if[not 4 = count io;
     .qlog.error "Four IO numbers are expected";
     io: 4#io];
-  h ,[;"\n"] SEP sv (compparm; string system "s"; idx; "," sv tags; query; status), string (`long$ts), (memusage div 1000), 1 _ deltas io;
+  h ,[;"\n"] SEP sv (compparm; string system "s"; engineversion; idx; "," sv tags; query; status), string (`long$ts), (memusage div 1000), 1 _ deltas io;
   }
 
 loadParquetDB: {[db: `C; rowgroup: `b; device: `C; writerFN]
@@ -284,45 +284,45 @@ resFile: $[`result in key o; o `result; "result.psv"];
 if[not ()~key `$resFile: ":", resFile; hdel `$resFile];
 resultH: hopen resFile;
 SEP: "|"
-resultH "compparam|threadcount|idx|tags|query|status|run1timeNS|run2timeNS|run3timeNS|run1memKB|run1ioKB|run2ioKB|run3ioKB\n"
-
+resultH "compparam|threadcount|engineversion|idx|tags|query|status|run1timeNS|run2timeNS|run3timeNS|run1memKB|run1ioKB|run2ioKB|run3ioKB\n"
+engineversion: string[.z.K], ",", string .z.k;
 $[FORMAT like "PARQUET*"; [
     compparm: "nyi_nyi_nyi";
-    WriterFN:: writeRes[resultH; compparm];
+    WriterFN:: writeRes[resultH; compparm; engineversion];
     loadParquetDB[DB; FORMAT ~ `PARQUET_ROWGROUP; Device; WriterFN]
   ]; FORMAT = `KDBINMEMORY; [
     if[not `date in ko;
       .qlog.error "Date column is required for KDBINMEMORY format";
       exit 5];
     compparm: "0_0_0"; / data is not compressed in memory
-    WriterFN:: writeRes[resultH; compparm];
+    WriterFN:: writeRes[resultH; compparm; engineversion];
     loadKDBPartitionIntoMemory[hsym `$DB; Device; WriterFN; "D"$o `date; `time; `];
   ]; FORMAT = `KDBINMEMORYGROUPED; [
     if[not `date in ko;
       .qlog.error "Date column is required for KDBINMEMORYGROUPED format";
       exit 5];
     compparm: "0_0_0"; / data is not compressed in memory
-    WriterFN:: writeRes[resultH; compparm];
+    WriterFN:: writeRes[resultH; compparm; engineversion];
     loadKDBPartitionIntoMemory[hsym `$DB; Device; WriterFN; "D"$o `date; `time; `g];
   ]; FORMAT = `KDBINMEMORYPARTED; [
     if[not `date in ko;
       .qlog.error "Date column is required for KDBINMEMORYPARTED format";
       exit 5];
     compparm: "0_0_0"; / data is not compressed in memory
-    WriterFN:: writeRes[resultH; compparm];
+    WriterFN:: writeRes[resultH; compparm; engineversion];
     loadKDBPartitionIntoMemory[hsym `$DB; Device; WriterFN; "D"$o `date; (); `p];
   ]; FORMAT = `KDBINMEMORYTABLEDICT; [
     if[not `date in ko;
       .qlog.error "Date column is required for KDBINMEMORYTABLEDICT format";
       exit 5];
     compparm: "0_0_0"; / data is not compressed in memory
-    WriterFN:: writeRes[resultH; compparm];
+    WriterFN:: writeRes[resultH; compparm; engineversion];
     loadKDBPartitionIntoMemoryTableDict[hsym `$DB; Device; WriterFN; "D"$o `date];
     normalize: {cnt: count each x; ([] sym: where cnt) ,' raze x}; / convert table dictionary to normal table
   ]; FORMAT = `KDB; [
     compparmall: -21!hsym `$DB,"/",string[first key hsym `$DB],"/quote/sym";   // or assume that db dir name reflects compression
     compparm: $[count compparmall; "_" sv string @[;`logicalBlockSize`algorithm`zipLevel] compparmall; "0_0_0"];
-    WriterFN:: writeRes[resultH; compparm];
+    WriterFN:: writeRes[resultH; compparm; engineversion];
     loadKDBDB[DB; Device; WriterFN]
   ]; [.qlog.error "Unknown format ", FORMAT; exit 1]]
 if[not FORMAT ~ `KDBINMEMORYTABLEDICT;
