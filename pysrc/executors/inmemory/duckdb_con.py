@@ -124,12 +124,13 @@ class QueryExecutorDuckDBCon:
             "duckdb": duckdb,
             "timedelta": timedelta,
             "con": self.con,
-#            "master": self.master,
-#            "trade": self.trade,
-#            "quote": self.quote,
             **self.params
         }
-        eval(f"con.sql(\"CREATE OR REPLACE TABLE res AS {query_str}\", params=[{parameter}])", eval_context)
+        try:
+            eval(f"con.sql(\"CREATE OR REPLACE TABLE res AS {query_str}\", params=[{parameter}])", eval_context)
+        except Exception:
+            self.con.rollback()
+            raise
         return self.con.table('res')
 
     def write_csv(self, res, outFile: Path) -> None:
