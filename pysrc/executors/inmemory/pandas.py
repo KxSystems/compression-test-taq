@@ -93,6 +93,7 @@ class QueryExecutorPandas:
             df = getattr(self, tNames)
             table_stats = {
                 "name": tNames,
+                "size (MB)": int(df.memory_usage(deep=True).sum() / 1024**2),
                 "rowCount": df.shape[0],
                 "columnCount": df.shape[1],
                 "columns": [

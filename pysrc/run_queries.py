@@ -4,8 +4,10 @@ Script to run queries on NYSE TAQ and collect performance metrics (like executio
 Environment variables:
 """
 import argparse
+import contextlib
 import csv
 import gc
+import io
 import os
 import logging
 from dataclasses import dataclass
@@ -115,7 +117,8 @@ def main(args) -> None:
         sys.exit(1)
 
     tags = {} if args.tags is None else set(args.tags.strip().split(","))
-    args.result.parent.mkdir(parents=True, exist_ok=True)
+    if args.result is not None:
+        args.result.parent.mkdir(parents=True, exist_ok=True)
 
     logger.info("Loading parameter files...")
     engine = args.engine.lower()
@@ -191,7 +194,8 @@ def main(args) -> None:
         import pandas as pd
         params = load_parameters(args.paramdir)
         runner = QueryExecutorPandas(params)
-        threadnr = os.environ['NUMEXPR_NUM_THREADS']
+        import numexpr
+        threadnr = os.environ.get('NUMEXPR_NUM_THREADS', numexpr.nthreads)
         engineversion = pd.__version__
     else:
         raise ValueError(f"Invalid engine parameter: {args.engine}")
@@ -204,9 +208,13 @@ def main(args) -> None:
     ]
     row_start = ["nyi", threadnr, engineversion]
     ios = IOStat(args.db)
-    with open(args.result, 'w', newline='', encoding='utf-8') as f_out:
+    file_ctx = (open(args.result, 'w', newline='', encoding='utf-8')
+                if args.result is not None
+                else contextlib.nullcontext(io.StringIO()))
+    with file_ctx as f_out:
         writer = csv.writer(f_out, delimiter='|')
-        writer.writerow(headers)
+        if args.result is not None:
+            writer.writerow(headers)
 
         runner.load_resources(db_path=args.db, datadate=args.date, writer=writer, row_start=row_start, ios=ios)
         f_out.flush()
@@ -252,7 +260,10 @@ def main(args) -> None:
                 f_out.flush()
 
     elapsed = datetime.now() - start_time
-    logger.info("Benchmarking completed in %s. Results saved to %s", elapsed, args.result)
+    if args.result is not None:
+        logger.info("Benchmarking completed in %s. Results saved to %s", elapsed, args.result)
+    else:
+        logger.info("Benchmarking completed in %s.", elapsed)
 
 
 if os.getenv('FLUSH') is None:
@@ -275,8 +286,7 @@ parser.add_argument('-queryoutput', type=Path, required=False, help="Directory t
 parser.add_argument('-tableStatsDir', type=Path, required=False, help="Directory to save master/trade/quote table statistics YAML files.")
 parser.add_argument('-date', type=lambda s: datetime.strptime(s, '%Y%m%d').date(), help='Date in YYYYMMDD format')
 
-default_result = Path(f"results/nysetaq_query_results.psv")
-parser.add_argument('-result', type=Path, default=default_result, help="Output PSV file path")
+parser.add_argument('-result', type=Path, default=None, help="Output PSV file path. If not provided, results are not written.")
 
 args = parser.parse_args()
 

@@ -1,5 +1,6 @@
 system "l src/log.q"
-system "l src/pivot.q" / This will be available as a KX module
+system "l src/pivot.q"    / This will be available as a KX module
+system "l src/memusage.q" / This is also available as a DI module
 
 if["" ~ getenv `FLUSH;
   .qlog.info "Environment variable FLUSH is not set. Maybe config/queryenv was not loaded.";
@@ -12,6 +13,14 @@ PARAMDIR: hsym `$o`paramdir
 FORMAT: `$upper o `format
 ENGINE: `$upper o `engine
 QUERYOUTPUT: hsym `$o `queryoutput
+
+resultH: `
+if[`result in key o;
+  .qlog.info "saving results to ", resFile;
+  if[not ()~key `$resFile: ":", resFile; hdel `$resFile];
+  resultH: hopen resFile;
+  resultH "compparam|threadcount|engineversion|idx|tags|query|status|run1timeNS|run2timeNS|run3timeNS|run1memKB|run1ioKB|run2ioKB|run3ioKB\n"]
+
 
 
 QueryTable: ("****";enlist "|") 0: `$o `queryfile;
@@ -49,6 +58,7 @@ getKBRead: $["false" ~ lower getenv `IOSTAT; {[x] IOStatError}; .z.o ~ `m64; get
 getIdx: {[idx] $[10h ~ type idx; idx; string idx]}
 
 writeRes: {[h; compparm:`C; engineversion:`C; idx:getIdx; tags; query:`C; (status:`C; ts:`N; memusage:`j; io:`J)]
+  if[null h; :()];
   if[not 3 = count ts;
     .qlog.error "Three elapsed times are expected";
     ts: 3#ts];
@@ -85,6 +95,7 @@ captureTableStats: {[tableStatsDir:`s; tName]
 
   h: hopen tableStatsFile;
   h "name: ", (string tName), "\n";
+  h "size (MB): ", (string floor .mem.objsize[value tName] % 1024*1024), "\n";
   h "rowCount: ", (string count value tName), "\n";
   h "columnCount: ", (string count cols tName), "\n";
   h "columns: \n";
@@ -279,12 +290,7 @@ startTime: .z.p
 Device: first system "./src/resolve_device.sh ", DB
 .qlog.info "Monitoring device ", Device
 
-resFile: $[`result in key o; o `result; "result.psv"];
-.qlog.info "saving results to ", resFile;
-if[not ()~key `$resFile: ":", resFile; hdel `$resFile];
-resultH: hopen resFile;
 SEP: "|"
-resultH "compparam|threadcount|engineversion|idx|tags|query|status|run1timeNS|run2timeNS|run3timeNS|run1memKB|run1ioKB|run2ioKB|run3ioKB\n"
 engineversion: string[.z.K], ",", string .z.k;
 $[FORMAT like "PARQUET*"; [
     compparm: "nyi_nyi_nyi";
@@ -326,7 +332,7 @@ $[FORMAT like "PARQUET*"; [
     loadKDBDB[DB; Device; WriterFN]
   ]; [.qlog.error "Unknown format ", FORMAT; exit 1]]
 if[not FORMAT ~ `KDBINMEMORYTABLEDICT;
-  if[`tablestats in ko; captureTableStats[hsym `$o `tablestats] each `master`trade`quote]];
+  if[`tableStatsDir in ko; captureTableStats[hsym `$o `tableStatsDir] each `master`trade`quote]];
 if[ENGINE ~ `SQL;
   .s.init[];
   .s.F[`stddev_pop]:.s.fx dev;
