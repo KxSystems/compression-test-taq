@@ -76,7 +76,7 @@ class QueryExecutorPolarsInMemory:
             df = getattr(self, tNames)
             table_stats = {
                 "name": tNames,
-                "size (MB)": df.estimated_size("mb"),
+                "size (MB)": int(df.estimated_size("mb")),
                 "rowCount": df.shape[0],
                 "columnCount": df.shape[1],
                 "columns": [
