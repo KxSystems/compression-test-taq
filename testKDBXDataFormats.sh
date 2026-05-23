@@ -8,6 +8,7 @@ source "${script_dir}/util.sh"
 THREAD_NRS=(1 4)
 RESULT_DIR="./results"
 SCOPE="ondisk"
+STATS_DIR="./stats"
 
 usage() {
     cat <<EOF
@@ -22,6 +23,7 @@ Options:
   -r, --result-dir   Directory for query results (default: ./results)
   -s, --scope        Scope of the test, e.g. ondisk, inmem (default: ondisk)
   -h, --help         Show this help message
+  --stats-dir        Directory to save table stats (default: ./stats)
 EOF
     exit 1
 }
@@ -35,6 +37,7 @@ while [[ $# -gt 0 ]]; do
         -t|--threads)    read -ra THREAD_NRS <<< "$2"; shift 2 ;;
         -r|--result-dir) RESULT_DIR="$2"; shift 2 ;;
         -s|--scope)      SCOPE="$2"; shift 2 ;;
+        --stats-dir)     STATS_DIR="$2"; shift 2 ;;
         -h|--help)    usage ;;
         *) echo "Unknown option: $1"; usage ;;
     esac
@@ -47,10 +50,10 @@ function generate_data () {
     # Step 1: We assume that the CSV files are already downloaded
     # Step 2: generate data from CSV files
     DATAFORMAT=kdb ./generateDB.sh ${CSV_DIR} ${DB_DIR}/kdb ${DATE}
-    SYMBOLSTOREDAS=PartitionColumn DATAFORMAT=parquet ./generateDB.sh ${CSV_DIR} ${DB_DIR}/parquet/hivepartitioned ${DATE}
+    #SYMBOLSTOREDAS=PartitionColumn DATAFORMAT=parquet ./generateDB.sh ${CSV_DIR} ${DB_DIR}/parquet/hivepartitioned ${DATE}
     SYMBOLSTOREDAS=ROWGROUP DATAFORMAT=parquet ./generateDB.sh ${CSV_DIR} ${DB_DIR}/parquet/rowgroup ${DATE}
     # SYMBOLSTOREDAS=ROWGROUP DATAFORMAT=parquet MINROWGROUPSIZE=100000 ./generateDB.sh ${CSV_DIR} ${DB_DIR}/parquet/rowgroup_minrowgroup_100000 ${DATE}
-    SYMBOLSTOREDAS=ROWGROUP DATAFORMAT=parquet MAXROWGROUPSIZE=250000 ./generateDB.sh ${CSV_DIR} ${DB_DIR}/parquet/rowgroup_maxrowgroupsize250000 ${DATE}
+    # SYMBOLSTOREDAS=ROWGROUP DATAFORMAT=parquet MAXROWGROUPSIZE=250000 ./generateDB.sh ${CSV_DIR} ${DB_DIR}/parquet/rowgroup_maxrowgroupsize250000 ${DATE}
 }
 
 function get_numa_config () {
@@ -95,7 +98,22 @@ function execute_queries () {
     done
 }
 
+function get_table_stats () {
+    local COMMONPARAMS="-querymeta ./artifacts/queries/querymeta.psv -paramdir ${PARAM_DIR}"
+    echo "Getting table stats..."
+    mkdir -p ${STATS_DIR}/inmemory/{kdb,kdb_grouped,kdb_parted,kdb_tabledict,duckdb,duckdb_index,polars,pandas}
+    /usr/bin/time -v $QEXEC ./src/runQueries.q ${COMMONPARAMS} -date $DATE -db ${DB_DIR}/kdb -format kdbinmemory -queryfile ./artifacts/queries/inmemory/kdb.psv -tags none -tableStatsDir ${STATS_DIR}/inmemory/kdb -q 2> ${STATS_DIR}/inmemory/kdb/os.txt
+    /usr/bin/time -v $QEXEC ./src/runQueries.q ${COMMONPARAMS} -date $DATE -db ${DB_DIR}/kdb -format kdbinmemorygrouped -queryfile ./artifacts/queries/inmemory/kdb_grouped.psv -tags none -tableStatsDir ${STATS_DIR}/inmemory/kdb_grouped -q 2> ${STATS_DIR}/inmemory/kdb_grouped/os.txt
+    /usr/bin/time -v $QEXEC ./src/runQueries.q ${COMMONPARAMS} -date $DATE -db ${DB_DIR}/kdb -format kdbinmemoryparted -queryfile ./artifacts/queries/inmemory/kdb_grouped.psv -tags none -tableStatsDir ${STATS_DIR}/inmemory/kdb_parted -q 2> ${STATS_DIR}/inmemory/kdb_parted/os.txt
+    /usr/bin/time -v $QEXEC ./src/runQueries.q ${COMMONPARAMS} -date $DATE -db ${DB_DIR}/kdb -format kdbinmemorytabledict -queryfile ./artifacts/queries/inmemory/kdb_tabledict.psv -tags none -tableStatsDir ${STATS_DIR}/inmemory/kdb_tabledict -q 2> ${STATS_DIR}/inmemory/kdb_tabledict/os.txt
+    /usr/bin/time -v python3 pysrc/run_queries.py ${COMMONPARAMS} -date $DATE -db ${DB_DIR}/parquet/rowgroup -engine duckdb_con_inmemory -queryfile ./artifacts/queries/inmemory/duckdb.psv -tags none -tableStatsDir ${STATS_DIR}/inmemory/duckdb 2> ${STATS_DIR}/inmemory/duckdb/os.txt
+    /usr/bin/time -v python3 pysrc/run_queries.py ${COMMONPARAMS} -date $DATE -db ${DB_DIR}/parquet/rowgroup -engine duckdb_con_inmemory_index -queryfile ./artifacts/queries/inmemory/duckdb.psv -tags none -tableStatsDir ${STATS_DIR}/inmemory/duckdb_index 2> ${STATS_DIR}/inmemory/duckdb_index/os.txt
+    /usr/bin/time -v python3 pysrc/run_queries.py ${COMMONPARAMS} -date $DATE -db ${DB_DIR}/parquet/rowgroup -engine polars_inmemory -queryfile ./artifacts/queries/inmemory/polars.psv -tags none -tableStatsDir ${STATS_DIR}/inmemory/polars 2> ${STATS_DIR}/inmemory/polars/os.txt
+    /usr/bin/time -v python3 pysrc/run_queries.py ${COMMONPARAMS} -date $DATE -db ${DB_DIR}/parquet/rowgroup -engine pandas -queryfile ./artifacts/queries/inmemory/pandas.psv -tags none -tableStatsDir ${STATS_DIR}/inmemory/pandas 2> ${STATS_DIR}/inmemory/pandas/os.txt
+}
+
 generate_data
 execute_queries
+get_table_stats
 
 echo "Benchmark suite complete."
