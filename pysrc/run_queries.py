@@ -122,25 +122,22 @@ def main(args) -> None:
 
     logger.info("Loading parameter files...")
     engine = args.engine.lower()
-
+    params = load_parameters(args.paramdir)
     if engine == "polars":
         from executors.ondisk.polars import QueryExecutorPolars
         import polars as pl
-        params = load_parameters(args.paramdir)
         runner = QueryExecutorPolars(params)
         threadnr = pl.thread_pool_size()
         engineversion = pl.__version__
     elif engine == "polars_inmemory":
         from executors.inmemory.polars import QueryExecutorPolarsInMemory
         import polars as pl
-        params = load_parameters(args.paramdir)
         runner = QueryExecutorPolarsInMemory(params, args.date)
         threadnr = pl.thread_pool_size()
         engineversion = pl.__version__
     elif engine == "duckdb_relation_inmemory":
         from executors.inmemory.duckdb_relation import QueryExecutorDuckDBRelation
         import duckdb
-        params = load_parameters(args.paramdir)
         runner = QueryExecutorDuckDBRelation(params)
         if 'DUCKDB_THREADS' in os.environ:
             duckdb.execute(f"SET threads = {os.environ['DUCKDB_THREADS']}")
@@ -151,7 +148,6 @@ def main(args) -> None:
         from executors.inmemory.duckdb_con import QueryExecutorDuckDBCon
         import duckdb
         con = duckdb.connect()
-        params = load_parameters(args.paramdir)
         runner = QueryExecutorDuckDBCon(con, params)
         if 'DUCKDB_THREADS' in os.environ:
             con.execute(f"SET threads = {os.environ['DUCKDB_THREADS']}")
@@ -162,7 +158,6 @@ def main(args) -> None:
         from executors.inmemory.duckdb_con import QueryExecutorDuckDBCon
         import duckdb
         con = duckdb.connect()
-        params = load_parameters(args.paramdir)
         runner = QueryExecutorDuckDBCon(con, params, indexOnsym=True)
         if 'DUCKDB_THREADS' in os.environ:
             con.execute(f"SET threads = {os.environ['DUCKDB_THREADS']}")
@@ -172,14 +167,12 @@ def main(args) -> None:
     elif engine == "pykx":
         from executors.ondisk.pykx import QueryExecutorPyKX
         import pykx as kx
-        params = load_parameters(args.paramdir)
         runner = QueryExecutorPyKX(params)
         threadnr = kx.q.system.num_threads
         engineversion = kx.__version__
     elif engine == "pykx_inmemory":
         from executors.inmemory.pykx import QueryExecutorPyKXInMemory
         import pykx as kx
-        params = load_parameters(args.paramdir)
         runner = QueryExecutorPyKXInMemory(params)
         threadnr = kx.q.system.num_threads
         engineversion = kx.__version__
@@ -192,7 +185,6 @@ def main(args) -> None:
     elif engine == "pandas":
         from executors.inmemory.pandas import QueryExecutorPandas
         import pandas as pd
-        params = load_parameters(args.paramdir)
         runner = QueryExecutorPandas(params)
         import numexpr
         threadnr = os.environ.get('NUMEXPR_NUM_THREADS', numexpr.nthreads)
