@@ -108,7 +108,7 @@ class QueryExecutorDuckDBCon:
             df = self.con.table(tNames)
             table_stats = {
                 "name": tNames,
-                "size (MB)": "",
+                "size (MB)": None,
                 "rowCount": df.shape[0],
                 "columnCount": df.shape[1],
                 "columns": [
