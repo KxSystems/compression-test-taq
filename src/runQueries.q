@@ -16,8 +16,8 @@ QUERYOUTPUT: hsym `$o `queryoutput
 
 resultH: `
 if[`result in key o;
-  .qlog.info "saving results to ", resFile;
-  if[not ()~key `$resFile: ":", resFile; hdel `$resFile];
+  .qlog.info "saving results to ", o `result;
+  if[not ()~key `$resFile: ":", o `result; hdel `$resFile];
   resultH: hopen resFile;
   resultH "compparam|threadcount|engineversion|idx|tags|query|status|run1timeNS|run2timeNS|run3timeNS|run1memKB|run1ioKB|run2ioKB|run3ioKB\n"]
 
