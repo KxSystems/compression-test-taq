@@ -341,6 +341,7 @@ if[ENGINE ~ `SQL;
   .s.F[`corr]:.s.fx {x cor y};
   .s.F[`median]:.s.fx med;
   .s.F[`exnames]:.s.fx{exnames x};
+  .s.F[`timebucketsbtep]:.s.fx{timeBucketsStep x}
   ]
 
 .qlog.info "Loading parameters from ", 1_string PARAMDIR
