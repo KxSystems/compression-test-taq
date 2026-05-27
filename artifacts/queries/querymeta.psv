@@ -50,3 +50,4 @@ idx|tags|description|comment
 49|advanced,fewinstruments,asofjoin|as-of join trades with quotes for 20 instruments to get prevailing quote at trade time|
 50|advanced,singleinstrument,asofjoin|as-of join trades with quotes for a frequent instrument to get prevailing quote at trade time|
 51|advanced,asofjoin|as-of join large trades (size > 500,000) with quotes by sym+exchange to get prevailing quote at trade time|
+52|advanced,asofjoin|as-of join pre close trades (time between 0D16:20 and 0D16:30) with quotes by sym+exchange to get prevailing quote at trade time|

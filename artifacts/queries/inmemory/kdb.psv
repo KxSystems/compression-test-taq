@@ -50,3 +50,4 @@ idx|tags|query|parameter
 49||aj[`sym`time; select sym, time, price, size, stop, cond, ex from trade where sym in twentyInstrs; select `g#sym, time, bid, ask, bsize, asize, quotecond: cond, quoteex: ex from quote where sym in twentyInstrs]|
 50||aj[`time; select time, price, size, stop, cond, ex from trade where sym=aFreqInstr; select time, bid, ask, bsize, asize, quotecond: cond, quoteex: ex from quote where sym=aFreqInstr]|
 51||aj[`sym`ex`time; select sym, time, price, size, stop, cond, ex from trade where size>500000; select `g#sym, time, bid, ask, bsize, asize, quotecond: cond, ex from quote]|
+52||aj[`sym`time; select sym, time, price, size, stop, cond, ex from trade where time within 0D16:20 0D16:30; select `g#sym, time, bid, ask, bsize, asize, quotecond: cond from quote]|

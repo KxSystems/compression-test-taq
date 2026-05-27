@@ -50,3 +50,4 @@ idx|tags|query|parameter
 49||{cnt: count each x; ([] sym: twentyInstrs where cnt) ,' raze x} EACHPEACH[{aj[`time; select time, price, size, stop, cond, ex from trade x; select time, bid, ask, bsize, asize, quotecond: cond, quoteex: ex from quote x]}; twentyInstrs]|
 50||aj[`time; select time, price, size, stop, cond, ex from trade aFreqInstr; select time, bid, ask, bsize, asize, quotecond: cond, quoteex: ex from quote aFreqInstr]|
 51||{cnt: count each x; ([] sym: key[trade] where cnt) ,' raze x} EACHPEACH[{aj[`ex`time; select time, price, size, stop, cond, ex from trade[x] where size>500000; select time, bid, ask, bsize, asize, quotecond: cond, ex from quote x]}; key trade]|
+52||{cnt: count each x; ([] sym: key[trade] where cnt) ,' raze x} EACHPEACH[{aj[`time; select time, price, size, stop, cond, ex from trade[x] where time within 0D16:20 0D16:30; select time, bid, ask, bsize, asize, quotecond: cond from quote x]}; key trade]|
