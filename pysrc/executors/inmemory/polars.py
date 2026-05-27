@@ -101,5 +101,41 @@ class QueryExecutorPolarsInMemory:
         }
         return eval(query_str, eval_context)
 
+    @staticmethod
+    def _fmt_minute(col: str) -> pl.Expr:
+        ns = pl.col(col).dt.total_nanoseconds()
+        hh = ((ns // 3_600_000_000_000) % 24).cast(pl.String).str.zfill(2)
+        mm = ((ns // 60_000_000_000) % 60).cast(pl.String).str.zfill(2)
+        return pl.concat_str([hh, pl.lit(":"), mm]).alias(col)
+
+    @staticmethod
+    def _fmt_duration(col: str) -> pl.Expr:
+        ns = pl.col(col).dt.total_nanoseconds()
+        days = (ns // 86_400_000_000_000).cast(pl.String)
+        hh = ((ns // 3_600_000_000_000) % 24).cast(pl.String).str.zfill(2)
+        mm = ((ns // 60_000_000_000) % 60).cast(pl.String).str.zfill(2)
+        ss = ((ns // 1_000_000_000) % 60).cast(pl.String).str.zfill(2)
+        subsec = (ns % 1_000_000_000).cast(pl.String).str.zfill(9)
+        return pl.concat_str([
+            days, pl.lit("D"),
+            hh, pl.lit(":"),
+            mm, pl.lit(":"),
+            ss, pl.lit("."),
+            subsec,
+        ]).alias(col)
+
     def write_csv(self, res, outFile: Path) -> None:
+        duration_cols = [
+            c for c in res.columns
+            if res.schema[c] == pl.Duration and c != "minute"
+        ]
+        has_minute = "minute" in res.columns and res.schema["minute"] == pl.Duration
+
+        exprs = [pl.col(pl.Boolean).cast(pl.Int8).cast(pl.String)]
+        if has_minute:
+            exprs.append(self._fmt_minute("minute"))
+        exprs.extend(self._fmt_duration(c) for c in duration_cols)
+
+        res = res.with_columns(exprs)
         res.write_csv(outFile)
+
