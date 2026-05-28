@@ -156,6 +156,16 @@ def main(args) -> None:
         threadnr = con.sql("SELECT current_setting('threads')").fetchall()[0][0]
         engineversion = duckdb.__version__
         logger.info("Using DuckDB with %s threads", threadnr)
+    elif engine == "duckdb_con_inmemory_symtimesort":
+        from executors.inmemory.duckdb_con import QueryExecutorDuckDBCon
+        import duckdb
+        con = duckdb.connect()
+        runner = QueryExecutorDuckDBCon(con, params, sortCols=["sym", "time"])
+        if 'DUCKDB_THREADS' in os.environ:
+            con.execute(f"SET threads = {os.environ['DUCKDB_THREADS']}")
+        threadnr = con.sql("SELECT current_setting('threads')").fetchall()[0][0]
+        engineversion = duckdb.__version__
+        logger.info("Using DuckDB with %s threads", threadnr)
     elif engine == "duckdb_con_inmemory_index":
         from executors.inmemory.duckdb_con import QueryExecutorDuckDBCon
         import duckdb
@@ -270,7 +280,7 @@ parser = argparse.ArgumentParser(
     )
 
 parser.add_argument('-db', type=Path, required=True, help="Path to hive-partitioned parquet DB root")
-parser.add_argument('-engine', type=str, choices=["polars", "polars_inmemory", "duckdb_con_inmemory", "duckdb_con_inmemory_index", "duckdb_relation_inmemory", "pykx", "pykx_inmemory", "pykxq", "pandas"],
+parser.add_argument('-engine', type=str, choices=["polars", "polars_inmemory", "duckdb_con_inmemory", "duckdb_con_inmemory_symtimesort", "duckdb_con_inmemory_index", "duckdb_relation_inmemory", "pykx", "pykx_inmemory", "pykxq", "pandas"],
     required=True, help="Query engine. Currently supported polars and PyKX")
 parser.add_argument('-queryfile', type=Path, required=True, help="PSV file containing queries")
 parser.add_argument('-querymeta', type=Path, required=True, help="PSV file containing the query metas")

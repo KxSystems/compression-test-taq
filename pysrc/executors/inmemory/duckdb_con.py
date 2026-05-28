@@ -4,7 +4,7 @@ import pandas as pd
 import logging
 from datetime import timedelta, datetime
 from pathlib import Path
-from typing import Any, Dict, Optional, Set
+from typing import Any, Dict, List, Optional, Set
 import time
 
 logger = logging.getLogger(__name__)
@@ -15,11 +15,12 @@ class QueryExecutorDuckDBCon:
     Handles the setup, execution of DuckDB in-memory queries.
     """
 
-    def __init__(self, con, param: Dict[str, Any], indexOnsym: bool=False) -> None:
+    def __init__(self, con, param: Dict[str, Any], indexOnsym: bool=False, sortCols: Optional[List[str]]=None) -> None:
         self.con: duckdb.DuckDBPyConnection = con
         self.params: Dict[str, Any] = param
         self.params['timeBuckets'] = pd.DataFrame(list(self.params['timeBuckets'].items()), columns=['bucket', 'bound'])
         self.indexOnsym: bool = indexOnsym
+        self.sortCols: List[str] = sortCols if sortCols is not None else ["time", "rn"]
 
     def load_resources(self, db_path: Path, datadate: datetime.date, writer, row_start, ios) -> None:
         logger.info("loading hive-partitioned tables at %s", db_path)
@@ -79,10 +80,11 @@ class QueryExecutorDuckDBCon:
 
         io_load_start = ios.get_io_stat()
         t_load_start = time.perf_counter_ns()
-        logger.info("ordering trade by time and row number")
-        self.con.execute("CREATE OR REPLACE TABLE trade AS SELECT * EXCLUDE (rn) FROM trade ORDER BY time, rn")
-        logger.info("ordering quote by time and row number")
-        self.con.execute("CREATE OR REPLACE TABLE quote AS SELECT * EXCLUDE (rn) FROM quote ORDER BY time, rn")
+        order_by = ", ".join(self.sortCols)
+        logger.info("ordering trade by %s", order_by)
+        self.con.execute(f"CREATE OR REPLACE TABLE trade AS SELECT * EXCLUDE (rn) FROM trade ORDER BY {order_by}")
+        logger.info("ordering quote by %s", order_by)
+        self.con.execute(f"CREATE OR REPLACE TABLE quote AS SELECT * EXCLUDE (rn) FROM quote ORDER BY {order_by}")
 
         t_load_elapsed = time.perf_counter_ns() - t_load_start
         io_load_end = ios.get_io_stat()
@@ -130,7 +132,7 @@ class QueryExecutorDuckDBCon:
             **self.params
         }
         try:
-            eval(f"con.sql(\"CREATE OR REPLACE TABLE res AS {query_str}\", params=[{parameter}])", eval_context)
+            eval(f"con.sql(\"CREATE TABLE res AS {query_str}\", params=[{parameter}])", eval_context)
         except Exception:
             self.con.rollback()
             raise
