@@ -89,6 +89,7 @@ def run_query(runner, db_path: Path, ios: IOStat, idx: str, tags: Set, query: st
         logger.info("[%s] Run %s/3 (%s): %s ...", idx, runidx+1, iteration_label, query[:50])
         if runidx == 0:
             subprocess.run([os.getenv('FLUSH'), db_path], check=True, capture_output=True)
+        runner.prepare_run()
         gc.collect()
         io_start = ios.get_io_stat()
         t_start = time_mod.perf_counter_ns()
@@ -104,6 +105,7 @@ def run_query(runner, db_path: Path, ios: IOStat, idx: str, tags: Set, query: st
             if queryoutput is not None:
                 outFile = queryoutput / f"queryoutput_{idx}.csv"
                 runner.write_csv(res, outFile)
+        del res
         times.append(t_end - t_start)
         iostats.append(io_end - io_start)
 

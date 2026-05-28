@@ -23,6 +23,9 @@ class QueryExecutorPyKX:
         logger.info("loading kdb DB %s", db_path)
         self.db = kx.DB(path=db_path, change_dir=False)
 
+    def prepare_run(self) -> None:
+        pass
+
     def execute_query(self, idx: int, tags: Set, query_str: str, parameter: str, runidx: int):
         eval_context = {
             "kx": kx,
@@ -50,6 +53,9 @@ class QueryExecutorPyKXQ:
         self.db = kx.DB(path=db_path, change_dir=False)
         kx.q.system.load("src/getQueryParameters.q")
         kx.q('getQueryParameters', kx.q.hsym(kx.SymbolAtom(self.paramdir)))
+
+    def prepare_run(self) -> None:
+        pass
 
     def execute_query(self, idx: int, tags: Set, query_str: str, parameter: str, runidx: int):
         return kx.q(query_str)

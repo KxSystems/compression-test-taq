@@ -44,6 +44,9 @@ class QueryExecutorPolars:
         self.trade = pl.scan_parquet(db_path / "trade/date=*/*.parquet", hive_partitioning=True)
         self.quote = pl.scan_parquet(db_path / "quote/date=*/*.parquet", hive_partitioning=True)
 
+    def prepare_run(self) -> None:
+        pass
+
     def execute_query(self, idx: int, tags: Set, query_str: str, parameter: str, runidx: int):
         eval_context = {
             "pl": pl,

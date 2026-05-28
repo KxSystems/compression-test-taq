@@ -87,7 +87,8 @@ class QueryExecutorPolarsInMemory:
             table_stats_dict[tNames] = table_stats
         return table_stats_dict
 
-
+    def prepare_run(self) -> None:
+        pass
 
     def execute_query(self, idx: int, tags: Set, query_str: str, parameter: str, runidx: int):
         eval_context = {
