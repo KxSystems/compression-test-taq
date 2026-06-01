@@ -107,6 +107,12 @@ $ export NUMANODE=0
 $ ./testInMemoryEngines.sh --db-dir ${NYSEBENCHMARKDIR}/${SIZE} --param-dir ./artifacts/parameters/${SIZE} --date ${DATE}  --threads "0 4 16 64" --result-dir ./results/dataformats/${SIZE} --stats-dir ./stats/$SIZE
 ```
 
+Use `--engines` to run a subset of engines (default: all):
+
+```bash
+$ ./testInMemoryEngines.sh --db-dir ${NYSEBENCHMARKDIR}/${SIZE} --param-dir ./artifacts/parameters/${SIZE} --date ${DATE} --engines "kdb,duckdb"
+```
+
 ## Query Engine On-disk Benchmark
 
 Set environment variables in `config/queryenv`.
