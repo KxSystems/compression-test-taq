@@ -16,7 +16,7 @@ The following engines and formats are currently supported:
 | Data format | KDB-X | PyKX | KDB-X SQL | Polars | DuckDB | Pandas |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
 | In memory | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| In memory, table dictionary | ✅ | NYI | ❌ | In Progress | ❌ | ❌ |
+| In memory, table dictionary | ✅ | NYI | ❌ | | ❌ | ❌ |
 | kdb+ on disk | ✅ | In Progress | ✅ | ❌ | ❌ | ❌ |
 | Hive-partitioned Parquet | ✅ | NYI | ❌ | ✅ | NYI | ❌ |
 | Parquet, row-group partitioned | ✅ | NYI | ❌ | ✅ | NYI | ❌ |
@@ -79,7 +79,7 @@ Set the database size in `./config/ingestenv`, then:
 export DATE=$(curl -s https://ftp.nyse.com/Historical%20Data%20Samples/DAILY%20TAQ/| grep -oE 'EQY_US_ALL_TRADE_2[0-9]{7}' | grep -oE '2[0-9]{7}'|head -1)
 export NYSEBENCHMARKDIR=/tmp/nysetaqkxbenchmark
 source ./config/ingestenv
-./getCSVs.sh ${NYSEBENCHMARKDIR}/csv ${DATE}
+./getCSVs.sh ${NYSEBENCHMARKDIR}/${SIZE}/csv ${DATE}
 ```
 
 The `getCSVs.sh` script:
@@ -87,14 +87,33 @@ The `getCSVs.sh` script:
    1. Downloads compressed CSVs using `curl -C` (supports resuming interrupted downloads).
    1. Decompresses the CSV files.
    1. Removes trailing lines from the CSVs.
+   1. Adds proper extension (.psv).
 
-## Query Engine Benchmark
+## Query Engine In-Memory Benchmark
+
+Query engines read data into memory from Hive-partitioned Parquet or from kdb+ formats. CSV files can be converted to these formats using `./generateDB.sh`:
+
+```bash
+$ source ./config/kdbenv
+$ DATAFORMAT=kdb ./generateDB.sh ${NYSEBENCHMARKDIR}/${SIZE}/csv ${NYSEBENCHMARKDIR}/${SIZE}/kdb ${DATE}
+$ SYMBOLSTOREDAS=ROWGROUP DATAFORMAT=parquet ./generateDB.sh ${NYSEBENCHMARKDIR}/${SIZE}/csv ${NYSEBENCHMARKDIR}/${SIZE}/parquet/rowgroup ${DATE}
+```
+
+Once the on-disk data has been generated, you can start the benchmark. To test engines with 0, 4, 16, and 64 secondary threads, run:
+
+```bash
+$ export FLUSH=./flush/noflush.sh
+$ export NUMANODE=0
+$ ./testInMemoryEngines --db-dir ${NYSEBENCHMARKDIR}/${SIZE} --param-dir ./artifacts/parameters/${SIZE} --date ${DATE}  --threads "0 4 16 64" --result-dir ./results/dataformats/${SIZE} --stats-dir ./stats/$SIZE
+```
+
+## Query Engine On-disk Benchmark
 
 Set environment variables in `config/queryenv`.
 
 ```bash
-source config/queryenv
-testQueryEngines.sh --csv-dir ${NYSEBENCHMARKDIR}/csv --db-dir ${NYSEBENCHMARKDIR}/${SIZE} \
+$ source config/queryenv
+$ ./testQueryEngines.sh --csv-dir ${NYSEBENCHMARKDIR}/${SIZE}/csv --db-dir ${NYSEBENCHMARKDIR}/${SIZE} \
    --param-dir ./artifacts/parameters/${SIZE} --date ${DATE} \
    --threads "1 4" --result-dir ./results/engines
 ```
@@ -105,7 +124,7 @@ Set environment variables in `config/queryenv`.
 
 ```bash
 source config/queryenv
-testKDBXDataFormats.sh --csv-dir ${NYSEBENCHMARKDIR}/csv --db-dir ${NYSEBENCHMARKDIR}/${SIZE} \
+testKDBXDataFormats.sh --csv-dir ${NYSEBENCHMARKDIR}/${SIZE}/csv --db-dir ${NYSEBENCHMARKDIR}/${SIZE} \
    --param-dir ./artifacts/parameters/${SIZE} --date ${DATE} \
    --threads "1 4" --result-dir ./results/engines
 ```
@@ -118,14 +137,14 @@ First, generate uncompressed kdb+ data. Review and configure variables in
 ```bash
 source ./config/ingestenv
 export DATAFORMAT=kdb
-./generateDB.sh ${NYSEBENCHMARKDIR}/csv ${NYSEBENCHMARKDIR}/${DATAFORMAT} ${DATE}
+./generateDB.sh ${NYSEBENCHMARKDIR}/${SIZE}/csv ${NYSEBENCHMARKDIR}/${DATAFORMAT} ${DATE}
 ```
 
 The CSV files are no longer needed after this step. Remove them to free disk
 space:
 
 ```bash
-rm -rf ${NYSEBENCHMARKDIR}/csv
+rm -rf ${NYSEBENCHMARKDIR}/${SIZE}/csv
 ```
 
 Set environment variables in `config/queryenv`, then run the compression tests:
