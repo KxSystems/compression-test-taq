@@ -33,14 +33,11 @@ class QueryExecutorPolarsInMemory:
         t_load_start = time.perf_counter_ns()
         exnames = pl.scan_parquet(db_path / "exnames.parquet").collect()
         self.params["exnames"] = dict(zip(exnames["ex"], exnames["name"]))
-        master = pl.scan_parquet(db_path / "master/date=*/*.parquet", hive_partitioning=True)
-        self.master = master.filter(pl.col("date") == datadate).drop("date").collect()
+        self.master = pl.scan_parquet(db_path / "master" / f"date={datadate}" / "*.parquet").collect()
         logger.info("loading trade")
-        self.trade = pl.scan_parquet(db_path / "trade/date=*/*.parquet",
-            hive_partitioning=True).filter(pl.col("date") == datadate).drop("date").collect()
+        self.trade = pl.scan_parquet(db_path / "trade" / f"date={datadate}" / "*.parquet").collect()
         logger.info("loading quote")
-        self.quote = pl.scan_parquet(db_path / "quote/date=*/*.parquet",
-            hive_partitioning=True).filter(pl.col("date") == datadate).drop("date").collect()
+        self.quote = pl.scan_parquet(db_path / "quote" / f"date={datadate}" / "*.parquet").collect()
         t_load_elapsed = time.perf_counter_ns() - t_load_start
         io_load_end = ios.get_io_stat()
         writer.writerow(row_start + [0, "load", "load a partition into memory", "success", t_load_elapsed, None, None,
