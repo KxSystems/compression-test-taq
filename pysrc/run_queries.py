@@ -179,7 +179,7 @@ def main(args) -> None:
     elif engine == "duckdb_con_ondisk":
         from executors.inmemory.duckdb_con import QueryExecutorDuckDBCon
         import duckdb
-        con = duckdb.connect(str(args.db / 'duckdb.db'))
+        con = duckdb.connect(str(args.db.parent.parent / 'duckdb.db'))
         runner = QueryExecutorDuckDBCon(con, params)
         if 'DUCKDB_THREADS' in os.environ:
             con.execute(f"SET threads = {os.environ['DUCKDB_THREADS']}")

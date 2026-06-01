@@ -40,7 +40,7 @@ class QueryExecutorDuckDBCon:
 
         logger.info("loading trade")
         self.con.execute("CREATE OR REPLACE TABLE trade AS SELECT * FROM read_parquet($1, hive_partitioning=True)",
-            parameters=[str(db_path / "trade" / f"date={datadate}" / "sym=*" / "*.parquet")])
+            parameters=[str(db_path / "trade" / f"date={datadate}" / "*.parquet")])
 
         logger.info("loading quote")
         self.con.execute("CREATE OR REPLACE TABLE quote AS SELECT * FROM read_parquet($1, hive_partitioning=True)",
@@ -130,12 +130,28 @@ class QueryExecutorDuckDBCon:
         return table_stats_dict
 
     def prepare_run(self) -> None:
-        self.con.execute("DROP TABLE IF EXISTS res")
+        pass
 
     def execute_query(self, idx: int, tags: Set, query_str: str, parameter: str, runidx: int):
-        params = [parameter] if parameter else []
-        return self.con.sql(query_str, params=params).df()
+        params = [self.params[parameter]] if parameter in self.params else []
+        try:
+            # Don't use con.sql: https://duckdb.org/docs/lts/clients/python/relational_api#sql
+            return self.con.execute(query_str, parameters=params).df()
+        except:
+            # Hack around PIVOT parameter issue
+            if 'PIVOT' not in query_str:
+                raise
 
+            p = params[0]
+            if isinstance(p, str):
+                p = f"'{p}'"
+            elif type(p) is list:
+                p = [f"'{x}'" for x in p]
+                p = ', '.join(p)
+                p = '(' + p + ')'
+
+            q = query_str.replace('$1', p)
+            return self.con.execute(q, parameters=[]).df()
 
     def write_csv(self, res, outFile: Path) -> None:
         tscols = [row[0] for row in self.con.sql("SELECT column_name FROM (DESCRIBE res) WHERE column_type = 'TIMESTAMP_NS'").fetchall()]
