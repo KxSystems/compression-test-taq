@@ -33,27 +33,21 @@ class QueryExecutorPandas:
         logger.info("loading root objects into memory")
         exnames = pd.read_parquet(db_path / "exnames.parquet")
         logger.info("loading master")
-        master_ds = ds.dataset(db_path / "master", format="parquet", partitioning="hive")
-        master = master_ds.to_table(filter=(ds.field("date") == d))
-        del master_ds
-        master = master.drop("date").set_column(master.schema.get_field_index("sym"), "sym", master.column("sym").dictionary_encode())
+        master = ds.dataset(db_path / "master" / f"date={d}", format="parquet").to_table()
+        master = master.set_column(master.schema.get_field_index("sym"), "sym", master.column("sym").dictionary_encode())
         self.master = master.to_pandas()
         del master
 
         logger.info("loading trade")
-        trade_ds = ds.dataset(db_path / "trade", format="parquet", partitioning="hive")
-        trade = trade_ds.to_table(filter=(ds.field("date") == d))
-        del trade_ds
-        trade = trade.drop("date").set_column(trade.schema.get_field_index("sym"), "sym", trade.column("sym").dictionary_encode())
+        trade = ds.dataset(db_path / "trade" / f"date={d}", format="parquet").to_table()
+        trade = trade.set_column(trade.schema.get_field_index("sym"), "sym", trade.column("sym").dictionary_encode())
         logger.info("converting to pandas")
         self.trade = trade.to_pandas()
         del trade
 
         logger.info("loading quote")
-        quote_ds = ds.dataset(db_path / "quote", format="parquet", partitioning="hive")
-        quote = quote_ds.to_table(filter=(ds.field("date") == d))
-        del quote_ds
-        quote = quote.drop("date").set_column(quote.schema.get_field_index("sym"), "sym", quote.column("sym").dictionary_encode())
+        quote = ds.dataset(db_path / "quote" / f"date={d}", format="parquet").to_table()
+        quote = quote.set_column(quote.schema.get_field_index("sym"), "sym", quote.column("sym").dictionary_encode())
         logger.info("converting to pandas")
         self.quote = quote.to_pandas()
         del quote
