@@ -102,7 +102,7 @@ $ SYMBOLSTOREDAS=ROWGROUP DATAFORMAT=parquet ./generateDB.sh ${NYSEBENCHMARKDIR}
 Once the on-disk data has been generated, you can start the benchmark. To test engines with 0, 4, 16, and 64 secondary threads, run:
 
 ```bash
-$ export FLUSH=./flush/noflush.sh
+$ export FLUSH=${PWD}/flush/noflush.sh
 $ export NUMANODE=0
 $ ./testInMemoryEngines.sh --db-dir ${NYSEBENCHMARKDIR}/${SIZE} --param-dir ./artifacts/parameters/${SIZE} --date ${DATE}  --threads "0 4 16 64" --result-dir ./results/dataformats/${SIZE} --stats-dir ./stats/$SIZE
 ```
