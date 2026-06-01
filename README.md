@@ -104,7 +104,7 @@ Once the on-disk data has been generated, you can start the benchmark. To test e
 ```bash
 $ export FLUSH=./flush/noflush.sh
 $ export NUMANODE=0
-$ ./testInMemoryEngines --db-dir ${NYSEBENCHMARKDIR}/${SIZE} --param-dir ./artifacts/parameters/${SIZE} --date ${DATE}  --threads "0 4 16 64" --result-dir ./results/dataformats/${SIZE} --stats-dir ./stats/$SIZE
+$ ./testInMemoryEngines.sh --db-dir ${NYSEBENCHMARKDIR}/${SIZE} --param-dir ./artifacts/parameters/${SIZE} --date ${DATE}  --threads "0 4 16 64" --result-dir ./results/dataformats/${SIZE} --stats-dir ./stats/$SIZE
 ```
 
 ## Query Engine On-disk Benchmark
