@@ -18,7 +18,9 @@ class QueryExecutorDuckDBCon:
     def __init__(self, con, param: Dict[str, Any], indexOnsym: bool=False, sortCols: Optional[List[str]]=None) -> None:
         self.con: duckdb.DuckDBPyConnection = con
         self.params: Dict[str, Any] = param
-        self.params['timeBuckets'] = pd.DataFrame(list(self.params['timeBuckets'].items()), columns=['bucket', 'bound'])
+        timebuckets_rows = list(self.params.pop('timeBuckets').items())
+        self.con.execute("CREATE TABLE timeBuckets (bucket VARCHAR, bound INTERVAL)")
+        self.con.executemany("INSERT INTO timeBuckets VALUES (?, ?)", timebuckets_rows)
         self.indexOnsym: bool = indexOnsym
         self.sortCols: List[str] = sortCols if sortCols is not None else ["time", "rn"]
 
@@ -29,14 +31,16 @@ class QueryExecutorDuckDBCon:
         t_load_start = time.perf_counter_ns()
         self.con.execute("CREATE TABLE exnames AS SELECT * FROM read_parquet($1)", parameters=[str(db_path / "exnames.parquet")])
 
-        self.con.execute("CREATE TABLE master AS SELECT * FROM read_parquet($1, hive_partitioning=True) WHERE date = $2", parameters=[str(db_path / "master/date=*/*.parquet"), datadate])
-        self.con.execute("SELECT * EXCLUDE (date) FROM master WHERE date=$1", parameters=[datadate])
+        self.con.execute("CREATE TABLE master AS SELECT * EXCLUDE (date) FROM read_parquet($1, hive_partitioning=True)",
+            parameters=[str(db_path / "master" / f"date={datadate}" / "*.parquet")])
 
         logger.info("loading trade")
-        self.con.execute("CREATE TABLE trade AS SELECT * FROM read_parquet($1, hive_partitioning=True) where date = $2", parameters=[str(db_path / "trade/date=*/*.parquet"), datadate])
+        self.con.execute("CREATE TABLE trade AS SELECT * FROM read_parquet($1, hive_partitioning=True)",
+            parameters=[str(db_path / "trade" / f"date={datadate}" / "*.parquet")])
 
         logger.info("loading quote")
-        self.con.execute("CREATE TABLE quote AS SELECT * FROM read_parquet($1, hive_partitioning=True) where date = $2", parameters=[str(db_path / "quote/date=*/*.parquet"), datadate])
+        self.con.execute("CREATE TABLE quote AS SELECT * FROM read_parquet($1, hive_partitioning=True)",
+            parameters=[str(db_path / "quote" / f"date={datadate}" / "*.parquet")])
         t_load_elapsed = time.perf_counter_ns() - t_load_start
         io_load_end = ios.get_io_stat()
         writer.writerow(row_start + [0, "load", "load a partition into memory", "success", t_load_elapsed, None, None,
@@ -125,18 +129,15 @@ class QueryExecutorDuckDBCon:
         self.con.execute("DROP TABLE IF EXISTS res")
 
     def execute_query(self, idx: int, tags: Set, query_str: str, parameter: str, runidx: int):
-        eval_context = {
-            "duckdb": duckdb,
-            "timedelta": timedelta,
-            "con": self.con,
-            **self.params
-        }
         try:
-            eval(f"con.sql(\"CREATE TABLE res AS {query_str}\", params=[{parameter}])", eval_context)
-        except Exception:
+            params = [parameter] if parameter else []
+            self.con.sql(f"CREATE TABLE res AS {query_str}", params=params)
+        except Exception as e:
+            logger.error("query execution failed: %s", e)
             self.con.rollback()
             raise
         return self.con.table('res')
+
 
     def write_csv(self, res, outFile: Path) -> None:
         tscols = [row[0] for row in self.con.sql("SELECT column_name FROM (DESCRIBE res) WHERE column_type = 'TIMESTAMP_NS'").fetchall()]
