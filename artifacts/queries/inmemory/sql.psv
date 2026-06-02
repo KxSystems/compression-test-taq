@@ -1,7 +1,7 @@
 idx|tags|query|parameter
 1||SELECT * FROM quote WHERE time<'0D8'|
 2||SELECT * FROM trade WHERE seq=0|
-3||SELECT * FROM trade WHERE 0 < seq AND 0 < price AND time BETWEEN '0D0' AND '1D0' AND size < 2147483647|
+3||SELECT * FROM trade WHERE 0 < seq AND 0 < price AND time BETWEEN '0D0' AND '1D0' AND size <= 2147483646|
 4||SELECT * FROM trade WHERE time BETWEEN '0D10:00:00' AND '0D10:00:10'|
 5||SELECT * FROM quote WHERE sym = $1 AND time BETWEEN '0D08:30' AND '0D16:30'|anInfreqInstr
 6||SELECT * FROM quote WHERE sym IN $1 AND time BETWEEN '0D08:30' AND '0D08:35'|hundredInstrs
