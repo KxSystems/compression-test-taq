@@ -70,7 +70,7 @@ class QueryExecutorDuckDBCon:
         self.con.execute("CREATE OR REPLACE TABLE quote AS SELECT make_timestamp_ns(epoch_ns(date)+time) AS time, " +
             "make_timestamp_ns(epoch_ns(date)+participantTimestamp) AS participantTimestamp, " +
             "make_timestamp_ns(epoch_ns(date)+FINRAADFTimestamp) AS FINRAADFTimestamp, " +
-            "row_number() OVER () AS rn, * EXCLUDE (date, time, participantTimestamp, FINRAADFTimestamp) FROM quote WHERE date = $1", parameters=[datadate])  # rowid ensures stable sorting for same-timestamp records
+            "row_number() OVER () AS rn, * EXCLUDE (date, time, participantTimestamp, FINRAADFTimestamp) FROM quote")  # rowid ensures stable sorting for same-timestamp records
         logger.info("applying transformations")
         self.con.execute("CREATE TYPE sym_quote_enum AS ENUM (SELECT DISTINCT sym FROM quote)")
         self.con.execute("ALTER TABLE quote ALTER sym TYPE sym_quote_enum")
