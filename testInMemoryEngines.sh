@@ -8,7 +8,7 @@ source "${script_dir}/util.sh"
 THREAD_NRS=(1 4)
 RESULT_DIR="./results"
 STATS_DIR="./stats"
-ENGINES="kdb,duckdb,polars,pykx,pandas"
+ENGINES="kdb,sql,duckdb,polars,pykx,pandas"
 
 usage() {
     cat <<EOF
@@ -20,7 +20,7 @@ Options:
   -d, --date         Target date
   -t, --threads      Space-separated list of thread counts, e.g., "1 4 16", (default: "1 4")
   -r, --result-dir   Directory for query results (default: ./results)
-  -e, --engines      Comma-separated list of engines to test (default: "kdb,duckdb,polars,pykx,pandas")
+  -e, --engines      Comma-separated list of engines to test (default: "kdb,sql,duckdb,polars,pykx,pandas")
   -h, --help         Show this help message
   --stats-dir        Directory to save table stats (default: ./stats)
 EOF
@@ -68,8 +68,10 @@ function execute_queries () {
             $(get_numa_config) $QEXEC ./src/runQueries.q ${COMMONPARAMS} -date $DATE -db ${DB_DIR}/kdb -format kdbinmemorygrouped -queryfile ./artifacts/queries/inmemory/kdb_grouped.psv -result ${RESULT_DIR}/kdbInMemoryGrouped_${s}Threads.psv -s ${s}
             $(get_numa_config) $QEXEC ./src/runQueries.q ${COMMONPARAMS} -date $DATE -db ${DB_DIR}/kdb -format kdbinmemoryparted -queryfile ./artifacts/queries/inmemory/kdb_grouped.psv -result ${RESULT_DIR}/kdbInMemoryParted_${s}Threads.psv -s ${s}
             $(get_numa_config) $QEXEC ./src/runQueries.q ${COMMONPARAMS} -date $DATE -db ${DB_DIR}/kdb -format kdbinmemorytabledict -queryfile ./artifacts/queries/inmemory/kdb_tabledict.psv -result ${RESULT_DIR}/kdbInMemoryTableDict_${s}Threads.psv -s ${s}
-            $(get_numa_config) $QEXEC ./src/runQueries.q ${COMMONPARAMS} -date $DATE -db ${DB_DIR}/kdb -format kdbinmemorygrouped -engine sql -queryfile ./artifacts/queries/inmemory/sql.psv -result ${RESULT_DIR}/sqlInMemoryGrouped_${s}Threads.psv -s ${s}
             EACHPEACH=peach $(get_numa_config) $QEXEC ./src/runQueries.q ${COMMONPARAMS} -date $DATE -db ${DB_DIR}/kdb -format kdbinmemorytabledict -queryfile ./artifacts/queries/inmemory/kdb_tabledict.psv -result ${RESULT_DIR}/kdbInMemoryTableDictPeach_${s}Threads.psv -s ${s}
+        fi
+        if engine_enabled sql; then
+            $(get_numa_config) $QEXEC ./src/runQueries.q ${COMMONPARAMS} -date $DATE -db ${DB_DIR}/kdb -format kdbinmemorygrouped -engine sql -queryfile ./artifacts/queries/inmemory/sql.psv -result ${RESULT_DIR}/sqlInMemoryGrouped_${s}Threads.psv -s ${s}
         fi
         if engine_enabled duckdb; then
             DUCKDB_THREADS=$(( s > 1 ? s : 1 )) $(get_numa_config) python3 pysrc/run_queries.py ${COMMONPARAMS} -date $DATE -db ${DB_DIR}/parquet/rowgroup -engine duckdb_con_inmemory -queryfile ./artifacts/queries/inmemory/duckdb.psv -result ${RESULT_DIR}/duckdbInMemory_${s}Threads.psv
@@ -98,6 +100,9 @@ function get_table_stats () {
         /usr/bin/time -v $QEXEC ./src/runQueries.q ${COMMONPARAMS} -date $DATE -db ${DB_DIR}/kdb -format kdbinmemorygrouped -queryfile ./artifacts/queries/inmemory/kdb_grouped.psv -tags none -tableStatsDir ${STATS_DIR}/inmemory/kdb_grouped -q 2> ${STATS_DIR}/inmemory/kdb_grouped/os.txt
         /usr/bin/time -v $QEXEC ./src/runQueries.q ${COMMONPARAMS} -date $DATE -db ${DB_DIR}/kdb -format kdbinmemoryparted -queryfile ./artifacts/queries/inmemory/kdb_grouped.psv -tags none -tableStatsDir ${STATS_DIR}/inmemory/kdb_parted -q 2> ${STATS_DIR}/inmemory/kdb_parted/os.txt
         /usr/bin/time -v $QEXEC ./src/runQueries.q ${COMMONPARAMS} -date $DATE -db ${DB_DIR}/kdb -format kdbinmemorytabledict -queryfile ./artifacts/queries/inmemory/kdb_tabledict.psv -tags none -tableStatsDir ${STATS_DIR}/inmemory/kdb_tabledict -q 2> ${STATS_DIR}/inmemory/kdb_tabledict/os.txt
+    fi
+    if engine_enabled sql; then # same as kdb+ inmemory grouped
+        /usr/bin/time -v $QEXEC ./src/runQueries.q ${COMMONPARAMS} -date $DATE -db ${DB_DIR}/kdb -format kdbinmemorygrouped -queryfile ./artifacts/queries/inmemory/kdb_grouped.psv -tags none -tableStatsDir ${STATS_DIR}/inmemory/kdb_grouped -q 2> ${STATS_DIR}/inmemory/kdb_grouped/os.txt
     fi
     if engine_enabled duckdb; then
         /usr/bin/time -v python3 pysrc/run_queries.py ${COMMONPARAMS} -date $DATE -db ${DB_DIR}/parquet/rowgroup -engine duckdb_con_inmemory -queryfile ./artifacts/queries/inmemory/duckdb.psv -tags none -tableStatsDir ${STATS_DIR}/inmemory/duckdb 2> ${STATS_DIR}/inmemory/duckdb/os.txt
