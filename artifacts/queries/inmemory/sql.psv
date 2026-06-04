@@ -1,7 +1,7 @@
 idx|tags|query|parameter
 1||SELECT * FROM quote WHERE time<'0D8'|
 2||SELECT * FROM trade WHERE seq=0|
-3||SELECT * FROM trade WHERE 0 < seq AND 0 < price AND time BETWEEN '0D0' AND '1D0' AND size <= 2147483646|
+3||SELECT * FROM trade WHERE 0 < seq AND 0e < price AND time BETWEEN '0D0' AND '1D0' AND size <= 2147483646|
 4||SELECT * FROM trade WHERE time BETWEEN '0D10:00:00' AND '0D10:00:10'|
 5||SELECT * FROM quote WHERE sym = $1 AND time BETWEEN '0D08:30' AND '0D16:30'|anInfreqInstr
 6||SELECT * FROM quote WHERE sym IN $1 AND time BETWEEN '0D08:30' AND '0D08:35'|hundredInstrs
@@ -24,7 +24,7 @@ idx|tags|query|parameter
 23||SELECT SUM(sizes * spread) / SUM(sizes) AS avgWeightedSpread, STDDEV_POP(spread) AS devSpread, MAX(spread) AS maxSpread, MIN(spread) AS minSpread FROM (SELECT ex, asize + bsize AS sizes, ask - bid AS spread FROM quote WHERE sym=$1) GROUP BY exnames(ex)|mostFreqInstr
 24||SELECT SUM((asize + bsize) * (ask - bid)) / SUM(asize + bsize) AS avgWeightedSpread, STDDEV_POP(ask - bid) AS devSpread, MAX(ask - bid) AS maxSpread, MIN(ask - bid) AS minSpread FROM quote WHERE sym IN $1 GROUP BY sym, exnames(ex)|hundredInstrs
 25||SELECT SUM((asize + bsize) * (ask - bid)) / SUM(asize + bsize) AS avgWeightedSpread, STDDEV_POP(ask - bid) AS devSpread, MAX(ask - bid) AS maxSpread, MIN(ask - bid) AS minSpread FROM quote WHERE shortSaleRestrictionIndicator='0' GROUP BY exnames(ex)|
-26||SELECT DISTINCT sym, ex FROM trade WHERE size>700000|
+26||SELECT DISTINCT sym, ex FROM trade WHERE size>700000i|
 27||SELECT sum(bsize * bid) / sum(bsize) AS weightedBidPrice, sum(asize * ask) / sum(asize) AS weightedOfferPrice FROM quote WHERE sym IN $1 GROUP BY sym|twentyInstrs
 28|||
 29|||
@@ -37,7 +37,7 @@ idx|tags|query|parameter
 36|||
 37|||
 38|||
-39||SELECT sym, timebucketsbtep(time), COUNT(*) AS cnt, SUM(size) FROM trade WHERE NOT corr=0 GROUP BY sym, timebucketsbtep(time)|
+39||SELECT sym, timebucketsstep(time), COUNT(*) AS cnt, SUM(size) FROM trade WHERE NOT corr=0 GROUP BY sym, timebucketsstep(time)|
 40||SELECT sym, xbar('0D00:05', time), FIRST(price) AS o, MAX(price) AS h, MIN(price) AS l, LAST(price) AS c, SUM(size) AS s FROM trade WHERE sym IN $1 AND stop IS NOT NULL GROUP BY sym, xbar('0D00:05', time)|hundredInstrs
 41||SELECT *, (CAST(bsize - asize as float)) / (bsize + asize) AS inbal FROM (SELECT xbar('0D00:01', time), first(asize), first(bsize) FROM quote WHERE sym = $1 GROUP BY xbar('0D00:01', time))|anInfreqInstr
 42||SELECT SUM(asize * ask) AS wsumAsk, SUM(bid * bsize) AS wsumBid, STDDEV(asize) AS sdevasksize, STDDEV(bid) AS sdevbid, CORR(ask, bid) AS corPrice, CORR(asize, bsize) AS corSize FROM quote WHERE sym IN $1 GROUP BY sym|fivehundredInfreqInstrs

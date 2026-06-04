@@ -341,14 +341,10 @@ $[FORMAT like "PARQUET*"; [
 if[not FORMAT ~ `KDBINMEMORYTABLEDICT;
   if[`tableStatsDir in ko; captureTableStats[hsym `$o `tableStatsDir] each `master`trade`quote]];
 if[ENGINE ~ `SQL;
-  .s.init[];
-  .s.F[`stddev_pop]:.s.fx dev;
-  .s.F[`stddev_samp]:.s.fx sdev;
-  .s.F[`stddev]:.s.fx sdev;
-  .s.F[`corr]:.s.fx {x cor y};
-  .s.F[`median]:.s.fx med;
-  .s.F[`exnames]:.s.fx{exnames x};
-  .s.F[`timebucketsbtep]:.s.fx{timeBucketsStep x}
+  ([init]):use`kx.sql;
+  init[];
+  .s.F[`exnames]: .s.fx exnames;
+  .s.F[`timebucketsstep]: .s.fx {timeBucketsStep x} / steped dictionary is not yet supported
   ]
 
 .qlog.info "Loading parameters from ", 1_string PARAMDIR
