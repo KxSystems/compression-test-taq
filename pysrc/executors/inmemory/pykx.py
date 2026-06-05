@@ -22,6 +22,9 @@ class QueryExecutorPyKXInMemory:
         self.trade: kx.Table = None
         self.params: Dict[str, Any] = param
         kx.q['timeBucketsStep'] = kx.q('{`s#value[x]!key x}', param['timeBuckets'])
+        kx.q._register("./src/pivot")
+        kx.pivot = kx.q('.pvt.pivot')
+        kx.fills = kx.q('fills')
 
     def load_resources(self, db_path: Path, datadate: datetime.date, writer, row_start, ios) -> None:
         logger.info("loading hive-partitioned tables at %s", db_path)
