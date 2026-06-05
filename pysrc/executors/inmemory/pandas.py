@@ -6,7 +6,7 @@ import pyarrow.dataset as ds
 import logging
 from datetime import timedelta, datetime
 from pathlib import Path
-from typing import Any, Dict, Optional, Set
+from typing import Any, Dict, Set
 import time
 
 logger = logging.getLogger(__name__)
@@ -19,10 +19,13 @@ class QueryExecutorPandas:
     """
 
     def __init__(self, param: Dict[str, Any]) -> None:
-        self.master: Optional[pd.DataFrame] = None
-        self.trade: Optional[pd.DataFrame] = None
-        self.quote: Optional[pd.DataFrame] = None
         self.params: Dict[str, Any] = param
+        self.eval_context: Dict[str, Any] = {
+            "pd": pd,
+            "np": np,
+            "timedelta": timedelta,
+            **param,
+        }
 
     def load_resources(self, db_path: Path, datadate: datetime.date, writer, row_start, ios) -> None:
         logger.info("loading hive-partitioned tables at %s", db_path)
@@ -34,23 +37,15 @@ class QueryExecutorPandas:
         exnames = pd.read_parquet(db_path / "exnames.parquet")
         logger.info("loading master")
         master = ds.dataset(db_path / "master" / f"date={d}", format="parquet").to_table()
-        master = master.set_column(master.schema.get_field_index("sym"), "sym", master.column("sym").dictionary_encode())
-        self.master = master.to_pandas()
-        del master
+        master = master.set_column(master.schema.get_field_index("sym"), "sym", master.column("sym").dictionary_encode()).to_pandas()
 
         logger.info("loading trade")
         trade = ds.dataset(db_path / "trade" / f"date={d}", format="parquet").to_table()
-        trade = trade.set_column(trade.schema.get_field_index("sym"), "sym", trade.column("sym").dictionary_encode())
-        logger.info("converting to pandas")
-        self.trade = trade.to_pandas()
-        del trade
+        trade = trade.set_column(trade.schema.get_field_index("sym"), "sym", trade.column("sym").dictionary_encode()).to_pandas()
 
         logger.info("loading quote")
         quote = ds.dataset(db_path / "quote" / f"date={d}", format="parquet").to_table()
-        quote = quote.set_column(quote.schema.get_field_index("sym"), "sym", quote.column("sym").dictionary_encode())
-        logger.info("converting to pandas")
-        self.quote = quote.to_pandas()
-        del quote
+        quote = quote.set_column(quote.schema.get_field_index("sym"), "sym", quote.column("sym").dictionary_encode()).to_pandas()
         t_load_elapsed = time.perf_counter_ns() - t_load_start
         io_load_end = ios.get_io_stat()
         writer.writerow(row_start + [0, "load", "load a partition into memory", "success", t_load_elapsed, None, None,
@@ -59,32 +54,36 @@ class QueryExecutorPandas:
 
         io_load_start = ios.get_io_stat()
         t_load_start = time.perf_counter_ns()
-        logger.info("Shape of master: %s x %s", self.master.shape[0], self.master.shape[1])
-        self.master['ex'] = pd.Categorical(self.master['ex'], categories=sorted(self.master['ex'].unique()), ordered=True)
-        self.params["exnames"] = dict(zip(exnames["ex"], exnames["name"]))
-        self.trade['ex'] = pd.Categorical(self.trade['ex'], categories=sorted(self.trade['ex'].unique()), ordered=True)
-        self.quote['ex'] = pd.Categorical(self.quote['ex'], categories=sorted(self.quote['ex'].unique()), ordered=True)
+        logger.info("Shape of master: %s x %s", master.shape[0], master.shape[1])
+        master['ex'] = pd.Categorical(master['ex'], categories=sorted(master['ex'].unique()), ordered=True)
+        trade['ex'] = pd.Categorical(trade['ex'], categories=sorted(trade['ex'].unique()), ordered=True)
+        quote['ex'] = pd.Categorical(quote['ex'], categories=sorted(quote['ex'].unique()), ordered=True)
         t_load_elapsed = time.perf_counter_ns() - t_load_start
         io_load_end = ios.get_io_stat()
         writer.writerow(row_start + [-1, "load", "transform", "success", t_load_elapsed, None, None,
                          None, io_load_end - io_load_start, None, None])
-        logger.info("Shape of trade: %s x %s", self.trade.shape[0], self.trade.shape[1])
-        logger.info("Shape of quote: %s x %s", self.quote.shape[0], self.quote.shape[1])
+        logger.info("Shape of trade: %s x %s", trade.shape[0], trade.shape[1])
+        logger.info("Shape of quote: %s x %s", quote.shape[0], quote.shape[1])
 
 
         io_load_start = ios.get_io_stat()
         t_load_start = time.perf_counter_ns()
-        self.trade = self.trade.sort_values(by="time", kind='stable')
-        self.quote = self.quote.sort_values(by="time", kind='stable')
+        trade = trade.sort_values(by="time", kind='stable')
+        quote = quote.sort_values(by="time", kind='stable')
         t_load_elapsed = time.perf_counter_ns() - t_load_start
         io_load_end = ios.get_io_stat()
         writer.writerow(row_start + [-2, "load", "sort by time", "success", t_load_elapsed, None, None,
                          None, io_load_end - io_load_start, None, None])
 
+        self.eval_context["exnames"] = dict(zip(exnames["ex"], exnames["name"]))
+        self.eval_context["master"] = master
+        self.eval_context["trade"] = trade
+        self.eval_context["quote"] = quote
+
     def getTableStats(self) -> Dict[str, Any]:
         table_stats_dict = {}
         for tNames in ["master", "trade", "quote"]:
-            df = getattr(self, tNames)
+            df = self.eval_context[tNames]
             table_stats = {
                 "name": tNames,
                 "size (MB)": int(df.memory_usage(deep=True).sum() / 1024**2),
@@ -102,16 +101,7 @@ class QueryExecutorPandas:
         pass
 
     def execute_query(self, idx: int, tags: Set, query_str: str, parameter: str, runidx: int):
-        eval_context = {
-            "pd": pd,
-            "np": np,
-            "timedelta": timedelta,
-            "master": self.master,
-            "trade": self.trade,
-            "quote": self.quote,
-            **self.params
-        }
-        return eval(query_str, eval_context)
+        return eval(query_str, self.eval_context)
 
     def write_csv(self, res, outFile: Path) -> None:
         if isinstance(res.index, pd.MultiIndex):

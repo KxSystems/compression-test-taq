@@ -131,7 +131,7 @@ class QueryExecutorDuckDBCon:
     def execute_query(self, idx: int, tags: Set, query_str: str, parameter: str, runidx: int):
         try:
             params = [parameter] if parameter else []
-            self.con.sql(f"CREATE TABLE res AS {query_str}", params=params)
+            self.con.execute(f"CREATE TABLE res AS {query_str}", parameters=params)
         except Exception as e:
             logger.error("query execution failed: %s", e)
             self.con.rollback()

@@ -340,16 +340,17 @@ $[FORMAT like "PARQUET*"; [
   ]; [.qlog.error "Unknown format ", FORMAT; exit 1]]
 if[not FORMAT ~ `KDBINMEMORYTABLEDICT;
   if[`tableStatsDir in ko; captureTableStats[hsym `$o `tableStatsDir] each `master`trade`quote]];
-if[ENGINE ~ `SQL;
-  ([init]):use`kx.sql;
-  init[];
-  .s.F[`exnames]: .s.fx exnames;
-  .s.F[`timebucketsstep]: .s.fx {timeBucketsStep x} / steped dictionary is not yet supported
-  ]
 
 .qlog.info "Loading parameters from ", 1_string PARAMDIR
 system "l src/getQueryParameters.q"
 getQueryParameters PARAMDIR
+
+if[ENGINE ~ `SQL;
+  ([init]):use`kx.sql;
+  init[];
+  .s.F[`exnames]: .s.fx exnames;
+  .s.F[`timebucketsstep]: .s.fx timeBucketsStep;
+  ]
 
 if[not QueryTable[`idx] ~ QueryMetaTable`idx;
   .qlog.error "Index mismatch between the query and the query meta files";

@@ -3,7 +3,7 @@ import polars as pl
 import logging
 from datetime import timedelta, datetime
 from pathlib import Path
-from typing import Any, Dict, Optional, Set
+from typing import Any, Dict, Set
 
 import time
 
@@ -18,13 +18,15 @@ class QueryExecutorPolarsInMemory:
     """
 
     def __init__(self, param: Dict[str, Any], datadate: datetime.date) -> None:
-        self.datadate: Optional[Any] = datadate
-        self.master: Optional[pl.DataFrame] = None
-        self.trade: Optional[pl.DataFrame] = None
-        self.quote: Optional[pl.DataFrame] = None
         self.params: Dict[str, Any] = param
         self.params['timeBuckets'] = pl.DataFrame(list(self.params['timeBuckets'].items()), schema=['bucket', 'bound'])
         self.params['timeBuckets'] = self.params['timeBuckets'].with_columns(pl.col('bound').cast(pl.Duration('ns')))
+        self.eval_context: Dict[str, Any] = {
+            "pl": pl,
+            "timedelta": timedelta,
+            "datadate": datadate,
+            **self.params,
+        }
 
     def load_resources(self, db_path: Path, datadate: datetime.date, writer, row_start, ios) -> None:
         logger.info("loading hive-partitioned tables at %s", db_path)
@@ -32,12 +34,11 @@ class QueryExecutorPolarsInMemory:
         io_load_start = ios.get_io_stat()
         t_load_start = time.perf_counter_ns()
         exnames = pl.scan_parquet(db_path / "exnames.parquet").collect()
-        self.params["exnames"] = dict(zip(exnames["ex"], exnames["name"]))
-        self.master = pl.scan_parquet(db_path / "master" / f"date={datadate}" / "*.parquet").collect()
+        master = pl.scan_parquet(db_path / "master" / f"date={datadate}" / "*.parquet").collect()
         logger.info("loading trade")
-        self.trade = pl.scan_parquet(db_path / "trade" / f"date={datadate}" / "*.parquet").collect()
+        trade = pl.scan_parquet(db_path / "trade" / f"date={datadate}" / "*.parquet").collect()
         logger.info("loading quote")
-        self.quote = pl.scan_parquet(db_path / "quote" / f"date={datadate}" / "*.parquet").collect()
+        quote = pl.scan_parquet(db_path / "quote" / f"date={datadate}" / "*.parquet").collect()
         t_load_elapsed = time.perf_counter_ns() - t_load_start
         io_load_end = ios.get_io_stat()
         writer.writerow(row_start + [0, "load", "load a partition into memory", "success", t_load_elapsed, None, None,
@@ -46,12 +47,12 @@ class QueryExecutorPolarsInMemory:
 
         io_load_start = ios.get_io_stat()
         t_load_start = time.perf_counter_ns()
-        self.master = self.master.with_columns(pl.col("sym").cast(pl.Categorical))
-        logger.info("Shape of master: %s x %s", self.master.shape[0], self.master.shape[1])
-        self.trade = self.trade.with_columns(pl.col("sym").cast(pl.Categorical))
-        logger.info("Shape of trade: %s x %s", self.trade.shape[0], self.trade.shape[1])
-        self.quote = self.quote.with_columns(pl.col("sym").cast(pl.Categorical))
-        logger.info("Shape of quote: %s x %s", self.quote.shape[0], self.quote.shape[1])
+        master = master.with_columns(pl.col("sym").cast(pl.Categorical))
+        logger.info("Shape of master: %s x %s", master.shape[0], master.shape[1])
+        trade = trade.with_columns(pl.col("sym").cast(pl.Categorical))
+        logger.info("Shape of trade: %s x %s", trade.shape[0], trade.shape[1])
+        quote = quote.with_columns(pl.col("sym").cast(pl.Categorical))
+        logger.info("Shape of quote: %s x %s", quote.shape[0], quote.shape[1])
         t_load_elapsed = time.perf_counter_ns() - t_load_start
         io_load_end = ios.get_io_stat()
         writer.writerow(row_start + [-1, "load", "transform", "success", t_load_elapsed, None, None,
@@ -60,17 +61,22 @@ class QueryExecutorPolarsInMemory:
 
         io_load_start = ios.get_io_stat()
         t_load_start = time.perf_counter_ns()
-        self.trade = self.trade.sort("time")
-        self.quote = self.quote.sort("time")
+        trade = trade.sort("time")
+        quote = quote.sort("time")
         t_load_elapsed = time.perf_counter_ns() - t_load_start
         io_load_end = ios.get_io_stat()
         writer.writerow(row_start + [-2, "load", "sort by time", "success", t_load_elapsed, None, None,
                          None, io_load_end - io_load_start, None, None])
 
+        self.eval_context["exnames"] = dict(zip(exnames["ex"], exnames["name"]))
+        self.eval_context["master"] = master
+        self.eval_context["trade"] = trade
+        self.eval_context["quote"] = quote
+
     def getTableStats(self) -> Dict[str, Any]:
         table_stats_dict = {}
         for tNames in ["master", "trade", "quote"]:
-            df = getattr(self, tNames)
+            df = self.eval_context[tNames]
             table_stats = {
                 "name": tNames,
                 "size (MB)": int(df.estimated_size("mb")),
@@ -88,16 +94,7 @@ class QueryExecutorPolarsInMemory:
         pass
 
     def execute_query(self, idx: int, tags: Set, query_str: str, parameter: str, runidx: int):
-        eval_context = {
-            "pl": pl,
-            "timedelta": timedelta,
-            "datadate": self.datadate,
-            "master": self.master,
-            "trade": self.trade,
-            "quote": self.quote,
-            **self.params
-        }
-        return eval(query_str, eval_context)
+        return eval(query_str, self.eval_context)
 
     @staticmethod
     def _fmt_minute(col: str) -> pl.Expr:
