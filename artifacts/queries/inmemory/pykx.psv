@@ -1,7 +1,7 @@
 idx|tags|query|parameter
 1||quote.select(where=kx.Column('time') <  timedelta(hours=8))|
 2||trade.select(where=kx.Column('seq') == kx.IntAtom(0))|
-3||trade.select(where=(kx.Column('seq') > kx.IntAtom(0)) & (kx.Column('price') > kx.RealAtom(0)) & kx.Column('time').within(timedelta(), timedelta(23, 59, 59, 999999)) & (kx.Column('size') < kx.IntAtom.inf))|
+3||trade.select(where=(kx.Column('seq') > kx.IntAtom(0)) & (kx.Column('price') > kx.RealAtom(0)) & kx.Column('time').within(timedelta(), timedelta(days=1)) & (kx.Column('size') < kx.IntAtom.inf))|
 4||trade.select(where=kx.Column('time').within(timedelta(hours=10), timedelta(hours=10, seconds=10)))|
 5||quote.select(where=(kx.Column('sym') == anInfreqInstr) & kx.Column('time').within(timedelta(hours=8, minutes=30), timedelta(hours=16, minutes=30)))|
 6||quote.select(where=(kx.Column('sym').isin(hundredInstrs)) & kx.Column('time').within(timedelta(hours=8, minutes=30), timedelta(hours=8, minutes=35)))|
