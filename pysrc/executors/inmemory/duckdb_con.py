@@ -98,9 +98,9 @@ class QueryExecutorDuckDBCon:
         if self.indexOnsym:
             io_load_start = ios.get_io_stat()
             t_load_start = time.perf_counter_ns()
-            logger.info("adding index on sym")
+            logger.info("adding index on sym in trade")
             self.con.execute("CREATE INDEX IF NOT EXISTS idx_trade_sym ON trade (sym)")
-            logger.info("adding index on sym")
+            logger.info("adding index on sym in quote")
             self.con.execute("CREATE INDEX IF NOT EXISTS idx_quote_sym ON quote (sym)")
 
             t_load_elapsed = time.perf_counter_ns() - t_load_start
