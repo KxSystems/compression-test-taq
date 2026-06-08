@@ -29,16 +29,18 @@ class QueryExecutorPyKXInMemory:
         }
 
     def load_resources(self, db_path: Path, datadate: datetime.date, writer, row_start, ios) -> None:
-        logger.info("loading hive-partitioned tables at %s", db_path)
+        dpath = db_path / datadate.strftime('%Y.%m.%d')
+        logger.info("loading kdb+ tables at %s", dpath)
 
         io_load_start = ios.get_io_stat()
         t_load_start = time.perf_counter_ns()
-        db = kx.DB(path=db_path, change_dir=False)
-        master = db.master.select(where=kx.Column('date') == datadate).delete(columns=kx.Column('date')).select(where=kx.Column('i') > -1)
+        kx.q(f"sym: get `:{db_path}/sym")
+        kx.q(f"exnames: get `:{db_path}/exnames")
+        master = kx.q.get(dpath / "master").select(where=kx.Column('i') > -1)
         logger.info("Shape of master: %s x %s", master.shape[0], master.shape[1])
-        trade = db.trade.select(where=kx.Column('date') == datadate).delete(columns=kx.Column('date')).select(where=kx.Column('i') > -1)
+        trade = kx.q.get(dpath / "trade").select(where=kx.Column('i') > -1)
         logger.info("Shape of trade: %s x %s", trade.shape[0], trade.shape[1])
-        quote = db.quote.select(where=kx.Column('date') == datadate).delete(columns=kx.Column('date')).select(where=kx.Column('i') > -1)
+        quote = kx.q.get(dpath / "quote").select(where=kx.Column('i') > -1)
         logger.info("Shape of quote: %s x %s", quote.shape[0], quote.shape[1])
         t_load_elapsed = time.perf_counter_ns() - t_load_start
         io_load_end = ios.get_io_stat()
@@ -48,7 +50,9 @@ class QueryExecutorPyKXInMemory:
 
         io_load_start = ios.get_io_stat()
         t_load_start = time.perf_counter_ns()
+        logger.info("ordering trade by time")
         trade = trade.sort_values(by='time')
+        logger.info("ordering quote by time")
         quote = quote.sort_values(by='time')
         t_load_elapsed = time.perf_counter_ns() - t_load_start
         io_load_end = ios.get_io_stat()
@@ -58,7 +62,9 @@ class QueryExecutorPyKXInMemory:
 
         io_load_start = ios.get_io_stat()
         t_load_start = time.perf_counter_ns()
+        logger.info("adding index (grouped attribute) on sym in trade")
         trade = trade.grouped('sym')
+        logger.info("adding index (grouped attribute) on sym in quote")
         quote = quote.grouped('sym')
         t_load_elapsed = time.perf_counter_ns() - t_load_start
         io_load_end = ios.get_io_stat()
