@@ -274,7 +274,7 @@ runQuery: {[db: `C; device: `C; writerFN; tags; idx:`C; querytags; query:`C; par
   .Q.gc[];
   .qlog.info "[", idx, "] Running query third time";
   threadcount: system "s";
-  $[1<threadcount; [ / we can get memory usage only in single-threaded mode, otherwise set it to null
+  $[threadcount < 2; [ / we can get memory usage only in single-threaded mode, otherwise set it to null
     s: .z.p;
     res: .[.Q.ts; (value; enlist query); ::];
     e: .z.p;
@@ -283,14 +283,14 @@ runQuery: {[db: `C; device: `C; writerFN; tags; idx:`C; querytags; query:`C; par
       :()];
     memusage: last first res;
     res: last res];
-    [
-      s: .z.p;
-      res: @[value; query; ::];
-      e: .z.p;
-      if[10h ~ type res;
-        writerFN[idx; querytags; query; (res; ts[0], 2#0Nn; 0Nj; io, 2#0Nj; 0Nj)];
-        :()];
-      memusage: 0Nj]];
+  [
+    s: .z.p;
+    res: @[value; query; ::];
+    e: .z.p;
+    if[10h ~ type res;
+      writerFN[idx; querytags; query; (res; ts[0], 2#0Nn; 0Nj; io, 2#0Nj; 0Nj)];
+      :()];
+    memusage: 0Nj]];
   ts,: e-s;
   io,: getKBRead[device]`kB_read;
 
