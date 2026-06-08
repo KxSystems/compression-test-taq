@@ -19,7 +19,7 @@ if[`result in key o;
   .qlog.info "saving results to ", o `result;
   if[not ()~key `$resFile: ":", o `result; hdel `$resFile];
   resultH: hopen resFile;
-  resultH "compparam|threadcount|engineversion|idx|tags|query|status|run1timeNS|run2timeNS|run3timeNS|run1memKB|run1ioKB|run2ioKB|run3ioKB|ressizeKB\n"]
+  resultH "compparam|threadcount|engineversion|idx|tags|query|status|run1timeNS|run2timeNS|run3timeNS|run3memKB|run1ioKB|run2ioKB|run3ioKB|ressizeKB\n"]
 
 
 
@@ -210,10 +210,6 @@ loadKDBDB: {[db: `C; device: `C; writerFN]
   writerFN[0; enlist "load"; "load/mmap DB"; ("success"; ts, 2#0Nn; memusage; io, 2#0Nj; 0Nj)];
   }
 
-queryWrapper: $[ENGINE ~ `SQL;
-  {[query; parameter] $[count parameter; ".s.sp[\"", query, "\"; enlist ", parameter, "]"; ".s.e \"", query, "\""]}; / for now, we accept a single parameter only
-  {[x;] x}]
-
 persistOutput: {[dir; res; idx:`C]
   if[not null dir;
     outFile: .Q.dd[dir; `$"queryoutput_", idx, ".csv"];
@@ -241,6 +237,8 @@ runQuery: {[db: `C; device: `C; writerFN; tags; idx:`C; querytags; query:`C; par
     writerFN[idx; querytags; query; ("tagfiltered"; 3#0Nn; 0Nj; 4#0Nj; 0Nj)];
     :()];
 
+  if[ENGINE ~ `SQL;
+    query: $[count parameter; ".s.sp[\"", query, "\"; enlist ", parameter, "]"; ".s.e \"", query, "\""]];
   ts: io: ();
   .qlog.info raze system getenv[`FLUSH], " ", db;
   .qlog.info "Collecting garbage";
@@ -248,41 +246,55 @@ runQuery: {[db: `C; device: `C; writerFN; tags; idx:`C; querytags; query:`C; par
   .qlog.info "[", idx, "] Running query: ", query;
   io,: getKBRead[device]`kB_read;
   s: .z.p; / \ts does not collect memory usage of the secondary threads
-  errormsg: @[system; "ts res:", queryWrapper[query; parameter]; ::];
-  ts,: .z.p-s;
-  if[10h ~ type errormsg;
-    writerFN[idx; querytags; query; (errormsg; 3#0Nn; 0Nj; 4#0Nj; 0Nj)];
+  res: @[value; query; ::];
+  e: .z.p;
+  ts,: e-s;
+  if[10h ~ type res;
+    writerFN[idx; querytags; query; (res; 3#0Nn; 0Nj; 4#0Nj; 0Nj)];
     :()];
   io,: getKBRead[device]`kB_read;
   .qlog.info "[", idx, "]   Shape of the result: ", string[count res], " x ", string count cols res;
   persistOutput[QUERYOUTPUT; 0!res; idx];
-  delete res from `.;
-  memusage: last errormsg;
+  res:();
 
   .qlog.info "[", idx, "]   Collecting garbage";
   .Q.gc[];
   .qlog.info "[", idx, "] Running query again";
   s: .z.p;
-  errormsg: @[value; "res:", queryWrapper[query; parameter];::];
-  ts,: .z.p-s;
-  if[10h ~ type errormsg;
-    writerFN[idx; querytags; query; (errormsg; ts[0], 2#0Nn; memusage; io, 2#0Nj; 0Nj)];
+  res: @[value; query; ::];
+  e: .z.p;
+  ts,: e-s;
+  if[10h ~ type res;
+    writerFN[idx; querytags; query; (res; ts[0], 2#0Nn; 0Nj; io, 2#0Nj; 0Nj)];
     :()];
   io,: getKBRead[device]`kB_read;
-  delete res from `.;
+  res:();
 
+  .qlog.info "[", idx, "]   Collecting garbage";
   .Q.gc[];
   .qlog.info "[", idx, "] Running query third time";
-  s: .z.p;
-  errormsg: @[value; "res:", queryWrapper[query; parameter];::];
-  ts,: .z.p-s;
-  if[10h ~ type errormsg;
-    writerFN[idx; querytags; query; (errormsg; ts, 0Nn; memusage; io, 0Nj; 0Nj)];
-    :()];
+  threadcount: system "s";
+  $[1<threadcount; [ / we can get memory usage only in single-threaded mode, otherwise set it to null
+    s: .z.p;
+    res: .[.Q.ts; (value; enlist query); ::];
+    e: .z.p;
+    if[10h ~ type res;
+      writerFN[idx; querytags; query; (res; ts, 0Nn; 0Nj; io, 0Nj; 0Nj)];
+      :()];
+    memusage: last first res;
+    res: last res];
+    [
+      s: .z.p;
+      res: @[value; query; ::];
+      e: .z.p;
+      if[10h ~ type res;
+        writerFN[idx; querytags; query; (res; ts[0], 2#0Nn; 0Nj; io, 2#0Nj; 0Nj)];
+        :()];
+      memusage: 0Nj]];
+  ts,: e-s;
   io,: getKBRead[device]`kB_read;
 
   writerFN[idx; querytags; query; ("success"; ts; memusage; io; .mem.objsize res)];
-  delete res from `.;
   if[ENGINE ~ `SQL; system "cd ", pwd];
   };
 
