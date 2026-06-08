@@ -207,7 +207,7 @@ def main(args) -> None:
     headers: List[str] = [
         "compparam", "threadcount", "engineversion", "idx", "tags", "query", "status",
         "run1timeNS", "run2timeNS", "run3timeNS",
-        "run1memKB",
+        "run3memKB",
         "run1ioKB", "run2ioKB", "run3ioKB"
     ]
     row_start = ["nyi", threadnr, engineversion]
