@@ -63,9 +63,9 @@ class QueryExecutorPyKXInMemory:
         io_load_start = ios.get_io_stat()
         t_load_start = time.perf_counter_ns()
         logger.info("adding index (grouped attribute) on sym in trade")
-        trade = trade.grouped('sym')
+        trade.grouped('sym')
         logger.info("adding index (grouped attribute) on sym in quote")
-        quote = quote.grouped('sym')
+        quote.grouped('sym')
         t_load_elapsed = time.perf_counter_ns() - t_load_start
         io_load_end = ios.get_io_stat()
         writer.writerow(row_start + [-3, "load", "index", "success", t_load_elapsed, None, None,
