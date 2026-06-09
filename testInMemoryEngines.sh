@@ -93,9 +93,9 @@ function execute_queries () {
 function get_table_stats () {
     local COMMONPARAMS="-querymeta ./artifacts/queries/querymeta.psv -paramdir ${PARAM_DIR}"
     echo "Getting table stats..."
-    mkdir -p ${STATS_DIR}/inmemory/{kdb,kdb_grouped,kdb_parted,kdb_tabledict,duckdb,duckdb_index,polars,pandas}
+    mkdir -p ${STATS_DIR}/inmemory/{kdb_noattr,kdb,kdb_grouped,kdb_parted,kdb_tabledict,duckdb,duckdb_index,polars,pandas}
     if engine_enabled kdb; then
-        /usr/bin/time -v $QEXEC ./src/runQueries.q ${COMMONPARAMS} -date $DATE -db ${DB_DIR}/kdb -format kdbinmemorynoattr -queryfile ./artifacts/queries/inmemory/kdb.psv -tags none -tableStatsDir ${STATS_DIR}/inmemory/kdb_noattr -q 2> ${STATS_DIR}/inmemory/kdb/noattr/os.txt
+        /usr/bin/time -v $QEXEC ./src/runQueries.q ${COMMONPARAMS} -date $DATE -db ${DB_DIR}/kdb -format kdbinmemorynoattr -queryfile ./artifacts/queries/inmemory/kdb.psv -tags none -tableStatsDir ${STATS_DIR}/inmemory/kdb_noattr -q 2> ${STATS_DIR}/inmemory/kdb_noattr/os.txt
         /usr/bin/time -v $QEXEC ./src/runQueries.q ${COMMONPARAMS} -date $DATE -db ${DB_DIR}/kdb -format kdbinmemory -queryfile ./artifacts/queries/inmemory/kdb.psv -tags none -tableStatsDir ${STATS_DIR}/inmemory/kdb -q 2> ${STATS_DIR}/inmemory/kdb/os.txt
         /usr/bin/time -v $QEXEC ./src/runQueries.q ${COMMONPARAMS} -date $DATE -db ${DB_DIR}/kdb -format kdbinmemorygrouped -queryfile ./artifacts/queries/inmemory/kdb_grouped.psv -tags none -tableStatsDir ${STATS_DIR}/inmemory/kdb_grouped -q 2> ${STATS_DIR}/inmemory/kdb_grouped/os.txt
         /usr/bin/time -v $QEXEC ./src/runQueries.q ${COMMONPARAMS} -date $DATE -db ${DB_DIR}/kdb -format kdbinmemoryparted -queryfile ./artifacts/queries/inmemory/kdb_grouped.psv -tags none -tableStatsDir ${STATS_DIR}/inmemory/kdb_parted -q 2> ${STATS_DIR}/inmemory/kdb_parted/os.txt

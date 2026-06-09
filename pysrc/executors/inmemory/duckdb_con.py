@@ -44,7 +44,7 @@ class QueryExecutorDuckDBCon:
         t_load_elapsed = time.perf_counter_ns() - t_load_start
         io_load_end = ios.get_io_stat()
         writer.writerow(row_start + [0, "load", "load a partition into memory", "success", t_load_elapsed, None, None,
-                         None, io_load_end - io_load_start, None, None])
+                         None, io_load_end - io_load_start, None, None, sum(filter(None, [self.getTableSize("master"), self.getTableSize("trade"), self.getTableSize("quote")])) or None])
 
 
         io_load_start = ios.get_io_stat()
@@ -79,7 +79,7 @@ class QueryExecutorDuckDBCon:
         t_load_elapsed = time.perf_counter_ns() - t_load_start
         io_load_end = ios.get_io_stat()
         writer.writerow(row_start + [-1, "load", "transform", "success", t_load_elapsed, None, None,
-                         None, io_load_end - io_load_start, None, None])
+                         None, io_load_end - io_load_start, None, None, sum(filter(None, [self.getTableSize(master), self.getTableSize(trade), self.getTableSize(quote)])) or None])
 
 
         io_load_start = ios.get_io_stat()
@@ -93,7 +93,7 @@ class QueryExecutorDuckDBCon:
         t_load_elapsed = time.perf_counter_ns() - t_load_start
         io_load_end = ios.get_io_stat()
         writer.writerow(row_start + [-2, "load", "sort by time", "success", t_load_elapsed, None, None,
-                         None, io_load_end - io_load_start, None, None])
+                         None, io_load_end - io_load_start, None, None, sum(filter(None, [self.getTableSize(master), self.getTableSize(trade), self.getTableSize(quote)])) or None])
 
         if self.indexOnsym:
             io_load_start = ios.get_io_stat()
@@ -106,7 +106,11 @@ class QueryExecutorDuckDBCon:
             t_load_elapsed = time.perf_counter_ns() - t_load_start
             io_load_end = ios.get_io_stat()
             writer.writerow(row_start + [-3, "load", "index", "success", t_load_elapsed, None, None,
-                             None, io_load_end - io_load_start, None, None])
+                             None, io_load_end - io_load_start, None, None, sum(filter(None, [self.getTableSize(master), self.getTableSize(trade), self.getTableSize(quote)])) or None])
+
+    @staticmethod
+    def getTableSize(df) -> None:
+        return None
 
     def getTableStats(self) -> Dict[str, Any]:
         table_stats_dict = {}
@@ -114,7 +118,7 @@ class QueryExecutorDuckDBCon:
             df = self.con.table(tNames)
             table_stats = {
                 "name": tNames,
-                "size (MB)": None,
+                "size (MB)": (s / 1024 if (s := getTableSize(df)) is not None else None),
                 "rowCount": df.shape[0],
                 "columnCount": df.shape[1],
                 "columns": [

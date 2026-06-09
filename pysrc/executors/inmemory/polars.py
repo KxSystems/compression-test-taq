@@ -42,7 +42,7 @@ class QueryExecutorPolarsInMemory:
         t_load_elapsed = time.perf_counter_ns() - t_load_start
         io_load_end = ios.get_io_stat()
         writer.writerow(row_start + [0, "load", "load a partition into memory", "success", t_load_elapsed, None, None,
-                         None, io_load_end - io_load_start, None, None])
+                         None, io_load_end - io_load_start, None, None, self.getTableSize(master) + self.getTableSize(trade) + self.getTableSize(quote)])
 
 
         io_load_start = ios.get_io_stat()
@@ -56,7 +56,7 @@ class QueryExecutorPolarsInMemory:
         t_load_elapsed = time.perf_counter_ns() - t_load_start
         io_load_end = ios.get_io_stat()
         writer.writerow(row_start + [-1, "load", "transform", "success", t_load_elapsed, None, None,
-                         None, io_load_end - io_load_start, None, None])
+                         None, io_load_end - io_load_start, None, None, self.getTableSize(master) + self.getTableSize(trade) + self.getTableSize(quote)])
 
 
         io_load_start = ios.get_io_stat()
@@ -66,12 +66,16 @@ class QueryExecutorPolarsInMemory:
         t_load_elapsed = time.perf_counter_ns() - t_load_start
         io_load_end = ios.get_io_stat()
         writer.writerow(row_start + [-2, "load", "sort by time", "success", t_load_elapsed, None, None,
-                         None, io_load_end - io_load_start, None, None])
+                         None, io_load_end - io_load_start, None, None, self.getTableSize(master) + self.getTableSize(trade) + self.getTableSize(quote)])
 
         self.eval_context["exnames"] = dict(zip(exnames["ex"], exnames["name"]))
         self.eval_context["master"] = master
         self.eval_context["trade"] = trade
         self.eval_context["quote"] = quote
+
+    @staticmethod
+    def getTableSize(df) -> Dict[str, Any]:
+        return int(df.estimated_size("kb"))
 
     def getTableStats(self) -> Dict[str, Any]:
         table_stats_dict = {}
@@ -79,7 +83,7 @@ class QueryExecutorPolarsInMemory:
             df = self.eval_context[tNames]
             table_stats = {
                 "name": tNames,
-                "size (MB)": int(df.estimated_size("mb")),
+                "size (MB)": getTableSize(df) / 1024,
                 "rowCount": df.shape[0],
                 "columnCount": df.shape[1],
                 "columns": [

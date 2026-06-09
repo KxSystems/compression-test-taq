@@ -45,7 +45,7 @@ class QueryExecutorPyKXInMemory:
         t_load_elapsed = time.perf_counter_ns() - t_load_start
         io_load_end = ios.get_io_stat()
         writer.writerow(row_start + [0, "load", "load a partition into memory", "success", t_load_elapsed, None, None,
-                         None, io_load_end - io_load_start, None, None])
+                         None, io_load_end - io_load_start, None, None, sum(filter(None, [self.getTableSize(master), self.getTableSize(trade), self.getTableSize(quote)])) or None])
 
 
         io_load_start = ios.get_io_stat()
@@ -57,7 +57,7 @@ class QueryExecutorPyKXInMemory:
         t_load_elapsed = time.perf_counter_ns() - t_load_start
         io_load_end = ios.get_io_stat()
         writer.writerow(row_start + [-2, "load", "sort by time", "success", t_load_elapsed, None, None,
-                         None, io_load_end - io_load_start, None, None])
+                         None, io_load_end - io_load_start, None, None, sum(filter(None, [self.getTableSize(master), self.getTableSize(trade), self.getTableSize(quote)])) or None])
 
 
         io_load_start = ios.get_io_stat()
@@ -69,12 +69,16 @@ class QueryExecutorPyKXInMemory:
         t_load_elapsed = time.perf_counter_ns() - t_load_start
         io_load_end = ios.get_io_stat()
         writer.writerow(row_start + [-3, "load", "index", "success", t_load_elapsed, None, None,
-                         None, io_load_end - io_load_start, None, None])
+                         None, io_load_end - io_load_start, None, None, sum(filter(None, [self.getTableSize(master), self.getTableSize(trade), self.getTableSize(quote)])) or None])
 
         self.eval_context["master"] = master
         self.eval_context["trade"] = trade
         self.eval_context["quote"] = quote
 
+
+    @staticmethod
+    def getTableSize(df) -> None:
+        return None
 
     def getTableStats(self) -> Dict[str, Any]:
         table_stats_dict = {}
@@ -82,6 +86,7 @@ class QueryExecutorPyKXInMemory:
             df = self.eval_context[tNames]
             table_stats = {
                 "name": tNames,
+                "size (MB)": (s / 1024 if (s := getTableSize(df)) is not None else None),
                 "rowCount": df.size.py(),
                 "columnCount": df.shape[1].py(),
                 "columns": [{"name": n.py(), "type": t.py().decode()} for n, t in zip(df.dtypes["columns"], df.dtypes["datatypes"])],

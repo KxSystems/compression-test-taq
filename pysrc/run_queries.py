@@ -69,13 +69,14 @@ class QueryResult:
     run1_io_KB: int = None
     run2_io_KB: int = None
     run3_io_KB: int = None
+    ressize_KB: int = None
 
     def to_csv_row(self) -> List[Any]:
         return [
             self.query, self.status,
             self.run1_time_ns, self.run2_time_ns, self.run3_time_ns,
             None,  # Not Yet Implemented
-            self.run1_io_KB, self.run2_io_KB, self.run3_io_KB
+            self.run1_io_KB, self.run2_io_KB, self.run3_io_KB, self.ressize_KB
         ]
 
 def run_query(runner, db_path: Path, ios: IOStat, idx: str, tags: Set, query: str, parameter: str, queryoutput: Path) -> QueryResult:
@@ -105,11 +106,12 @@ def run_query(runner, db_path: Path, ios: IOStat, idx: str, tags: Set, query: st
             if queryoutput is not None:
                 outFile = queryoutput / f"queryoutput_{idx}.csv"
                 runner.write_csv(res, outFile)
+        ressizeKB = runner.getTableSize(res)
         del res
         times.append(t_end - t_start)
         iostats.append(io_end - io_start)
 
-    return QueryResult(query, "success", *times, *iostats)
+    return QueryResult(query, "success", *times, *iostats, ressizeKB)
 
 
 def main(args) -> None:
@@ -208,7 +210,7 @@ def main(args) -> None:
         "compparam", "threadcount", "engineversion", "idx", "tags", "query", "status",
         "run1timeNS", "run2timeNS", "run3timeNS",
         "run3memKB",
-        "run1ioKB", "run2ioKB", "run3ioKB"
+        "run1ioKB", "run2ioKB", "run3ioKB", "ressizeKB"
     ]
     row_start = ["nyi", threadnr, engineversion]
     ios = IOStat(args.db)
@@ -288,7 +290,7 @@ parser.add_argument('-paramdir', type=Path, required=True, help="Directory conta
 parser.add_argument('-tags', type=str, required=False, help="Comma separated tags for filtering queries.")
 parser.add_argument('-queryoutput', type=Path, required=False, help="Directory to save query results.")
 parser.add_argument('-tableStatsDir', type=Path, required=False, help="Directory to save master/trade/quote table statistics YAML files.")
-parser.add_argument('-date', type=lambda s: datetime.strptime(s, '%Y%m%d').date(), help='Date in YYYYMMDD format')
+parser.add_argument('-date', type=lambda s: datetime.strptime(s, '%Y%m%d').date(), required=True, help='Date in YYYYMMDD format')
 
 parser.add_argument('-result', type=Path, default=None, help="Output PSV file path. If not provided, results are not written.")
 
