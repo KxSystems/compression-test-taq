@@ -237,8 +237,7 @@ runQuery: {[db: `C; device: `C; writerFN; tags; idx:`C; querytags; query:`C; par
     writerFN[idx; querytags; query; ("tagfiltered"; 3#0Nn; 0Nj; 4#0Nj; 0Nj)];
     :()];
 
-  if[ENGINE ~ `SQL;
-    query: $[count parameter; ".s.sp[\"", query, "\"; enlist ", parameter, "]"; ".s.e \"", query, "\""]];
+  executor: $[ENGINE ~ `SQL; $[count parameter; .s.sp[; enlist value parameter]; .s.e]; value];
   ts: io: ();
   .qlog.info raze system getenv[`FLUSH], " ", db;
   .qlog.info "Collecting garbage";
@@ -246,7 +245,7 @@ runQuery: {[db: `C; device: `C; writerFN; tags; idx:`C; querytags; query:`C; par
   .qlog.info "[", idx, "] Running query: ", query;
   io,: getKBRead[device]`kB_read;
   s: .z.p; / \ts does not collect memory usage of the secondary threads
-  res: @[value; query; ::];
+  res: @[executor; query; ::];
   e: .z.p;
   ts,: e-s;
   if[10h ~ type res;
@@ -261,7 +260,7 @@ runQuery: {[db: `C; device: `C; writerFN; tags; idx:`C; querytags; query:`C; par
   .Q.gc[];
   .qlog.info "[", idx, "] Running query again";
   s: .z.p;
-  res: @[value; query; ::];
+  res: @[executor; query; ::];
   e: .z.p;
   ts,: e-s;
   if[10h ~ type res;
@@ -276,7 +275,7 @@ runQuery: {[db: `C; device: `C; writerFN; tags; idx:`C; querytags; query:`C; par
   threadcount: system "s";
   $[threadcount < 2; [ / we can get memory usage only in single-threaded mode, otherwise set it to null
     s: .z.p;
-    res: .[.Q.ts; (value; enlist query); ::];
+    res: .[.Q.ts; (executor; enlist query); ::];
     e: .z.p;
     if[10h ~ type res;
       writerFN[idx; querytags; query; (res; ts, 0Nn; 0Nj; io, 0Nj; 0Nj)];
@@ -285,7 +284,7 @@ runQuery: {[db: `C; device: `C; writerFN; tags; idx:`C; querytags; query:`C; par
     res: last res];
   [
     s: .z.p;
-    res: @[value; query; ::];
+    res: @[executor; query; ::];
     e: .z.p;
     if[10h ~ type res;
       writerFN[idx; querytags; query; (res; ts[0], 2#0Nn; 0Nj; io, 2#0Nj; 0Nj)];
