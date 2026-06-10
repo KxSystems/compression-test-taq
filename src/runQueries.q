@@ -361,6 +361,7 @@ if[ENGINE ~ `SQL;
   init[];
   .s.F[`exnames]: .s.fx exnames;
   .s.F[`timebucketsstep]: .s.fx timeBucketsStep;
+  timeBuckets: `bound xasc ([] bucket: key timeBuckets; bound: value timeBuckets);
   ]
 
 if[not QueryTable[`idx] ~ QueryMetaTable`idx;
