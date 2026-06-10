@@ -29,6 +29,15 @@ QueryMetaTable: `idx`querytag xcol ("**";enlist "|") 0: `$o `querymeta;
 
 Tags: ("," vs o`tags) except enlist ""
 
+parseIdxFilter: {[s:`C]
+  if["," in s; :"J"$"," vs s]; / list
+  if["-" in s;                 / range
+    (s;e): "J"$"-" vs s;
+    :s + til 1 + e - s];
+  :enlist "J"$s                / single value
+  }
+(IdxFilter:`J): $[`idx in ko; parseIdxFilter o`idx; `long$()]
+
 if[not lower[getenv `EACHPEACH] in (""; "each"; "peach");
   .qlog.error "Invalid value for EACHPEACH environment variable. Allowed values are '', 'each' or 'peach'.";
   exit 3];
@@ -227,11 +236,15 @@ runQuery: {[db: `C; device: `C; writerFN; tags; idx:`C; querytags; query:`C; par
     system "cd ", db];
   query: trim query;
   parameter: trim parameter;
+  idx: trim idx;
   if[not count query;
     writerFN[idx; querytags; query; ("emptyquery"; 3#0Nn; 0Nj; 4#0Nj; 0Nj)];
     :()];
   if["#" ~ first idx;
     writerFN[1_idx; querytags; query; ("skip"; 3#0Nn; 0Nj; 4#0Nj; 0Nj)];
+    :()];
+  if[count[IdxFilter] and not ("J"$idx) in IdxFilter;
+    writerFN[idx; querytags; query; ("idxfiltered"; 3#0Nn; 0Nj; 4#0Nj; 0Nj)];
     :()];
   if[count[tags] and 0 = count querytags inter tags;
     writerFN[idx; querytags; query; ("tagfiltered"; 3#0Nn; 0Nj; 4#0Nj; 0Nj)];
