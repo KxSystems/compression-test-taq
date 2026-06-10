@@ -9,6 +9,7 @@ THREAD_NRS=(1 4)
 RESULT_DIR="./results"
 STATS_DIR="./stats"
 ENGINES="kdb,sql,duckdb,polars,pykx,pandas"
+IDX_PARAM=""
 
 usage() {
     cat <<EOF
@@ -21,6 +22,7 @@ Options:
   -t, --threads      Space-separated list of thread counts, e.g., "1 4 16", (default: "1 4")
   -r, --result-dir   Directory for query results (default: ./results)
   -e, --engines      Comma-separated list of engines to test (default: "kdb,sql,duckdb,polars,pykx,pandas")
+  -i, --idx          Filter queries by index: single (42), list (32,42,50), or range (40-44)
   -h, --help         Show this help message
   --stats-dir        Directory to save table stats (default: ./stats)
 EOF
@@ -36,6 +38,7 @@ while [[ $# -gt 0 ]]; do
         -r|--result-dir) RESULT_DIR="$2"; shift 2 ;;
         -e|--engines)    ENGINES="$2"; shift 2 ;;
         --stats-dir)     STATS_DIR="$2"; shift 2 ;;
+        -i|--idx)        IDX_PARAM="-idx $2"; shift 2 ;;
         -h|--help)    usage ;;
         *) echo "Unknown option: $1"; usage ;;
     esac
@@ -58,7 +61,7 @@ function get_numa_config () {
 function execute_queries () {
     mkdir -p ${RESULT_DIR}
     echo "Running Queries..."
-    local COMMONPARAMS="-querymeta ./artifacts/queries/querymeta.psv -paramdir ${PARAM_DIR}"
+    local COMMONPARAMS="-querymeta ./artifacts/queries/querymeta.psv -paramdir ${PARAM_DIR} ${IDX_PARAM}"
     for s in "${THREAD_NRS[@]}"; do
         echo "--> Running with $s threads"
 
@@ -91,7 +94,7 @@ function execute_queries () {
 }
 
 function get_table_stats () {
-    local COMMONPARAMS="-querymeta ./artifacts/queries/querymeta.psv -paramdir ${PARAM_DIR}"
+    local COMMONPARAMS="-querymeta ./artifacts/queries/querymeta.psv -paramdir ${PARAM_DIR} ${IDX_PARAM}"
     echo "Getting table stats..."
     mkdir -p ${STATS_DIR}/inmemory/{kdb_noattr,kdb,kdb_grouped,kdb_parted,kdb_tabledict,duckdb,duckdb_index,polars,pandas}
     if engine_enabled kdb; then
