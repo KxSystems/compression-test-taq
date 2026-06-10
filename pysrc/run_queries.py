@@ -30,6 +30,18 @@ logging.basicConfig(
 )
 logger: logging.Logger = logging.getLogger(__name__)
 
+def parse_idx_filter(s: str) -> Set[int]:
+    """Parse idx filter: single number (42), comma-separated list (32,42,50), or range (40-44)."""
+    result: Set[int] = set()
+    for part in s.split(','):
+        part = part.strip()
+        if '-' in part:
+            start, end = part.split('-', 1)
+            result.update(range(int(start), int(end) + 1))
+        else:
+            result.add(int(part))
+    return result
+
 def load_parameters(param_dir: Path) -> Dict[str, Any]:
     """Reads parameter text files into the params dictionary."""
     params: Dict[str, Any] = {}
@@ -257,6 +269,8 @@ def main(args) -> None:
                     result = QueryResult(query, "skip")
                 elif query == '':
                     result = QueryResult(query, "emptyquery")
+                elif args.idx is not None and int(idx) not in args.idx:
+                    result = QueryResult(query, "idxfiltered")
                 elif len(tags) > 0 and len(tags & querytags) == 0:
                     result = QueryResult(query, "tagfiltered")
                 else:
@@ -293,6 +307,7 @@ parser.add_argument('-tableStatsDir', type=Path, required=False, help="Directory
 parser.add_argument('-date', type=lambda s: datetime.strptime(s, '%Y%m%d').date(), required=True, help='Date in YYYYMMDD format')
 
 parser.add_argument('-result', type=Path, default=None, help="Output PSV file path. If not provided, results are not written.")
+parser.add_argument('-idx', type=parse_idx_filter, default=None, help="Filter queries by index: single (42), list (32,42,50), or range (40-44).")
 
 args = parser.parse_args()
 
