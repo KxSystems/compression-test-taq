@@ -83,7 +83,7 @@ class QueryExecutorPolarsInMemory:
             df = self.eval_context[tNames]
             table_stats = {
                 "name": tNames,
-                "size (MB)": getTableSize(df) / 1024,
+                "size (MB)": self.getTableSize(df) / 1024,
                 "rowCount": df.shape[0],
                 "columnCount": df.shape[1],
                 "columns": [

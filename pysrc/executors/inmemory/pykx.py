@@ -86,7 +86,7 @@ class QueryExecutorPyKXInMemory:
             df = self.eval_context[tNames]
             table_stats = {
                 "name": tNames,
-                "size (MB)": (s / 1024 if (s := getTableSize(df)) is not None else None),
+                "size (MB)": (s / 1024 if (s := self.getTableSize(df)) is not None else None),
                 "rowCount": df.size.py(),
                 "columnCount": df.shape[1].py(),
                 "columns": [{"name": n.py(), "type": t.py().decode()} for n, t in zip(df.dtypes["columns"], df.dtypes["datatypes"])],

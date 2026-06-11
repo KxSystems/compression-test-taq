@@ -118,11 +118,11 @@ class QueryExecutorDuckDBCon:
             df = self.con.table(tNames)
             table_stats = {
                 "name": tNames,
-                "size (MB)": (s / 1024 if (s := getTableSize(df)) is not None else None),
+                "size (MB)": (s / 1024 if (s := self.getTableSize(df)) is not None else None),
                 "rowCount": df.shape[0],
                 "columnCount": df.shape[1],
                 "columns": [
-                    {"name": col, "type": str(dtype)}
+                    {"name": col, "type": "ENUM" if str(dtype).startswith("ENUM") else str(dtype)}
                     for col, dtype in zip(df.columns, df.dtypes)
                     ],
             }
