@@ -109,7 +109,8 @@ captureTableStats: {[tableStatsDir:`s; tName]
   h "columnCount: ", (string count cols tName), "\n";
   h "columns: \n";
   {[h;tName;c]
-    t: $[0h ~ type tName c; `string; key tName c];
+    / enums stored as 'symbol'
+    t: $[0h ~ type tName c; `string; "s" ~ .Q.ty tName c; `symbol; key tName c];
     h "  - name: ", (string c), "\n";
     h "    type: ", (string t), "\n";
     h "    attr: ", (string meta[tName][c;`a]), "\n";
