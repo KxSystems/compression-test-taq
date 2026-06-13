@@ -19,8 +19,8 @@ class QueryExecutorDuckDBCon:
         self.con: duckdb.DuckDBPyConnection = con
         self.params: Dict[str, Any] = param
         timebuckets_rows = list(self.params.pop('timeBuckets').items())
-        self.con.execute("CREATE TABLE timeBuckets (bucket VARCHAR, bound INTERVAL)")
-        self.con.executemany("INSERT INTO timeBuckets VALUES (?, ?)", timebuckets_rows)
+        self.con.execute("CREATE TABLE timeBuckets (bucket VARCHAR, bound TIME)")
+        self.con.executemany("INSERT INTO timeBuckets VALUES (?, ?)", [(bucket, str(delta)) for bucket, delta in timebuckets_rows])
         self.indexOnsym: bool = indexOnsym
         self.sortCols: List[str] = sortCols if sortCols is not None else ["time", "rn"]
 
