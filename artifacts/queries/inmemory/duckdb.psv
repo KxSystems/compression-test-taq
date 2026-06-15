@@ -1,10 +1,10 @@
 idx|tags|query|parameter
-1||SELECT * FROM quote WHERE time::TIME < '08:00'|
+1||SELECT * FROM quote WHERE time < $1 + INTERVAL '8 hours'|datadate
 2||SELECT * FROM trade WHERE seq=0|
 3||SELECT * FROM trade WHERE 0 < seq AND 0 < price AND time BETWEEN '-infinity'::TIMESTAMP AND 'infinity'::TIMESTAMP AND size < 2147483647|
-4||SELECT * FROM trade WHERE time::TIME BETWEEN '10:00' AND '10:00:10'|
-5||SELECT * FROM quote WHERE sym = $1 AND time::TIME BETWEEN '08:30' AND '16:30'|anInfreqInstr
-6||SELECT * FROM quote WHERE sym IN $1 AND time::TIME BETWEEN '08:30' AND '08:35'|hundredInstrs
+4||SELECT * FROM trade WHERE time BETWEEN $1 + INTERVAL '10 hours' AND $1 + INTERVAL '10 hours 10 seconds'|datadate
+5||SELECT * FROM quote WHERE sym = $1 AND time BETWEEN $2 + INTERVAL '8 hours 30 minutes' AND $2 + INTERVAL '16 hours 30 minutes'|anInfreqInstr,datadate
+6||SELECT * FROM quote WHERE sym IN $1 AND time BETWEEN $2 + INTERVAL '8 hours 30 minutes' AND $2 + INTERVAL '8 hours 35 minutes'|hundredInstrs,datadate
 7||SELECT sym, time, price, size, stop, cond, ex FROM trade WHERE source = 'N'|
 8||SELECT time, (bid + ask) / 2 AS mid FROM quote WHERE sym = $1|mostFreqInstr
 9||SELECT time, (bid + ask) / 2 AS mid FROM (SELECT * FROM quote WHERE sym = $1)|mostFreqInstr
@@ -50,4 +50,4 @@ idx|tags|query|parameter
 49||SELECT t.sym, t.time, t.price, t.size, t.stop, t.cond, t.ex, q.bid, q.ask, q.bsize, q.asize, q.cond AS quotecond, q.ex AS quoteex FROM (SELECT sym, time, price, size, stop, cond, ex FROM trade WHERE sym IN $1) t ASOF LEFT JOIN (SELECT sym, time, bid, ask, bsize, asize, cond, ex FROM quote WHERE sym IN $1) q USING (sym, 'time') ORDER BY t.time|twentyInstrs
 50||SELECT t.time, t.price, t.size, t.stop, t.cond, t.ex, q.bid, q.ask, q.bsize, q.asize, q.cond AS quotecond, q.ex AS quoteex FROM (SELECT time, price, size, stop, cond, ex FROM trade WHERE sym = $1) t ASOF LEFT JOIN (SELECT time, bid, ask, bsize, asize, cond, ex FROM quote WHERE sym = $1) q ON t.time >= q.time|aFreqInstr
 51||SELECT t.sym, t.time, t.price, t.size, t.stop, t.cond, t.ex, q.bid, q.ask, q.bsize, q.asize, q.cond AS quotecond FROM (SELECT sym, time, price, size, stop, cond, ex FROM trade WHERE size > 500000) t ASOF LEFT JOIN (SELECT sym, time, bid, ask, bsize, asize, cond, ex FROM quote) q USING (sym, ex, 'time')|
-52||SELECT t.sym, t.time, t.price, t.size, t.stop, t.cond, t.ex, q.bid, q.ask, q.bsize, q.asize, q.cond AS quotecond FROM (SELECT sym, time, price, size, stop, cond, ex FROM trade WHERE time::TIME BETWEEN '16:20' AND '16:30') t ASOF LEFT JOIN (SELECT sym, time, bid, ask, bsize, asize, cond FROM quote) q USING (sym, 'time') ORDER BY t.time|
+52||SELECT t.sym, t.time, t.price, t.size, t.stop, t.cond, t.ex, q.bid, q.ask, q.bsize, q.asize, q.cond AS quotecond FROM (SELECT sym, time, price, size, stop, cond, ex FROM trade WHERE time BETWEEN $1 + INTERVAL '16 hours 20 minutes' AND $1 + INTERVAL '16 hours 30 minutes') t ASOF LEFT JOIN (SELECT sym, time, bid, ask, bsize, asize, cond FROM quote) q USING (sym, 'time') ORDER BY t.time|datadate
