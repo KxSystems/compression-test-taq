@@ -104,6 +104,9 @@ class QueryExecutorPandas:
     def prepare_run(self) -> None:
         pass
 
+    def get_parameters(self, parameter: str) -> str:
+        return parameter
+
     def execute_query(self, idx: int, tags: Set, query_str: str, parameter: str, runidx: int):
         return eval(query_str, self.eval_context)
 

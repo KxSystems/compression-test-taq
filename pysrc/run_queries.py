@@ -97,6 +97,7 @@ def run_query(runner, db_path: Path, ios: IOStat, idx: str, tags: Set, query: st
     """
     times: List[float] = []
     iostats: List[float] = []
+    params = runner.get_parameters(parameter)
     for runidx in range(3):
         iteration_label = "Cold" if runidx == 0 else f"Warm-{runidx}"
         logger.info("[%s] Run %s/3 (%s): %s ...", idx, runidx+1, iteration_label, query[:50])
@@ -107,7 +108,7 @@ def run_query(runner, db_path: Path, ios: IOStat, idx: str, tags: Set, query: st
         io_start = ios.get_io_stat()
         t_start = time_mod.perf_counter_ns()
         try:
-            res = runner.execute_query(idx, tags, query, parameter, runidx)
+            res = runner.execute_query(idx, tags, query, params, runidx) # exclude preprocessing parameters from execution time
             t_end = time_mod.perf_counter_ns()
             io_end = ios.get_io_stat()
         except Exception as e:
@@ -139,6 +140,7 @@ def main(args) -> None:
     logger.info("Loading parameter files...")
     engine = args.engine.lower()
     params = load_parameters(args.paramdir)
+    params["datadate"] = args.date
     if engine == "polars":
         from executors.ondisk.polars import QueryExecutorPolars
         import polars as pl

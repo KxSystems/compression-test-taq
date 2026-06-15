@@ -132,9 +132,11 @@ class QueryExecutorDuckDBCon:
     def prepare_run(self) -> None:
         self.con.execute("DROP TABLE IF EXISTS res")
 
-    def execute_query(self, idx: int, tags: Set, query_str: str, parameter: str, runidx: int):
+    def get_parameters(self, parameter: str) -> List[Any]:
+        return [eval(p.strip(), self.params) for p in parameter.split(",")] if parameter else []
+
+    def execute_query(self, idx: int, tags: Set, query_str: str, params: List[Any], runidx: int):
         try:
-            params = [parameter] if parameter else []
             self.con.execute(f"CREATE TABLE res AS {query_str}", parameters=params)
         except Exception as e:
             logger.error("query execution failed: %s", e)
