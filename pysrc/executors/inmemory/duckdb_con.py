@@ -19,8 +19,8 @@ class QueryExecutorDuckDBCon:
         self.con: duckdb.DuckDBPyConnection = con
         self.params: Dict[str, Any] = param
         timebuckets_rows = list(self.params.pop('timeBuckets').items())
-        self.con.execute("CREATE OR REPLACE TABLE timeBuckets (bucket VARCHAR, bound INTERVAL)")
-        self.con.executemany("INSERT INTO timeBuckets VALUES (?, ?)", timebuckets_rows)
+        self.con.execute("CREATE OR REPLACE TABLE timeBuckets (bucket VARCHAR, bound TIME)")
+        self.con.executemany("INSERT INTO timeBuckets VALUES (?, ?)", [(bucket, str(delta)) for bucket, delta in timebuckets_rows])
         self.indexOnsym: bool = indexOnsym
         self.sortCols: List[str] = sortCols if sortCols is not None else ["time", "rn"]
 
@@ -48,7 +48,7 @@ class QueryExecutorDuckDBCon:
         t_load_elapsed = time.perf_counter_ns() - t_load_start
         io_load_end = ios.get_io_stat()
         writer.writerow(row_start + [0, "load", "load a partition into memory", "success", t_load_elapsed, None, None,
-                         None, io_load_end - io_load_start, None, None])
+                         None, io_load_end - io_load_start, None, None, sum(filter(None, [self.getTableSize("master"), self.getTableSize("trade"), self.getTableSize("quote")])) or None])
 
 
         io_load_start = ios.get_io_stat()
@@ -74,7 +74,7 @@ class QueryExecutorDuckDBCon:
         self.con.execute("CREATE OR REPLACE TABLE quote AS SELECT make_timestamp_ns(epoch_ns(date)+time) AS time, " +
             "make_timestamp_ns(epoch_ns(date)+participantTimestamp) AS participantTimestamp, " +
             "make_timestamp_ns(epoch_ns(date)+FINRAADFTimestamp) AS FINRAADFTimestamp, " +
-            "row_number() OVER () AS rn, * EXCLUDE (date, time, participantTimestamp, FINRAADFTimestamp) FROM quote WHERE date = $1", parameters=[datadate])  # rowid ensures stable sorting for same-timestamp records
+            "row_number() OVER () AS rn, * EXCLUDE (date, time, participantTimestamp, FINRAADFTimestamp) FROM quote")  # rowid ensures stable sorting for same-timestamp records
         logger.info("applying transformations")
         self.con.execute("ALTER TABLE quote ALTER sym TYPE sym_enum")
         quote=self.con.table("quote")
@@ -82,7 +82,7 @@ class QueryExecutorDuckDBCon:
         t_load_elapsed = time.perf_counter_ns() - t_load_start
         io_load_end = ios.get_io_stat()
         writer.writerow(row_start + [-1, "load", "transform", "success", t_load_elapsed, None, None,
-                         None, io_load_end - io_load_start, None, None])
+                         None, io_load_end - io_load_start, None, None, sum(filter(None, [self.getTableSize(master), self.getTableSize(trade), self.getTableSize(quote)])) or None])
 
 
         io_load_start = ios.get_io_stat()
@@ -96,20 +96,24 @@ class QueryExecutorDuckDBCon:
         t_load_elapsed = time.perf_counter_ns() - t_load_start
         io_load_end = ios.get_io_stat()
         writer.writerow(row_start + [-2, "load", "sort by time", "success", t_load_elapsed, None, None,
-                         None, io_load_end - io_load_start, None, None])
+                         None, io_load_end - io_load_start, None, None, sum(filter(None, [self.getTableSize(master), self.getTableSize(trade), self.getTableSize(quote)])) or None])
 
         if self.indexOnsym:
             io_load_start = ios.get_io_stat()
             t_load_start = time.perf_counter_ns()
-            logger.info("adding index on sym")
+            logger.info("adding index on sym in trade")
             self.con.execute("CREATE INDEX IF NOT EXISTS idx_trade_sym ON trade (sym)")
-            logger.info("adding index on sym")
+            logger.info("adding index on sym in quote")
             self.con.execute("CREATE INDEX IF NOT EXISTS idx_quote_sym ON quote (sym)")
 
             t_load_elapsed = time.perf_counter_ns() - t_load_start
             io_load_end = ios.get_io_stat()
             writer.writerow(row_start + [-3, "load", "index", "success", t_load_elapsed, None, None,
-                             None, io_load_end - io_load_start, None, None])
+                             None, io_load_end - io_load_start, None, None, sum(filter(None, [self.getTableSize(master), self.getTableSize(trade), self.getTableSize(quote)])) or None])
+
+    @staticmethod
+    def getTableSize(df) -> None:
+        return None
 
     def getTableStats(self) -> Dict[str, Any]:
         table_stats_dict = {}
@@ -117,11 +121,11 @@ class QueryExecutorDuckDBCon:
             df = self.con.table(tNames)
             table_stats = {
                 "name": tNames,
-                "size (MB)": None,
+                "size (MB)": (s / 1024 if (s := self.getTableSize(df)) is not None else None),
                 "rowCount": df.shape[0],
                 "columnCount": df.shape[1],
                 "columns": [
-                    {"name": col, "type": str(dtype)}
+                    {"name": col, "type": "ENUM" if str(dtype).startswith("ENUM") else str(dtype)}
                     for col, dtype in zip(df.columns, df.dtypes)
                     ],
             }
@@ -131,8 +135,10 @@ class QueryExecutorDuckDBCon:
     def prepare_run(self) -> None:
         pass
 
-    def execute_query(self, idx: int, tags: Set, query_str: str, parameter: str, runidx: int):
-        params = [self.params[parameter]] if parameter in self.params else []
+    def get_parameters(self, parameter: str) -> List[Any]:
+        return [eval(p.strip(), self.params) for p in parameter.split(",")] if parameter else []
+
+    def execute_query(self, idx: int, tags: Set, query_str: str, params: List[Any], runidx: int):
         try:
             # Don't use con.sql: https://duckdb.org/docs/lts/clients/python/relational_api#sql
             return self.con.execute(query_str, parameters=params).df()
@@ -141,7 +147,7 @@ class QueryExecutorDuckDBCon:
             if 'PIVOT' not in query_str:
                 raise
 
-            logger.info("Hack around PIVOT parameter issue")
+            logger.warn("Hack around PIVOT parameter issue")
 
             p = params[0]
             if isinstance(p, str):

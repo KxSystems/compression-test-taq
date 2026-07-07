@@ -30,6 +30,18 @@ logging.basicConfig(
 )
 logger: logging.Logger = logging.getLogger(__name__)
 
+def parse_idx_filter(s: str) -> Set[int]:
+    """Parse idx filter: single number (42), comma-separated list (32,42,50), or range (40-44)."""
+    result: Set[int] = set()
+    for part in s.split(','):
+        part = part.strip()
+        if '-' in part:
+            start, end = part.split('-', 1)
+            result.update(range(int(start), int(end) + 1))
+        else:
+            result.add(int(part))
+    return result
+
 def load_parameters(param_dir: Path) -> Dict[str, Any]:
     """Reads parameter text files into the params dictionary."""
     params: Dict[str, Any] = {}
@@ -69,13 +81,14 @@ class QueryResult:
     run1_io_KB: int = None
     run2_io_KB: int = None
     run3_io_KB: int = None
+    ressize_KB: int = None
 
     def to_csv_row(self) -> List[Any]:
         return [
             self.query, self.status,
             self.run1_time_ns, self.run2_time_ns, self.run3_time_ns,
             None,  # Not Yet Implemented
-            self.run1_io_KB, self.run2_io_KB, self.run3_io_KB
+            self.run1_io_KB, self.run2_io_KB, self.run3_io_KB, self.ressize_KB
         ]
 
 def run_query(runner, db_path: Path, ios: IOStat, idx: str, tags: Set, query: str, parameter: str, queryoutput: Path) -> QueryResult:
@@ -84,6 +97,7 @@ def run_query(runner, db_path: Path, ios: IOStat, idx: str, tags: Set, query: st
     """
     times: List[float] = []
     iostats: List[float] = []
+    params = runner.get_parameters(parameter)
     for runidx in range(3):
         iteration_label = "Cold" if runidx == 0 else f"Warm-{runidx}"
         logger.info("[%s] Run %s/3 (%s): %s ...", idx, runidx+1, iteration_label, query[:50])
@@ -94,7 +108,7 @@ def run_query(runner, db_path: Path, ios: IOStat, idx: str, tags: Set, query: st
         io_start = ios.get_io_stat()
         t_start = time_mod.perf_counter_ns()
         try:
-            res = runner.execute_query(idx, tags, query, parameter, runidx)
+            res = runner.execute_query(idx, tags, query, params, runidx) # exclude preprocessing parameters from execution time
             t_end = time_mod.perf_counter_ns()
             io_end = ios.get_io_stat()
         except Exception as e:
@@ -105,11 +119,12 @@ def run_query(runner, db_path: Path, ios: IOStat, idx: str, tags: Set, query: st
             if queryoutput is not None:
                 outFile = queryoutput / f"queryoutput_{idx}.csv"
                 runner.write_csv(res, outFile)
+        ressizeKB = runner.getTableSize(res)
         del res
         times.append(t_end - t_start)
         iostats.append(io_end - io_start)
 
-    return QueryResult(query, "success", *times, *iostats)
+    return QueryResult(query, "success", *times, *iostats, ressizeKB)
 
 
 def main(args) -> None:
@@ -125,6 +140,7 @@ def main(args) -> None:
     logger.info("Loading parameter files...")
     engine = args.engine.lower()
     params = load_parameters(args.paramdir)
+    params["datadate"] = args.date
     if engine == "polars":
         from executors.ondisk.polars import QueryExecutorPolars
         import polars as pl
@@ -217,8 +233,8 @@ def main(args) -> None:
     headers: List[str] = [
         "compparam", "threadcount", "engineversion", "idx", "tags", "query", "status",
         "run1timeNS", "run2timeNS", "run3timeNS",
-        "run1memKB",
-        "run1ioKB", "run2ioKB", "run3ioKB"
+        "run3memKB",
+        "run1ioKB", "run2ioKB", "run3ioKB", "ressizeKB"
     ]
     row_start = ["nyi", threadnr, engineversion]
     ios = IOStat(args.db)
@@ -265,6 +281,8 @@ def main(args) -> None:
                     result = QueryResult(query, "skip")
                 elif query == '':
                     result = QueryResult(query, "emptyquery")
+                elif args.idx is not None and int(idx) not in args.idx:
+                    result = QueryResult(query, "idxfiltered")
                 elif len(tags) > 0 and len(tags & querytags) == 0:
                     result = QueryResult(query, "tagfiltered")
                 else:
@@ -298,9 +316,10 @@ parser.add_argument('-paramdir', type=Path, required=True, help="Directory conta
 parser.add_argument('-tags', type=str, required=False, help="Comma separated tags for filtering queries.")
 parser.add_argument('-queryoutput', type=Path, required=False, help="Directory to save query results.")
 parser.add_argument('-tableStatsDir', type=Path, required=False, help="Directory to save master/trade/quote table statistics YAML files.")
-parser.add_argument('-date', type=lambda s: datetime.strptime(s, '%Y%m%d').date(), help='Date in YYYYMMDD format')
+parser.add_argument('-date', type=lambda s: datetime.strptime(s, '%Y%m%d').date(), required=True, help='Date in YYYYMMDD format')
 
 parser.add_argument('-result', type=Path, default=None, help="Output PSV file path. If not provided, results are not written.")
+parser.add_argument('-idx', type=parse_idx_filter, default=None, help="Filter queries by index: single (42), list (32,42,50), or range (40-44).")
 
 args = parser.parse_args()
 

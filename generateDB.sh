@@ -18,7 +18,7 @@ function generate_HDB () {
   else
     check_kdb
     echo "Generating kdb+ data (aka. HDB)..."
-    $QEXEC ./src/taqToKDB.q -date $DATE -src $CSVDIR -dst $DST -batchsize ${KDBBATCHSIZE} -letters $LETTERS -s ${KDBTHREADNR} -q
+    $QEXEC ./src/taqToKDB.q -date $DATE -src $CSVDIR -dst $DST -letters $LETTERS -s $(nproc) -q
   fi
 }
 
