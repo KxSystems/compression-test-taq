@@ -4,5 +4,5 @@ polars>=1.35    # if you evaluate Polars
 psutil>=7.1
 pandas>=2.3     # if you evaluate Pandas or DuckDB
 numpy>=1.26
-duckdb>=1.5     # if you evaluate DuckDB
+duckdb==1.6.0.dev280     # if you evaluate DuckDB
 pykx>=4.0       # if you evaluate PyKX

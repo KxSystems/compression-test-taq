@@ -54,8 +54,9 @@ class QueryExecutorDuckDBCon:
         io_load_start = ios.get_io_stat()
         t_load_start = time.perf_counter_ns()
         logger.info("applying transformations")
-        self.con.execute("CREATE OR REPLACE TYPE sym_master_enum AS ENUM (SELECT DISTINCT sym FROM master)")
-        self.con.execute("ALTER TABLE master ALTER sym TYPE sym_master_enum")
+        # Create a single unified ENUM so joins will not use strings.
+        self.con.execute("CREATE OR REPLACE TYPE sym_enum AS ENUM (sym_enum as ENUM(from (select sym from trade) union (select sym from quote) union (select sym from master)))")
+        self.con.execute("ALTER TABLE master ALTER sym TYPE sym_enum")
         master=self.con.table("master")
         logger.info("Shape of master: %s x %s", master.shape[0], master.shape[1])
 
@@ -64,8 +65,7 @@ class QueryExecutorDuckDBCon:
             "make_timestamp_ns(epoch_ns(date)+participantTimestamp) AS participantTimestamp, " +
             "make_timestamp_ns(epoch_ns(date)+tradeReportingFacilityTRFTimestamp) AS tradeReportingFacilityTRFTimestamp, " +
             "row_number() OVER () AS rn, * EXCLUDE (date, time, participantTimestamp, tradeReportingFacilityTRFTimestamp) FROM trade")  # rowid ensures stable sorting for same-timestamp records
-        self.con.execute("CREATE OR REPLACE TYPE sym_trade_enum AS ENUM (SELECT DISTINCT sym FROM trade)") # master might not contain all syms in trade
-        self.con.execute("ALTER TABLE trade ALTER sym TYPE sym_trade_enum")
+        self.con.execute("ALTER TABLE trade ALTER sym TYPE sym_enum")
         trade=self.con.table("trade")
         logger.info("Shape of trade: %s x %s", trade.shape[0], trade.shape[1])
 
@@ -76,8 +76,7 @@ class QueryExecutorDuckDBCon:
             "make_timestamp_ns(epoch_ns(date)+FINRAADFTimestamp) AS FINRAADFTimestamp, " +
             "row_number() OVER () AS rn, * EXCLUDE (date, time, participantTimestamp, FINRAADFTimestamp) FROM quote WHERE date = $1", parameters=[datadate])  # rowid ensures stable sorting for same-timestamp records
         logger.info("applying transformations")
-        self.con.execute("CREATE OR REPLACE TYPE sym_quote_enum AS ENUM (SELECT DISTINCT sym FROM quote)")
-        self.con.execute("ALTER TABLE quote ALTER sym TYPE sym_quote_enum")
+        self.con.execute("ALTER TABLE quote ALTER sym TYPE sym_enum")
         quote=self.con.table("quote")
         logger.info("Shape of quote: %s x %s", quote.shape[0], quote.shape[1])
         t_load_elapsed = time.perf_counter_ns() - t_load_start
@@ -142,13 +141,15 @@ class QueryExecutorDuckDBCon:
             if 'PIVOT' not in query_str:
                 raise
 
+            logger.info("Hack around PIVOT parameter issue")
+
             p = params[0]
             if isinstance(p, str):
                 p = f"'{p}'"
             elif type(p) is list:
                 p = [f"'{x}'" for x in p]
                 p = ', '.join(p)
-                p = '(' + p + ')'
+                p = '[' + p + ']'
 
             q = query_str.replace('$1', p)
             return self.con.execute(q, parameters=[]).df()

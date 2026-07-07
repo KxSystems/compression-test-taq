@@ -180,7 +180,7 @@ def main(args) -> None:
         from executors.inmemory.duckdb_con import QueryExecutorDuckDBCon
         import duckdb
         con = duckdb.connect(str(args.db.parent.parent / 'duckdb.db'))
-        runner = QueryExecutorDuckDBCon(con, params)
+        runner = QueryExecutorDuckDBCon(con, params, sortCols=["sym", "time"])
         if 'DUCKDB_THREADS' in os.environ:
             con.execute(f"SET threads = {os.environ['DUCKDB_THREADS']}")
         threadnr = con.sql("SELECT current_setting('threads')").fetchall()[0][0]
