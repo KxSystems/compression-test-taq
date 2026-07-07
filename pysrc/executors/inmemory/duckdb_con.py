@@ -19,7 +19,7 @@ class QueryExecutorDuckDBCon:
         self.con: duckdb.DuckDBPyConnection = con
         self.params: Dict[str, Any] = param
         timebuckets_rows = list(self.params.pop('timeBuckets').items())
-        self.con.execute("CREATE TABLE timeBuckets (bucket VARCHAR, bound TIME)")
+        self.con.execute("CREATE OR REPLACE TABLE timeBuckets (bucket VARCHAR, bound TIME)")
         self.con.executemany("INSERT INTO timeBuckets VALUES (?, ?)", [(bucket, str(delta)) for bucket, delta in timebuckets_rows])
         self.indexOnsym: bool = indexOnsym
         self.sortCols: List[str] = sortCols if sortCols is not None else ["time", "rn"]
@@ -27,19 +27,23 @@ class QueryExecutorDuckDBCon:
     def load_resources(self, db_path: Path, datadate: datetime.date, writer, row_start, ios) -> None:
         logger.info("loading hive-partitioned tables at %s", db_path)
 
+        exnames = self.con.sql("FROM information_schema.tables WHERE table_name = 'exnames'").fetchall()
+        if exnames:
+            return
+
         io_load_start = ios.get_io_stat()
         t_load_start = time.perf_counter_ns()
-        self.con.execute("CREATE TABLE exnames AS SELECT * FROM read_parquet($1)", parameters=[str(db_path / "exnames.parquet")])
+        self.con.execute("CREATE OR REPLACE TABLE exnames AS SELECT * FROM read_parquet($1)", parameters=[str(db_path / "exnames.parquet")])
 
-        self.con.execute("CREATE TABLE master AS SELECT * EXCLUDE (date) FROM read_parquet($1, hive_partitioning=True)",
+        self.con.execute("CREATE OR REPLACE TABLE master AS SELECT * EXCLUDE (date) FROM read_parquet($1, hive_partitioning=True)",
             parameters=[str(db_path / "master" / f"date={datadate}" / "*.parquet")])
 
         logger.info("loading trade")
-        self.con.execute("CREATE TABLE trade AS SELECT * FROM read_parquet($1, hive_partitioning=True)",
+        self.con.execute("CREATE OR REPLACE TABLE trade AS SELECT * FROM read_parquet($1, hive_partitioning=True)",
             parameters=[str(db_path / "trade" / f"date={datadate}" / "*.parquet")])
 
         logger.info("loading quote")
-        self.con.execute("CREATE TABLE quote AS SELECT * FROM read_parquet($1, hive_partitioning=True)",
+        self.con.execute("CREATE OR REPLACE TABLE quote AS SELECT * FROM read_parquet($1, hive_partitioning=True)",
             parameters=[str(db_path / "quote" / f"date={datadate}" / "*.parquet")])
         t_load_elapsed = time.perf_counter_ns() - t_load_start
         io_load_end = ios.get_io_stat()
@@ -50,8 +54,9 @@ class QueryExecutorDuckDBCon:
         io_load_start = ios.get_io_stat()
         t_load_start = time.perf_counter_ns()
         logger.info("applying transformations")
-        self.con.execute("CREATE TYPE sym_master_enum AS ENUM (SELECT DISTINCT sym FROM master)")
-        self.con.execute("ALTER TABLE master ALTER sym TYPE sym_master_enum")
+        # Create a single unified ENUM so joins will not use strings.
+        self.con.execute("CREATE OR REPLACE TYPE sym_enum AS ENUM (sym_enum as ENUM(from (select sym from trade) union (select sym from quote) union (select sym from master)))")
+        self.con.execute("ALTER TABLE master ALTER sym TYPE sym_enum")
         master=self.con.table("master")
         logger.info("Shape of master: %s x %s", master.shape[0], master.shape[1])
 
@@ -60,8 +65,7 @@ class QueryExecutorDuckDBCon:
             "make_timestamp_ns(epoch_ns(date)+participantTimestamp) AS participantTimestamp, " +
             "make_timestamp_ns(epoch_ns(date)+tradeReportingFacilityTRFTimestamp) AS tradeReportingFacilityTRFTimestamp, " +
             "row_number() OVER () AS rn, * EXCLUDE (date, time, participantTimestamp, tradeReportingFacilityTRFTimestamp) FROM trade")  # rowid ensures stable sorting for same-timestamp records
-        self.con.execute("CREATE TYPE sym_trade_enum AS ENUM (SELECT DISTINCT sym FROM trade)") # master might not contain all syms in trade
-        self.con.execute("ALTER TABLE trade ALTER sym TYPE sym_trade_enum")
+        self.con.execute("ALTER TABLE trade ALTER sym TYPE sym_enum")
         trade=self.con.table("trade")
         logger.info("Shape of trade: %s x %s", trade.shape[0], trade.shape[1])
 
@@ -72,8 +76,7 @@ class QueryExecutorDuckDBCon:
             "make_timestamp_ns(epoch_ns(date)+FINRAADFTimestamp) AS FINRAADFTimestamp, " +
             "row_number() OVER () AS rn, * EXCLUDE (date, time, participantTimestamp, FINRAADFTimestamp) FROM quote")  # rowid ensures stable sorting for same-timestamp records
         logger.info("applying transformations")
-        self.con.execute("CREATE TYPE sym_quote_enum AS ENUM (SELECT DISTINCT sym FROM quote)")
-        self.con.execute("ALTER TABLE quote ALTER sym TYPE sym_quote_enum")
+        self.con.execute("ALTER TABLE quote ALTER sym TYPE sym_enum")
         quote=self.con.table("quote")
         logger.info("Shape of quote: %s x %s", quote.shape[0], quote.shape[1])
         t_load_elapsed = time.perf_counter_ns() - t_load_start
@@ -130,20 +133,32 @@ class QueryExecutorDuckDBCon:
         return table_stats_dict
 
     def prepare_run(self) -> None:
-        self.con.execute("DROP TABLE IF EXISTS res")
+        pass
 
     def get_parameters(self, parameter: str) -> List[Any]:
         return [eval(p.strip(), self.params) for p in parameter.split(",")] if parameter else []
 
     def execute_query(self, idx: int, tags: Set, query_str: str, params: List[Any], runidx: int):
         try:
-            self.con.execute(f"CREATE TABLE res AS {query_str}", parameters=params)
-        except Exception as e:
-            logger.error("query execution failed: %s", e)
-            self.con.rollback()
-            raise
-        return self.con.table('res')
+            # Don't use con.sql: https://duckdb.org/docs/lts/clients/python/relational_api#sql
+            return self.con.execute(query_str, parameters=params).df()
+        except:
+            # Hack around PIVOT parameter issue
+            if 'PIVOT' not in query_str:
+                raise
 
+            logger.warn("Hack around PIVOT parameter issue")
+
+            p = params[0]
+            if isinstance(p, str):
+                p = f"'{p}'"
+            elif type(p) is list:
+                p = [f"'{x}'" for x in p]
+                p = ', '.join(p)
+                p = '[' + p + ']'
+
+            q = query_str.replace('$1', p)
+            return self.con.execute(q, parameters=[]).df()
 
     def write_csv(self, res, outFile: Path) -> None:
         tscols = [row[0] for row in self.con.sql("SELECT column_name FROM (DESCRIBE res) WHERE column_type = 'TIMESTAMP_NS'").fetchall()]
